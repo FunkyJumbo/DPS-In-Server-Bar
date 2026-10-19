@@ -20,9 +20,17 @@
 
 ## Why
 
-Full overlays are great, but sometimes you just want one number where your eyes already are.
-DPS In Server Bar puts your DPS in the server info bar (top right of the screen) and keeps the
-details one click away: per-player breakdown, graphs, pull history and an FFLogs-style rDPS.
+The aim of this project is a clean DPS meter, built into the game's UI, that shows the essentials at a glance.
+
+Full overlays are great, but sometimes you want to keep your UI clean and still see what matters where your
+eyes already are. DPS In Server Bar puts your DPS in the server info bar, at the top right of the screen.
+At a glance you also see your place in the party, the gap to the top player (or to the second one when you
+are first), and whether the party's DPS is on track for the boss' enrage.
+
+When you need more, the full picture is one click away in a classic window: per-player breakdown, graphs,
+pull history and an FFLogs-style rDPS.
+
+This plugin doesn't reinvent the DPS meter: it brings it into the game's UI in a clean and meaningful way.
 
 ## Features
 
@@ -83,13 +91,6 @@ See [How rDPS is computed](#how-rdps-is-computed).
 With your own FFLogs API credentials, the plugin downloads the rDPS rankings of your job for the current fight
 and places your rDPS among them. See [FFLogs setup](#fflogs-setup).
 
-## Requirements
-
-- FFXIV with [XIVLauncher / Dalamud](https://goatcorp.github.io/) (API 15).
-- **Optional:** [ACT](https://advancedcombattracker.com/) with the FFXIV plugin and
-  [OverlayPlugin](https://github.com/OverlayPlugin/OverlayPlugin), with OverlayPlugin's **WSServer** started
-  (default `ws://127.0.0.1:10501/ws`).
-
 ## Installation
 
 1. In game, open `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
@@ -104,7 +105,7 @@ and places your rDPS among them. See [FFLogs setup](#fflogs-setup).
 | Mode | How it works |
 |---|---|
 | **Auto** (default) | ACT when it is reachable, the built-in tracker otherwise |
-| **ACT only** | Numbers come from ACT via OverlayPlugin's WebSocket server |
+| **ACT only** | Numbers come from ACT via OverlayPlugin's WebSocket server (WSServer started, default `ws://127.0.0.1:10501/ws`) |
 | **Built-in only** | The plugin reads your party's damage directly from the game — no ACT needed |
 
 The built-in tracker merges pets into their owner and counts the Limit Break separately. It is slightly less
@@ -176,38 +177,6 @@ in the current partition — close to FFLogs' *rank %*. During a fight it is onl
 - Enrage timers are not in the game data and must be entered by hand.
 - For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for the DPS check.
 - The FFLogs percentile depends on matching the fight by name and on FFLogs' API being reachable.
-
-## Building
-
-Requires the .NET 10 SDK and a Dalamud development environment (XIVLauncher with Dalamud installed).
-
-```
-dotnet build -c Release
-```
-
-The installable zip is produced in `DpsInServerBar/bin/Release/DpsInServerBar/latest.zip`.
-To test in game: `/xlsettings` → **Experimental** → **Dev Plugin Locations**, add the path to
-`DpsInServerBar/bin/Release/DpsInServerBar.dll`.
-
-### Releasing
-
-1. Bump `<Version>` in `DpsInServerBar/DpsInServerBar.csproj`, and `AssemblyVersion`, the download links and the
-   changelog in `pluginmaster.json`.
-2. Commit, then push a tag with the same version (e.g. `git tag 1.0.1.0 && git push origin 1.0.1.0`).
-3. The **Release** workflow builds the plugin and publishes the GitHub release with `latest.zip`.
-
-### Project layout
-
-| Folder | Role |
-|---|---|
-| `Combat/` | Common model (`CombatSnapshot`), data source selection, job roles |
-| `Act/` | OverlayPlugin WebSocket client and `CombatData` parser |
-| `Native/` | Built-in tracker (game hooks for action effects and DoT ticks) |
-| `Rdps/` | rDPS: raid buffs, allocation math, crit/DH rate estimation |
-| `Tracking/` | Pulls, timelines, history, boss detection |
-| `Fflogs/` | FFLogs API v2 client and percentile estimate |
-| `Display/` | Server bar rendering |
-| `Windows/` | Main window, graphs (ImPlot), settings |
 
 ## Credits
 
