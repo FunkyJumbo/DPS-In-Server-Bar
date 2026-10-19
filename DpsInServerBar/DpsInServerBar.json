@@ -1,0 +1,8 @@
+{
+  "Author": "FunkyJumbo",
+  "Name": "DPS In Server Bar",
+  "Punchline": "Your live DPS, rDPS and party DPS, right in the server info bar.",
+  "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, graphs, pull history with comparisons, party DPS checks and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.",
+  "ApplicableVersion": "any",
+  "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"]
+}

@@ -1,0 +1,7 @@
+{
+  "Name": "FunkyJumbo Plugins",
+  "Author": "FunkyJumbo",
+  "Description": "Third-party repo hosting DPS In Server Bar",
+  "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
+  "ManifestUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/pluginmaster.json"
+}

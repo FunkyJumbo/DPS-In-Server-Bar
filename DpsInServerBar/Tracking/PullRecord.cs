@@ -1,0 +1,64 @@
+using System;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using DpsInServerBar.Combat;
+
+namespace DpsInServerBar.Tracking;
+
+public enum PullOutcome
+{
+    Unknown,
+    Kill,
+    Wipe,
+}
+
+/// <summary>A finished pull, as stored in the history file.</summary>
+public sealed class PullRecord
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public DateTime StartUtc { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Zone { get; set; } = string.Empty;
+    public uint TerritoryId { get; set; }
+    public string Source { get; set; } = string.Empty;
+    public double DurationSeconds { get; set; }
+    public PullOutcome Outcome { get; set; }
+
+    public string Job { get; set; } = string.Empty;
+    public double YourDps { get; set; }
+
+    /// <summary>Null when rDPS was not available for this pull.</summary>
+    public double? YourRdps { get; set; }
+
+    /// <summary>Estimated FFLogs percentile of YourRdps, null when unknown.</summary>
+    public double? Percentile { get; set; }
+    public double PartyDps { get; set; }
+    public int Rank { get; set; }
+    public int PartySize { get; set; }
+    public int Deaths { get; set; }
+
+    public List<PullCombatant> Combatants { get; set; } = [];
+
+    /// <summary>Cumulative damage at each whole second of the pull (index = second).</summary>
+    public double[] YourDamageTimeline { get; set; } = [];
+
+    /// <inheritdoc cref="YourDamageTimeline"/>
+    public double[] PartyDamageTimeline { get; set; } = [];
+}
+
+public sealed class PullCombatant
+{
+    public string Name { get; set; } = string.Empty;
+    public string Job { get; set; } = string.Empty;
+    public double Dps { get; set; }
+    public double? Rdps { get; set; }
+
+    /// <summary>Live diagnostic only, not saved in the history.</summary>
+    [JsonIgnore]
+    public RdpsDetail? Breakdown { get; set; }
+    public double DamagePercent { get; set; }
+    public double CritPercent { get; set; }
+    public double DirectHitPercent { get; set; }
+    public int Deaths { get; set; }
+    public bool IsYou { get; set; }
+}
