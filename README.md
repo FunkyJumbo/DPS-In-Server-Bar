@@ -189,6 +189,13 @@ The installable zip is produced in `DpsInServerBar/bin/Release/DpsInServerBar/la
 To test in game: `/xlsettings` → **Experimental** → **Dev Plugin Locations**, add the path to
 `DpsInServerBar/bin/Release/DpsInServerBar.dll`.
 
+### Releasing
+
+1. Bump `<Version>` in `DpsInServerBar/DpsInServerBar.csproj`, and `AssemblyVersion`, the download links and the
+   changelog in `pluginmaster.json`.
+2. Commit, then push a tag with the same version (e.g. `git tag 1.0.1.0 && git push origin 1.0.1.0`).
+3. The **Release** workflow builds the plugin and publishes the GitHub release with `latest.zip`.
+
 ### Project layout
 
 | Folder | Role |
