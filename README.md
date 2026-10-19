@@ -11,12 +11,12 @@
 
 ---
 
-<!-- Screenshots: add them to docs/images/ and uncomment.
 <p align="center">
-  <img src="docs/images/bar.png" alt="Server bar entry">
-  <img src="docs/images/live.png" alt="Live window">
+  <img src="docs/images/bar.png" alt="DPS In Server Bar entry showing 46,209 rDPS in the server info bar"><br>
+  <sub>Your rDPS, right next to the clock.</sub>
 </p>
--->
+
+<!-- More screenshots / GIFs go to docs/images/ (e.g. the Live window). -->
 
 ## Why
 
