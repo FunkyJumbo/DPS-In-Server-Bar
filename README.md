@@ -32,6 +32,15 @@ pull history and an FFLogs-style rDPS.
 
 This plugin doesn't reinvent the DPS meter: it brings it into the game's UI in a clean and meaningful way.
 
+## Installation
+
+1. In game, open `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
+2. Add:
+   ```
+   https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/pluginmaster.json
+   ```
+3. Save, then install **DPS In Server Bar** from `/xlplugins`.
+
 ## Features
 
 ### In the server bar
@@ -90,15 +99,6 @@ See [How rDPS is computed](#how-rdps-is-computed).
 
 With your own FFLogs API credentials, the plugin downloads the rDPS rankings of your job for the current fight
 and places your rDPS among them. See [FFLogs setup](#fflogs-setup).
-
-## Installation
-
-1. In game, open `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
-2. Add:
-   ```
-   https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/pluginmaster.json
-   ```
-3. Save, then install **DPS In Server Bar** from `/xlplugins`.
 
 ## Data sources
 
