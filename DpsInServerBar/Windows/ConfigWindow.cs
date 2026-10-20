@@ -175,6 +175,9 @@ public sealed class ConfigWindow : Window
         BarElement.Percentile => ("FFLogs percentile (estimate)", "~92",
                                   "Your rDPS placed among FFLogs' rankings for your job on this fight. "
                                   + "Needs FFLogs API credentials (FFLogs tab)."),
+        BarElement.EnrageTimer => ("Enrage timer", "Enrage 3:12",
+                                   "Time left before the enrage entered for this fight in Party checks. "
+                                   + "Red for the last 30 seconds."),
         BarElement.KillTime => ("Projected kill time", "ETA 9:12",
                                 "Boss HP left / current party DPS. Red if after the enrage time set in Party checks."),
         _ => (element.ToString(), string.Empty, null),

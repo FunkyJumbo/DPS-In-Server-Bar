@@ -58,10 +58,11 @@ and can be **reordered**:
 | Pace | `+4%` | Damage so far vs. your best **kill** of this fight, at the same second |
 | Boss HP | `54%` | HP of the boss, read from the game |
 | Projected kill | `ETA 9:12` | When the boss dies at the current party DPS — red if after the enrage |
+| Enrage timer | `Enrage 3:12` | Time left before the enrage entered for this fight — red for the last 30 seconds |
 | FFLogs percentile | `~92` | Estimated FFLogs percentile of your rDPS, in FFLogs colors |
 
 - **Left click** cycles DPS → pDPS → rDPS. **Right click** opens the main window.
-- **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, best kill, percentile.
+- **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, best kill, percentile.
 - Colors: party DPS turns green/red against the DPS check of the fight, grey once the fight is over.
 
 ### Main window
@@ -86,7 +87,7 @@ The summary can be turned off in dungeons.
 ### Party DPS checks
 
 For each fight you can enter the **boss HP** (one click reads it from the game) and the **enrage time**:
-the minimum party DPS is then `HP / enrage`. A manual minimum can be used instead. Checks can apply
+the minimum party DPS is then `HP / enrage`. The enrage time also drives the enrage timer in the bar. A manual minimum can be used instead. Checks can apply
 to a whole zone or to a specific encounter.
 
 ### rDPS
@@ -174,7 +175,7 @@ in the current partition — close to FFLogs' *rank %*. During a fight it is onl
 
 - rDPS is an estimate (see [Accuracy](#how-rdps-is-computed)); raid buff values need updating when a patch changes them.
 - Only the guaranteed crit/DH effects listed in `RaidBuffs.cs` are recognised.
-- Enrage timers are not in the game data and must be entered by hand.
+- Enrage times are not in the game data and must be entered by hand (Party checks).
 - For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for the DPS check.
 - The FFLogs percentile depends on matching the fight by name and on FFLogs' API being reachable.
 

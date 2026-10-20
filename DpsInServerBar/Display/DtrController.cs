@@ -181,6 +181,17 @@ public sealed class DtrController : IDisposable
                     etaColor = eta.TotalSeconds > threshold.EnrageSeconds ? config.BelowThresholdColor : config.AboveThresholdColor;
                 return new Segment($"ETA {NumberFormat.Duration(eta)}", Color: etaColor);
 
+            case BarElement.EnrageTimer:
+                if (ended || threshold is not { EnrageSeconds: > 0 })
+                    return null;
+
+                // Counts down from the enrage time entered in Party checks; red for the last 30 seconds.
+                var left = threshold.EnrageSeconds - snapshot.Encounter.Duration.TotalSeconds;
+                Vector4? enrageColor = config.UseColors && left <= 30 ? config.BelowThresholdColor : null;
+                return new Segment(
+                    left > 0 ? $"Enrage {NumberFormat.Duration(TimeSpan.FromSeconds(Math.Ceiling(left)))}" : "Enrage!",
+                    Color: enrageColor);
+
             case BarElement.Percentile:
                 return plugin.EstimatePercentile(snapshot) is { } pct
                            ? new Segment($"~{pct:0}", Color: config.UseColors ? FflogsNames.Color(pct) : null)
@@ -277,6 +288,14 @@ public sealed class DtrController : IDisposable
                     if (check is { EnrageSeconds: > 0 })
                         sb.Append($"  (enrage {NumberFormat.Duration(TimeSpan.FromSeconds(check.EnrageSeconds))})");
                 }
+            }
+
+            if (snapshot.IsActive && check is { EnrageSeconds: > 0 })
+            {
+                var left = check.EnrageSeconds - enc.Duration.TotalSeconds;
+                sb.Append(left > 0
+                              ? $"\nEnrage in {NumberFormat.Duration(TimeSpan.FromSeconds(Math.Ceiling(left)))}"
+                              : "\nEnrage time reached");
             }
 
             if (plugin.EstimatePercentile(snapshot) is { } percentile)

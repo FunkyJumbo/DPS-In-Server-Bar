@@ -67,6 +67,7 @@ public enum BarElement
     Pace,
     BossHp,
     KillTime,
+    EnrageTimer,
     Percentile,
 }
 
@@ -207,6 +208,7 @@ public sealed class Configuration : IPluginConfiguration
         new() { Element = BarElement.Pace, Enabled = false },
         new() { Element = BarElement.BossHp, Enabled = false },
         new() { Element = BarElement.KillTime, Enabled = false },
+        new() { Element = BarElement.EnrageTimer, Enabled = false },
         new() { Element = BarElement.Percentile, Enabled = false },
     ];
 
