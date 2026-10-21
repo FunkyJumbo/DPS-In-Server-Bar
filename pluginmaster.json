@@ -6,7 +6,7 @@
     "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, graphs, pull history with comparisons, party DPS checks and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.",
     "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
     "InternalName": "DpsInServerBar",
-    "AssemblyVersion": "1.0.1.0",
+    "AssemblyVersion": "1.0.2.0",
     "DalamudApiLevel": 15,
     "ApplicableVersion": "any",
     "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"],
@@ -16,9 +16,9 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
     "ImageUrls": [],
-    "Changelog": "1.0.1.0: enrage timer in the server bar; set a fight's enrage time from a pull (History > Set as enrage time). 1.0.0.0: full rewrite - built-in tracker (no ACT needed), rDPS, pull history and graphs, party DPS checks with boss HP / enrage, role comparison, FFLogs percentile estimate.",
-    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.1.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.1.0/latest.zip",
+    "Changelog": "1.0.2.0: ultimate mode (per-phase boss HP, timer and enrage; TEA P1 first), GCD uptime with uptime graph (per phase in ultimates, deaths count). 1.0.1.0: enrage timer in the server bar; set a fight's enrage time from a pull (History > Set as enrage time). 1.0.0.0: full rewrite - built-in tracker (no ACT needed), rDPS, pull history and graphs, party DPS checks with boss HP / enrage, role comparison, FFLogs percentile estimate.",
+    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.2.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.2.0/latest.zip",
     "DownloadLinkTesting": ""
   }
 ]
