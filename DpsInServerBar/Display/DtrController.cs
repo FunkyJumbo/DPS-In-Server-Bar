@@ -10,6 +10,7 @@ using Dalamud.Utility;
 using DpsInServerBar.Combat;
 using DpsInServerBar.Fflogs;
 using DpsInServerBar.Tracking;
+using DpsInServerBar.Ultimates;
 
 namespace DpsInServerBar.Display;
 
@@ -168,29 +169,57 @@ public sealed class DtrController : IDisposable
             case BarElement.Pace:
                 return !ended && plugin.Pulls.PaceVsBest() is { } pace ? new Segment($"{pace:+0%;-0%}") : null;
 
+            case BarElement.Phase:
+                return plugin.Ultimates.Current is { } phaseView ? new Segment($"P{phaseView.Number}") : null;
+
             case BarElement.BossHp:
+                // In an ultimate, only the bosses of the current phase count.
+                if (ActivePhase() is { } hpPhase)
+                    return new Segment($"{hpPhase.HpFraction:0%}");
                 return boss is not null ? new Segment($"{boss.HpFraction:0%}") : null;
 
             case BarElement.KillTime:
-                if (ended || BossTracker.ProjectedKill(boss, snapshot.Encounter.Duration, partyDps) is not { } eta)
+            {
+                TimeSpan? eta;
+                double? enrageSeconds;
+                if (ActivePhase() is { } etaPhase)
+                {
+                    // Phase time, from the damage actually dealt to the phase's bosses.
+                    (eta, enrageSeconds) = (etaPhase.ProjectedKill, etaPhase.EnrageSeconds);
+                }
+                else
+                {
+                    (eta, enrageSeconds) = (ended ? null : BossTracker.ProjectedKill(boss, snapshot.Encounter.Duration, partyDps),
+                                            threshold is { EnrageSeconds: > 0 } ? threshold.EnrageSeconds : null);
+                }
+
+                if (eta is not { } etaValue)
                     return null;
 
-                // Red when the projected kill comes after the enrage entered for this fight.
+                // Red when the projected kill comes after the enrage.
                 Vector4? etaColor = null;
-                if (config.UseColors && threshold is { EnrageSeconds: > 0 })
-                    etaColor = eta.TotalSeconds > threshold.EnrageSeconds ? config.BelowThresholdColor : config.AboveThresholdColor;
-                return new Segment($"ETA {NumberFormat.Duration(eta)}", Color: etaColor);
+                if (config.UseColors && enrageSeconds is { } limit)
+                    etaColor = etaValue.TotalSeconds > limit ? config.BelowThresholdColor : config.AboveThresholdColor;
+                return new Segment($"ETA {NumberFormat.Duration(etaValue)}", Color: etaColor);
+            }
 
             case BarElement.EnrageTimer:
-                if (ended || threshold is not { EnrageSeconds: > 0 })
+            {
+                double? left = null;
+                if (ActivePhase() is { } enragePhase)
+                    left = enragePhase.EnrageIn?.TotalSeconds;
+                else if (!ended && threshold is { EnrageSeconds: > 0 })
+                    left = threshold.EnrageSeconds - snapshot.Encounter.Duration.TotalSeconds;
+
+                if (left is not { } seconds)
                     return null;
 
-                // Counts down from the enrage time entered in Party checks; red for the last 30 seconds.
-                var left = threshold.EnrageSeconds - snapshot.Encounter.Duration.TotalSeconds;
-                Vector4? enrageColor = config.UseColors && left <= 30 ? config.BelowThresholdColor : null;
+                // Counts down from the enrage time entered by hand; red for the last 30 seconds.
+                Vector4? enrageColor = config.UseColors && seconds <= 30 ? config.BelowThresholdColor : null;
                 return new Segment(
-                    left > 0 ? $"Enrage {NumberFormat.Duration(TimeSpan.FromSeconds(Math.Ceiling(left)))}" : "Enrage!",
+                    seconds > 0 ? $"Enrage {NumberFormat.Duration(TimeSpan.FromSeconds(Math.Ceiling(seconds)))}" : "Enrage!",
                     Color: enrageColor);
+            }
 
             case BarElement.Percentile:
                 return plugin.EstimatePercentile(snapshot) is { } pct
@@ -201,6 +230,39 @@ public sealed class DtrController : IDisposable
                 return null;
         }
     }
+
+    private static void AppendPhase(StringBuilder sb, PhaseView phase, Configuration config)
+    {
+        sb.Append($"\n{phase.Fight.Key} - P{phase.Number}");
+        if (!phase.Supported)
+        {
+            sb.Append(": phase not supported yet");
+            return;
+        }
+
+        sb.Append($" {phase.Phase!.Name}");
+        if (!phase.Started)
+        {
+            sb.Append(phase.InCombat ? " (waiting for the boss)" : string.Empty);
+            return;
+        }
+
+        sb.Append($"  {NumberFormat.Duration(phase.Elapsed)}{(phase.InCombat ? "" : " (pull ended)")}");
+        sb.Append($"\nBoss HP: {phase.HpFraction:0.0%} ({NumberFormat.Format(phase.CurrentHp, NumberStyle.Compact)}"
+                  + $" / {NumberFormat.Format(phase.MaxHp, NumberStyle.Compact)})");
+        sb.Append($"\nDPS on boss: {NumberFormat.Format(phase.BossDps, config.NumberStyle)}");
+        if (phase.RequiredDps is { } required)
+            sb.Append($"  (need {NumberFormat.Format(required, config.NumberStyle)})");
+
+        if (phase.InCombat && phase.ProjectedKill is { } eta)
+            sb.Append($"\nProjected kill: {NumberFormat.Duration(eta)}");
+        if (phase.EnrageSeconds is { } enrage)
+            sb.Append($"  (enrage {NumberFormat.Duration(TimeSpan.FromSeconds(enrage))})");
+    }
+
+    /// <summary>The ultimate phase being fought, when its bosses are up.</summary>
+    private PhaseView? ActivePhase() =>
+        plugin.Ultimates.Current is { Supported: true, Started: true, InCombat: true } phase ? phase : null;
 
     private static string MetricLabel(DisplayMetric metric) => metric switch
     {
@@ -278,7 +340,12 @@ public sealed class DtrController : IDisposable
             if (check is not null)
                 sb.Append($"  (check {NumberFormat.Format(check.EffectiveMinPartyDps, config.NumberStyle)})");
 
-            if (plugin.Boss.Current is { } boss)
+            if (plugin.Ultimates.Current is { } phase)
+            {
+                // In an ultimate, the phase replaces the fight-wide boss and enrage lines.
+                AppendPhase(sb, phase, config);
+            }
+            else if (plugin.Boss.Current is { } boss)
             {
                 sb.Append($"\n{boss.Name}: {boss.HpFraction:0.0%} ({NumberFormat.Format(boss.CurrentHp, NumberStyle.Compact)}"
                           + $" / {NumberFormat.Format(boss.MaxHp, NumberStyle.Compact)})");
@@ -290,7 +357,7 @@ public sealed class DtrController : IDisposable
                 }
             }
 
-            if (snapshot.IsActive && check is { EnrageSeconds: > 0 })
+            if (plugin.Ultimates.Current is null && snapshot.IsActive && check is { EnrageSeconds: > 0 })
             {
                 var left = check.EnrageSeconds - enc.Duration.TotalSeconds;
                 sb.Append(left > 0

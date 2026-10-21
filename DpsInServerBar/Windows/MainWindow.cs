@@ -8,6 +8,7 @@ using Dalamud.Interface.Windowing;
 using DpsInServerBar.Combat;
 using DpsInServerBar.Display;
 using DpsInServerBar.Tracking;
+using DpsInServerBar.Ultimates;
 
 namespace DpsInServerBar.Windows;
 
@@ -110,7 +111,9 @@ public sealed class MainWindow : Window
             ImGui.TextColored(pace >= 0 ? GoodColor : BadColor, $"Pace vs best: {pace:+0.0%;-0.0%}");
         }
 
-        if (plugin.Boss.Current is { } boss)
+        if (plugin.Ultimates.Current is { } phase)
+            DrawPhase(phase);
+        else if (plugin.Boss.Current is { } boss)
         {
             ImGui.TextUnformatted($"{boss.Name}: {boss.HpFraction:0.0%}");
             ImGui.SameLine();
@@ -147,6 +150,54 @@ public sealed class MainWindow : Window
         {
             ImGui.Spacing();
             DrawLiveGraph(threshold);
+        }
+    }
+
+    /// <summary>Ultimate phase line: phase timer, boss HP, DPS on the boss vs the DPS needed, projected kill.</summary>
+    private static void DrawPhase(PhaseView phase)
+    {
+        ImGui.TextUnformatted($"{phase.Fight.Key} P{phase.Number}");
+        ImGui.SameLine();
+        if (!phase.Supported)
+        {
+            ImGui.TextDisabled("phase not supported yet");
+            return;
+        }
+
+        if (!phase.Started)
+        {
+            ImGui.TextDisabled($"{phase.Phase!.Name} - waiting for the boss");
+            return;
+        }
+
+        ImGui.TextUnformatted($"{phase.Phase!.Name} {phase.HpFraction:0.0%}");
+        ImGui.SameLine();
+        ImGui.TextDisabled($"phase {NumberFormat.Duration(phase.Elapsed)}");
+
+        var dpsText = $"DPS on boss {NumberFormat.Format(phase.BossDps, NumberStyle.Grouped)}";
+        if (phase.RequiredDps is { } required)
+        {
+            ImGui.TextColored(phase.BossDps >= required ? GoodColor : BadColor,
+                              $"{dpsText} / need {NumberFormat.Format(required, NumberStyle.Grouped)}");
+        }
+        else
+        {
+            ImGui.TextUnformatted(dpsText);
+        }
+
+        if (phase.ProjectedKill is { } eta)
+        {
+            ImGui.SameLine();
+            var text = $"Projected kill {NumberFormat.Duration(eta)}";
+            if (phase.EnrageSeconds is { } enrage)
+            {
+                ImGui.TextColored(eta.TotalSeconds <= enrage ? GoodColor : BadColor,
+                                  $"{text} / enrage {NumberFormat.Duration(TimeSpan.FromSeconds(enrage))}");
+            }
+            else
+            {
+                ImGui.TextUnformatted(text);
+            }
         }
     }
 

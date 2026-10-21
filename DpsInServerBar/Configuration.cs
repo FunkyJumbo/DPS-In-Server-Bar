@@ -68,6 +68,7 @@ public enum BarElement
     BossHp,
     KillTime,
     EnrageTimer,
+    Phase,
     Percentile,
 }
 
@@ -132,6 +133,13 @@ public sealed class Configuration : IPluginConfiguration
         new() { TerritoryId = 1087, Label = "AAC Heavyweight M1 (Savage)", MinPartyDps = 182800 },
         new() { TerritoryId = 1088, Label = "AAC Heavyweight M2 (Savage)", MinPartyDps = 192000 },
     ];
+
+    // Ultimates: per-phase tracking (boss HP, timer, enrage) in the supported ultimates.
+    public bool UltimateMode { get; set; } = true;
+
+    /// <summary>Enrage time of each ultimate phase, in seconds from the phase start, keyed by phase key (e.g. "TEA:P1").</summary>
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<string, double> UltimateEnrageSeconds { get; set; } = new();
 
     // FFLogs percentile estimate (API v2 client credentials, entered by the user in the settings)
     public bool ShowPercentile { get; set; } = true;
@@ -209,6 +217,7 @@ public sealed class Configuration : IPluginConfiguration
         new() { Element = BarElement.BossHp, Enabled = false },
         new() { Element = BarElement.KillTime, Enabled = false },
         new() { Element = BarElement.EnrageTimer, Enabled = false },
+        new() { Element = BarElement.Phase, Enabled = false },
         new() { Element = BarElement.Percentile, Enabled = false },
     ];
 

@@ -6,6 +6,8 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using DpsInServerBar.Combat;
+using DpsInServerBar.Display;
+using DpsInServerBar.Ultimates;
 using Lumina.Excel.Sheets;
 
 namespace DpsInServerBar.Windows;
@@ -37,6 +39,7 @@ public sealed class ConfigWindow : Window
         DrawTab("Display", DrawDisplayTab);
         DrawTab("Party checks", DrawThresholdsTab);
         DrawTab("Pulls", DrawPullsTab);
+        DrawTab("Ultimates", DrawUltimatesTab);
         DrawTab("FFLogs", DrawFflogsTab);
         DrawTab("Data source", DrawSourceTab);
     }
@@ -175,6 +178,7 @@ public sealed class ConfigWindow : Window
         BarElement.Percentile => ("FFLogs percentile (estimate)", "~92",
                                   "Your rDPS placed among FFLogs' rankings for your job on this fight. "
                                   + "Needs FFLogs API credentials (FFLogs tab)."),
+        BarElement.Phase => ("Ultimate phase", "P1", "Current phase number, in the supported ultimates (Ultimates tab)."),
         BarElement.EnrageTimer => ("Enrage timer", "Enrage 3:12",
                                    "Time left before the enrage entered for this fight in Party checks. "
                                    + "Red for the last 30 seconds."),
@@ -405,6 +409,93 @@ public sealed class ConfigWindow : Window
 
         if (changed)
             plugin.OnConfigChanged();
+    }
+
+    private void DrawUltimatesTab()
+    {
+        var c = plugin.Configuration;
+        var tracker = plugin.Ultimates;
+
+        if (Checkbox("Track ultimate phases", c.UltimateMode, v => c.UltimateMode = v))
+            plugin.OnConfigChanged();
+
+        ImGui.TextWrapped("In an ultimate the fight never stops between phases. Each supported phase gets its own timer, "
+                          + "starting when its boss becomes targetable, and only its own boss counts for the DPS check "
+                          + "(adds are ignored). The Boss HP, Projected kill and Enrage timer elements then follow the "
+                          + "current phase. Enter each phase's enrage time, measured from the phase start.");
+        ImGui.Spacing();
+
+        foreach (var fight in UltimateDefinitions.All)
+        {
+            if (!ImGui.CollapsingHeader($"{fight.Name} ({fight.Key})", ImGuiTreeNodeFlags.DefaultOpen))
+                continue;
+
+            const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
+            using var table = ImRaii.Table($"##ult{fight.Key}", 4, flags);
+            if (!table)
+                continue;
+
+            ImGui.TableSetupColumn("Phase", ImGuiTableColumnFlags.WidthStretch, 1.2f);
+            ImGui.TableSetupColumn("Tracked boss", ImGuiTableColumnFlags.WidthStretch, 1.2f);
+            ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, 90);
+            ImGui.TableSetupColumn("From your pulls", ImGuiTableColumnFlags.WidthStretch, 1.6f);
+            ImGui.TableHeadersRow();
+
+            for (var i = 0; i < fight.Phases.Count; i++)
+            {
+                var phase = fight.Phases[i];
+                using var id = ImRaii.PushId(phase.Key);
+                ImGui.TableNextRow();
+
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted($"P{i + 1} {phase.Name}");
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(string.Join(", ", phase.TrackedBosses));
+
+                ImGui.TableNextColumn();
+                var enrage = c.UltimateEnrageSeconds.GetValueOrDefault(phase.Key);
+                var minutes = (int)(enrage / 60);
+                var seconds = (int)(enrage % 60);
+                ImGui.SetNextItemWidth(40);
+                var changed = ImGui.InputInt("##min", ref minutes, 0);
+                ImGui.SameLine(0, 2);
+                ImGui.TextUnformatted(":");
+                ImGui.SameLine(0, 2);
+                ImGui.SetNextItemWidth(-1);
+                changed |= ImGui.InputInt("##sec", ref seconds, 0);
+                if (changed)
+                    SetPhaseEnrage(phase.Key, Math.Clamp(minutes, 0, 60) * 60 + Math.Clamp(seconds, 0, 59));
+
+                ImGui.TableNextColumn();
+                if (tracker.LastWipes.TryGetValue(phase.Key, out var wipe))
+                {
+                    if (ImGui.SmallButton($"Use last wipe ({NumberFormat.Duration(wipe)})"))
+                        SetPhaseEnrage(phase.Key, Math.Round(wipe.TotalSeconds));
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip("Phase time when your last pull ended in this phase, e.g. a wipe to the enrage.");
+                }
+
+                if (tracker.LastClears.TryGetValue(phase.Key, out var clear))
+                {
+                    if (tracker.LastWipes.ContainsKey(phase.Key))
+                        ImGui.SameLine();
+                    ImGui.TextDisabled($"last clear {NumberFormat.Duration(clear)}");
+                }
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.TextDisabled("More ultimates and phases will be added one at a time.");
+    }
+
+    private void SetPhaseEnrage(string key, double seconds)
+    {
+        var c = plugin.Configuration;
+        if (seconds > 0)
+            c.UltimateEnrageSeconds[key] = seconds;
+        else
+            c.UltimateEnrageSeconds.Remove(key);
+        plugin.OnConfigChanged();
     }
 
     private void DrawFflogsTab()

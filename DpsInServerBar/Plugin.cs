@@ -10,6 +10,7 @@ using DpsInServerBar.Display;
 using DpsInServerBar.Fflogs;
 using DpsInServerBar.Native;
 using DpsInServerBar.Tracking;
+using DpsInServerBar.Ultimates;
 using DpsInServerBar.Windows;
 
 namespace DpsInServerBar;
@@ -54,6 +55,7 @@ public sealed class Plugin : IDalamudPlugin
         History = new PullHistory(PluginInterface.GetPluginConfigDirectory(), Log);
         Pulls = new PullTracker(this, DutyState, Condition, ChatGui);
         Boss = new BossTracker(ObjectTable, Condition);
+        Ultimates = new UltimateTracker(Configuration, ObjectTable, Condition, ClientState, DataManager);
         Percentiles = new PercentileService(Configuration, DataManager, PluginInterface.GetPluginConfigDirectory(), Log);
         dtr = new DtrController(this, DtrBar);
 
@@ -80,6 +82,7 @@ public sealed class Plugin : IDalamudPlugin
     public PullHistory History { get; }
     public PullTracker Pulls { get; }
     public BossTracker Boss { get; }
+    public UltimateTracker Ultimates { get; }
     public PercentileService Percentiles { get; }
     public ActClient Act => Sources.Act;
     public uint CurrentTerritory => ClientState.TerritoryType;
@@ -146,6 +149,7 @@ public sealed class Plugin : IDalamudPlugin
         playerName = PlayerState.IsLoaded ? PlayerState.CharacterName : null;
 
         Boss.Update();
+        Ultimates.Update();
 
         var source = Sources.Current;
         Pulls.Update(Sources.Latest, source.Name);
