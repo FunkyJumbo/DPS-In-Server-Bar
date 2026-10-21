@@ -229,5 +229,22 @@ public sealed class Configuration : IPluginConfiguration
             .FirstOrDefault();
     }
 
+    /// <summary>
+    /// Sets the enrage time of the check matching this fight, creating an encounter check if there is none.
+    /// Typically fed with the duration of a pull that wiped to the enrage.
+    /// </summary>
+    public PartyDpsThreshold SetEnrage(uint territory, string encounterTitle, double seconds)
+    {
+        var threshold = FindThreshold(territory, encounterTitle);
+        if (threshold is null)
+        {
+            threshold = new PartyDpsThreshold { TerritoryId = territory, EncounterName = encounterTitle, Label = encounterTitle };
+            Thresholds.Add(threshold);
+        }
+
+        threshold.EnrageSeconds = Math.Round(seconds);
+        return threshold;
+    }
+
     public void Save() => Plugin.PluginInterface.SavePluginConfig(this);
 }

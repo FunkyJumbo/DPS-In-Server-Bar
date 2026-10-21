@@ -331,6 +331,34 @@ public sealed class MainWindow : Window
         }
     }
 
+    /// <summary>A pull that wiped to the enrage gives its exact timing: one click stores it in the party check.</summary>
+    private void DrawSetEnrageButton(PullRecord pull)
+    {
+        var config = plugin.Configuration;
+        var duration = Math.Round(pull.DurationSeconds);
+        var current = config.FindThreshold(pull.TerritoryId, pull.Title)?.EnrageSeconds ?? 0;
+        var durationText = NumberFormat.Duration(TimeSpan.FromSeconds(duration));
+
+        ImGui.SameLine();
+        using (ImRaii.Disabled(current == duration))
+        {
+            if (ImGui.SmallButton($"Set as enrage time ({durationText})"))
+            {
+                config.SetEnrage(pull.TerritoryId, pull.Title, duration);
+                plugin.OnConfigChanged();
+            }
+        }
+
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+        {
+            ImGui.SetTooltip(
+                "Use this pull's duration as the enrage time of this fight (Party checks), e.g. after a wipe to the enrage.\n"
+                + (current > 0
+                       ? $"Current enrage time: {NumberFormat.Duration(TimeSpan.FromSeconds(current))}."
+                       : "No enrage time yet: a party check is created for this encounter."));
+        }
+    }
+
     private void DrawPullDetails(PullRecord pull, PullRecord? compare)
     {
         var config = plugin.Configuration;
@@ -338,6 +366,8 @@ public sealed class MainWindow : Window
         ImGui.TextUnformatted($"{(pull.Title.Length > 0 ? pull.Title : pull.Zone)} - {pull.StartUtc.ToLocalTime():g}");
         ImGui.SameLine();
         ImGui.TextDisabled($"({pull.Source})");
+
+        DrawSetEnrageButton(pull);
 
         if (compare is not null)
         {

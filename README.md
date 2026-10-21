@@ -72,6 +72,7 @@ and can be **reordered**:
   Boss HP, projected kill time and a DPS graph (rolling and average, personal or party, compared with your best kill).
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
   Filter by encounter, open a pull to see its breakdown and graph, tick another one to **compare** them.
+  A pull can also set the fight's enrage time from its duration (handy after a wipe to the enrage).
 
 ### After each pull
 
@@ -87,7 +88,8 @@ The summary can be turned off in dungeons.
 ### Party DPS checks
 
 For each fight you can enter the **boss HP** (one click reads it from the game) and the **enrage time**:
-the minimum party DPS is then `HP / enrage`. The enrage time also drives the enrage timer in the bar. A manual minimum can be used instead. Checks can apply
+the minimum party DPS is then `HP / enrage`. The enrage time also drives the enrage timer in the bar.
+After a wipe to the enrage, open the pull in History and click **Set as enrage time** to store its exact duration. A manual minimum can be used instead. Checks can apply
 to a whole zone or to a specific encounter.
 
 ### rDPS
