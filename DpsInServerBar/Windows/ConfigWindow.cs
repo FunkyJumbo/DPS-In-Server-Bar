@@ -178,6 +178,9 @@ public sealed class ConfigWindow : Window
         BarElement.Percentile => ("FFLogs percentile (estimate)", "~92",
                                   "Your rDPS placed among FFLogs' rankings for your job on this fight. "
                                   + "Needs FFLogs API credentials (FFLogs tab)."),
+        BarElement.Uptime => ("GCD uptime", "GCD 98.7%",
+                              "Share of the time an enemy was targetable during which your GCD was rolling or you were casting. "
+                              + "Deaths count as lost time. In an ultimate, uptime of the current phase."),
         BarElement.Phase => ("Ultimate phase", "P1", "Current phase number, in the supported ultimates (Ultimates tab)."),
         BarElement.EnrageTimer => ("Enrage timer", "Enrage 3:12",
                                    "Time left before the enrage entered for this fight in Party checks. "

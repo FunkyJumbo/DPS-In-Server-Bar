@@ -206,6 +206,16 @@ public sealed class MainWindow : Window
         var window = plugin.Configuration.GraphWindowSeconds;
         graph.DrawOptions(window);
 
+        if (graph.ShowUptime)
+        {
+            // Uptime of the fight in progress (or the last one).
+            if (plugin.Uptime.Snapshot() is { } up)
+                DpsGraph.DrawUptime("##liveuptime", [("You", up.AvailableBySecond, up.ActiveBySecond)], ImGui.GetContentRegionAvail().Y);
+            else
+                ImGui.TextDisabled("No fight yet.");
+            return;
+        }
+
         var pull = plugin.Pulls.Current;
         if (pull is null)
         {
@@ -420,6 +430,22 @@ public sealed class MainWindow : Window
 
         DrawSetEnrageButton(pull);
 
+        if (pull.Uptime is { } gcd)
+        {
+            var phases = pull.PhaseUptimes.Count > 0
+                ? "  |  " + string.Join("  ", pull.PhaseUptimes.Select(p => $"P{p.Number} {p.Uptime:0.0%}"))
+                : string.Empty;
+            ImGui.TextUnformatted($"GCD uptime {gcd:0.0%}");
+            ImGui.SameLine();
+            ImGui.TextDisabled($"(lost {pull.UptimeLostSeconds:0.0}s){phases}");
+            if (compare?.Uptime is { } compareGcd)
+            {
+                ImGui.SameLine();
+                var diff = gcd - compareGcd;
+                ImGui.TextColored(diff >= 0 ? GoodColor : BadColor, $"{diff * 100:+0.0;-0.0} pts vs compared");
+            }
+        }
+
         if (compare is not null)
         {
             var dpsDelta = compare.YourDps > 0 ? pull.YourDps / compare.YourDps - 1 : 0;
@@ -443,6 +469,15 @@ public sealed class MainWindow : Window
 
         var window = config.GraphWindowSeconds;
         graph.DrawOptions(window);
+
+        if (graph.ShowUptime)
+        {
+            var uptimes = new List<(string, float[], float[])> { ("This pull", pull.UptimeAvailableBySecond, pull.UptimeActiveBySecond) };
+            if (compare is { UptimeAvailableBySecond.Length: > 0 })
+                uptimes.Add(("Compared", compare.UptimeAvailableBySecond, compare.UptimeActiveBySecond));
+            DpsGraph.DrawUptime("##historyuptime", uptimes, ImGui.GetContentRegionAvail().Y);
+            return;
+        }
 
         var series = new List<DpsGraph.Series>();
         graph.AddCurves(series, "This pull", graph.ShowParty ? pull.PartyDamageTimeline : pull.YourDamageTimeline, window);

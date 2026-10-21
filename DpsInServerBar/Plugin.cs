@@ -56,6 +56,7 @@ public sealed class Plugin : IDalamudPlugin
         Pulls = new PullTracker(this, DutyState, Condition, ChatGui);
         Boss = new BossTracker(ObjectTable, Condition);
         Ultimates = new UltimateTracker(Configuration, ObjectTable, Condition, ClientState, DataManager);
+        Uptime = new UptimeTracker(ObjectTable, Condition, () => Ultimates.Current is { Started: true } p ? p.Number : null);
         Percentiles = new PercentileService(Configuration, DataManager, PluginInterface.GetPluginConfigDirectory(), Log);
         dtr = new DtrController(this, DtrBar);
 
@@ -83,6 +84,7 @@ public sealed class Plugin : IDalamudPlugin
     public PullTracker Pulls { get; }
     public BossTracker Boss { get; }
     public UltimateTracker Ultimates { get; }
+    public UptimeTracker Uptime { get; }
     public PercentileService Percentiles { get; }
     public ActClient Act => Sources.Act;
     public uint CurrentTerritory => ClientState.TerritoryType;
@@ -139,6 +141,7 @@ public sealed class Plugin : IDalamudPlugin
     private void OnFrameworkUpdate(IFramework framework)
     {
         Sources.Tick();
+        Uptime.Update();
 
         // The bar only needs a few refreshes per second; sources publish roughly once per second.
         var now = DateTime.UtcNow;

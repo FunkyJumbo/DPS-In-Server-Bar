@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DpsInServerBar.Tracking;
 
@@ -50,6 +51,32 @@ public static class Timeline
             result[0] = result[1];
         return result;
     }
+
+    /// <summary>
+    /// GCD uptime in % over the last <paramref name="window"/> seconds, at each second; NaN (a gap in the graph)
+    /// where nothing could be attacked.
+    /// </summary>
+    public static float[] Uptime(float[] availableBySecond, float[] activeBySecond, int window)
+    {
+        var result = new float[availableBySecond.Length];
+        for (var s = 0; s < result.Length; s++)
+        {
+            float available = 0, active = 0;
+            for (var i = Math.Max(0, s - window + 1); i <= s; i++)
+            {
+                available += availableBySecond[i];
+                active += activeBySecond[i];
+            }
+
+            result[s] = available < 0.25f ? float.NaN : 100 * active / available;
+        }
+
+        return result;
+    }
+
+    /// <summary>100 for the seconds where no enemy was targetable (mostly), 0 otherwise.</summary>
+    public static float[] Downtime(float[] availableBySecond) =>
+        availableBySecond.Select(a => a < 0.5f ? 100f : 0f).ToArray();
 
     /// <summary>Encounter DPS (cumulative damage / elapsed) at each second.</summary>
     public static float[] Average(double[] cumulative)

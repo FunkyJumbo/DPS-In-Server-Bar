@@ -69,6 +69,7 @@ public enum BarElement
     KillTime,
     EnrageTimer,
     Phase,
+    Uptime,
     Percentile,
 }
 
@@ -218,6 +219,7 @@ public sealed class Configuration : IPluginConfiguration
         new() { Element = BarElement.KillTime, Enabled = false },
         new() { Element = BarElement.EnrageTimer, Enabled = false },
         new() { Element = BarElement.Phase, Enabled = false },
+        new() { Element = BarElement.Uptime, Enabled = false },
         new() { Element = BarElement.Percentile, Enabled = false },
     ];
 

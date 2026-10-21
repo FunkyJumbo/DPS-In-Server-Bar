@@ -60,10 +60,11 @@ and can be **reordered**:
 | Projected kill | `ETA 9:12` | When the boss dies at the current party DPS — red if after the enrage |
 | Enrage timer | `Enrage 3:12` | Time left before the enrage entered for this fight — red for the last 30 seconds |
 | Ultimate phase | `P1` | Current phase in a supported ultimate |
+| GCD uptime | `GCD 98.7%` | Share of the time an enemy was targetable during which your GCD was rolling — per phase in an ultimate |
 | FFLogs percentile | `~92` | Estimated FFLogs percentile of your rDPS, in FFLogs colors |
 
 - **Left click** cycles DPS → pDPS → rDPS. **Right click** opens the main window.
-- **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, best kill, percentile.
+- **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, GCD uptime (per phase in an ultimate), best kill, percentile.
 - Colors: party DPS turns green/red against the DPS check of the fight, grey once the fight is over.
 
 ### Main window
@@ -71,16 +72,18 @@ and can be **reordered**:
 - **Live** — every player's DPS, rDPS, damage %, crit, direct hit and deaths, sortable by DPS or rDPS.
   Hover an rDPS value to see what the player gave to / received from buffs.
   Boss HP, projected kill time and a DPS graph (rolling and average, personal or party, compared with your best kill).
+  Switch the graph to **Uptime** to see exactly when you lost GCD uptime; periods where nothing was targetable are shaded.
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
   Filter by encounter, open a pull to see its breakdown and graph, tick another one to **compare** them.
   A pull can also set the fight's enrage time from its duration (handy after a wipe to the enrage).
+  Each pull also keeps its GCD uptime (overall and per ultimate phase) and its uptime graph.
 
 ### After each pull
 
 An optional chat summary:
 
 ```
-[DPS] Brute Bomber (4:32) Kill  DRK 21,234 DPS #2/8  rDPS 20,511 (~87)  best 22,000 (-3.5%)  |  pDPS 182,345 (check OK)
+[DPS] Brute Bomber (4:32) Kill  DRK 21,234 DPS #2/8  rDPS 20,511 (~87)  GCD 98.7%  best 22,000 (-3.5%)  |  pDPS 182,345 (check OK)
 ```
 
 Comparisons with your best are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
@@ -98,7 +101,7 @@ to a whole zone or to a specific encounter.
 In an ultimate the fight never stops between phases and several bosses are often up at once.
 Each supported phase is tracked on its own: its timer starts when its boss becomes targetable, only its own
 boss counts for the DPS check (adds are ignored), and the Boss HP, Projected kill and Enrage timer elements
-follow the current phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
+follow the current phase. GCD uptime is also measured per phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
 
 Supported so far: **The Epic of Alexander — P1 (Living Liquid)**. More phases and ultimates will be added one at a time.
 
@@ -189,6 +192,7 @@ in the current partition — close to FFLogs' *rank %*. During a fight it is onl
 - rDPS is an estimate (see [Accuracy](#how-rdps-is-computed)); raid buff values need updating when a patch changes them.
 - Only the guaranteed crit/DH effects listed in `RaidBuffs.cs` are recognised.
 - Enrage times are not in the game data and must be entered by hand (Party checks).
+- GCD uptime: an enemy that stays targetable while invulnerable still counts as available time. Only your own uptime is measured (the game does not expose other players' GCD).
 - Ultimate mode only covers the phases listed in [Ultimates](#ultimates); later phases show as "not supported yet".
 - For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for the DPS check.
 - The FFLogs percentile depends on matching the fight by name and on FFLogs' API being reachable.

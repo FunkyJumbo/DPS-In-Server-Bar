@@ -169,6 +169,19 @@ public sealed class DtrController : IDisposable
             case BarElement.Pace:
                 return !ended && plugin.Pulls.PaceVsBest() is { } pace ? new Segment($"{pace:+0%;-0%}") : null;
 
+            case BarElement.Uptime:
+            {
+                if (plugin.Uptime.Snapshot() is not { AvailableSeconds: >= 5 } up)
+                    return null;
+
+                // In an ultimate, the uptime of the phase being fought.
+                var uptime = plugin.Ultimates.Current is { Started: true } upPhase
+                             && up.Phases.FirstOrDefault(p => p.Number == upPhase.Number) is { } phaseUptime
+                                 ? phaseUptime.Uptime
+                                 : up.Uptime;
+                return new Segment($"GCD {uptime:0.0%}");
+            }
+
             case BarElement.Phase:
                 return plugin.Ultimates.Current is { } phaseView ? new Segment($"P{phaseView.Number}") : null;
 
@@ -363,6 +376,13 @@ public sealed class DtrController : IDisposable
                 sb.Append(left > 0
                               ? $"\nEnrage in {NumberFormat.Duration(TimeSpan.FromSeconds(Math.Ceiling(left)))}"
                               : "\nEnrage time reached");
+            }
+
+            if (plugin.Uptime.Snapshot() is { AvailableSeconds: >= 5 } gcd)
+            {
+                sb.Append($"\nGCD uptime: {gcd.Uptime:0.0%} (lost {gcd.LostSeconds:0.0}s)");
+                if (gcd.Phases.Count > 0)
+                    sb.Append("\n  " + string.Join(" | ", gcd.Phases.Select(p => $"P{p.Number} {p.Uptime:0.0%}")));
             }
 
             if (plugin.EstimatePercentile(snapshot) is { } percentile)

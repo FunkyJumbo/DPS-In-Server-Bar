@@ -118,6 +118,7 @@ public sealed class PullTracker : IDisposable
         if (config.RecordOnlyInDuties && !condition[ConditionFlag.BoundByDuty])
             return;
 
+        var uptime = plugin.Uptime.Snapshot();
         var you = final.You;
         var partyMembers = final.Combatants.Where(c => c.HasJob).ToList();
         var record = new PullRecord
@@ -133,6 +134,11 @@ public sealed class PullTracker : IDisposable
             YourDps = you?.EncDps ?? 0,
             YourRdps = you is { HasRdps: true } ? you.RDps : null,
             Percentile = plugin.EstimatePercentile(final),
+            Uptime = uptime?.Uptime,
+            UptimeLostSeconds = uptime?.LostSeconds ?? 0,
+            PhaseUptimes = uptime?.Phases.ToList() ?? [],
+            UptimeAvailableBySecond = uptime?.AvailableBySecond ?? [],
+            UptimeActiveBySecond = uptime?.ActiveBySecond ?? [],
             PartyDps = final.PartyDps(config.IncludeLimitBreakInParty),
             Rank = final.YourRank(),
             PartySize = partyMembers.Count,
@@ -234,6 +240,8 @@ public sealed class PullTracker : IDisposable
             sb.Append($"  rDPS {NumberFormat.Format(rdps, config.NumberStyle)}");
         if (pull.Percentile is { } pct)
             sb.Append(" ").PushColorRgba(Fflogs.FflogsNames.Color(pct)).Append($"(~{pct:0})").PopColor();
+        if (pull.Uptime is { } gcd)
+            sb.Append($"  GCD {gcd:0.0%}");
 
         // Only kills are compared: a wipe or a prog pull ending early says nothing about your DPS.
         if (previousBest is not null && pull.Outcome == PullOutcome.Kill)
