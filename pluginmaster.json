@@ -6,7 +6,7 @@
     "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, graphs, pull history with comparisons, party DPS checks and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.",
     "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
     "InternalName": "DpsInServerBar",
-    "AssemblyVersion": "1.0.3.0",
+    "AssemblyVersion": "1.0.4.0",
     "DalamudApiLevel": 15,
     "ApplicableVersion": "any",
     "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"],
@@ -16,10 +16,9 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
     "ImageUrls": [],
-    "Changelog": "- New option: separator between the server bar elements (space, |, /, - or your own text).
-- Boss HP is now labelled: HP 54%.",
-    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.3.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.3.0/latest.zip",
+    "Changelog": "- History: filter pulls by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Ultimate, Other), one or several at once. Works for pulls already recorded.\n- Chat summary: choose the values shown (job, DPS, rDPS, FFLogs %, GCD, pDPS, deaths), separated by |. rDPS now has its rank. DPS, rDPS, GCD and pDPS can each show NEW BEST (+2.1%) or the gap to your best kill.\n- The pace vs your best kill now reads Best +4% in the server bar.\n- Live and History: the player tables fit the number of players (no scrollbar, no empty space in smaller groups).\n- Fix: the default AAC Heavyweight M1/M2 (Savage) party checks pointed at the wrong zones (Abyssos); existing settings are corrected automatically.",
+    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.4.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.4.0/latest.zip",
     "DownloadLinkTesting": ""
   }
 ]
