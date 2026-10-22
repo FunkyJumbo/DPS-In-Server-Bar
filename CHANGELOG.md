@@ -3,7 +3,7 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
-## Unreleased
+## 1.0.4.1
 
 - Fix: the plugin icon now shows in Dalamud once the plugin is installed (the packaged manifest had no icon URL).
 
