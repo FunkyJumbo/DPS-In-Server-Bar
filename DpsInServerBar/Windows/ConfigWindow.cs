@@ -452,8 +452,8 @@ public sealed class ConfigWindow : Window
 
             changed |= Checkbox("Compare DPS, rDPS, GCD and pDPS with your best kill", c.ChatSummaryCompareBest,
                                 v => c.ChatSummaryCompareBest = v);
-            Help("After each value: NEW BEST, or the gap to your best kill of the same fight. Wipes are never compared.");
-            ImGui.TextDisabled("e.g. [DPS] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST | rDPS 20,511 #3/8 (best -1.2%) | GCD 98.7%");
+            Help("After each value: NEW BEST with the gain, or the gap to your best kill of the same fight. Wipes are never compared.");
+            ImGui.TextDisabled("e.g. [DPS] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | GCD 98.7%");
             ImGui.Unindent();
         }
 

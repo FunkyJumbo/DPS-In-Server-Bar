@@ -315,14 +315,11 @@ public sealed class PullTracker : IDisposable
         if (plugin.History.BestOf(pull.Title, metric, pull.Id) is not { } best)
             return;
 
-        if (value >= best)
-        {
-            sb.Append(" ").PushColorRgba(Good).Append("NEW BEST").PopColor();
-            return;
-        }
-
         var gap = isRate ? $"{(value - best) * 100:+0.0;-0.0} pts" : $"{value / best - 1:+0.0%;-0.0%}";
-        sb.Append(" ").PushColorRgba(Muted).Append($"(best {gap})").PopColor();
+        if (value >= best)
+            sb.Append(" ").PushColorRgba(Good).Append($"NEW BEST ({gap})").PopColor();
+        else
+            sb.Append(" ").PushColorRgba(Muted).Append($"(best {gap})").PopColor();
     }
 }
 
