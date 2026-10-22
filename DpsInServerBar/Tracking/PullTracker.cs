@@ -8,6 +8,7 @@ using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using DpsInServerBar.Combat;
 using DpsInServerBar.Display;
+using DpsInServerBar.Ultimates;
 using Lumina.Excel.Sheets;
 
 namespace DpsInServerBar.Tracking;
@@ -287,6 +288,60 @@ public sealed class PullTracker : IDisposable
 
         if (shown.HasFlag(SummaryElement.Deaths) && pull.Deaths > 0)
             parts.Add(() => sb.PushColorRgba(Bad).Append($"Deaths {pull.Deaths}").PopColor());
+
+        foreach (var part in parts)
+        {
+            sb.PushColorRgba(Muted).Append(" | ").PopColor();
+            part();
+        }
+
+        chat.Print(sb.ToReadOnlySeString().ToDalamudString());
+    }
+
+    /// <summary>
+    /// Chat summary of an ultimate phase: phase time, DPS on the phase's bosses against the DPS needed for the enrage,
+    /// enrage margin and GCD uptime of the phase. For a phase not cleared, the boss HP left instead of the margin.
+    /// </summary>
+    public void PrintPhaseSummary(PhaseResult result)
+    {
+        var config = plugin.Configuration;
+        var sb = new Lumina.Text.SeStringBuilder();
+
+        sb.PushColorRgba(Muted).Append("[DPS] ").PopColor();
+        sb.Append($"{result.Fight.Key} P{result.Number} {result.Phase.Name} ({NumberFormat.Duration(result.Elapsed)})");
+        if (result.Cleared)
+            sb.Append(" ").PushColorRgba(Good).Append("Cleared").PopColor();
+        else
+            sb.Append(" ").PushColorRgba(Bad).Append("Wipe").PopColor();
+
+        var parts = new List<System.Action>();
+
+        if (!result.Cleared && result.MaxHp > 0)
+            parts.Add(() => sb.Append($"HP left {result.HpLeft / result.MaxHp:0.0%}"));
+
+        if (result.BossDps > 0)
+        {
+            parts.Add(() =>
+            {
+                sb.Append($"Boss DPS {NumberFormat.Format(result.BossDps, config.NumberStyle)}");
+                if (result.RequiredDps is { } required)
+                {
+                    sb.Append(" ").PushColorRgba(result.BossDps >= required ? Good : Bad)
+                      .Append($"(need {NumberFormat.Format(required, config.NumberStyle)}, {result.BossDps / required - 1:+0.0%;-0.0%})")
+                      .PopColor();
+                }
+            });
+        }
+
+        if (result.Cleared && result.EnrageSeconds is { } enrage)
+        {
+            var margin = enrage - result.Elapsed.TotalSeconds;
+            parts.Add(() => sb.Append($"enrage {NumberFormat.Duration(TimeSpan.FromSeconds(enrage))}, ")
+                              .PushColorRgba(margin >= 0 ? Good : Bad).Append($"{margin:+0;-0}s margin").PopColor());
+        }
+
+        if (plugin.Uptime.Snapshot()?.Phases.FirstOrDefault(p => p.Number == result.Number) is { AvailableSeconds: >= 5 } gcd)
+            parts.Add(() => sb.Append($"GCD {gcd.Uptime:0.0%}"));
 
         foreach (var part in parts)
         {

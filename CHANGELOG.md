@@ -11,6 +11,10 @@
   targetable.
 - Fix: ultimate phases now end as soon as the next phase starts. Invisible copies of a boss no longer keep a phase
   alive or skew its HP.
+- Ultimates: chat summary at the end of each phase (phase time, DPS on the phase's bosses vs the DPS needed, enrage
+  margin, GCD), or HP left when the pull ends during the phase. Option in Settings > Pulls.
+- Ultimates: new bar element "Ultimate phase boss DPS" (`Boss 145,000 (+3.6%)`): DPS on the current phase's bosses
+  only, green / red against the DPS needed for the phase enrage.
 
 ## 1.0.4.1
 

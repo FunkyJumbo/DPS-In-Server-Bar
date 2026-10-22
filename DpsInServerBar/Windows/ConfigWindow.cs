@@ -239,6 +239,9 @@ public sealed class ConfigWindow : Window
         BarElement.Uptime => ("GCD uptime", "GCD 98.7%",
                               "Share of the time an enemy was targetable during which your GCD was rolling or you were casting. "
                               + "Deaths count as lost time. In an ultimate, uptime of the current phase."),
+        BarElement.PhaseDps => ("Ultimate phase boss DPS", "Boss 145,000 (+3.6%)",
+                                "In an ultimate, DPS on the bosses of the current phase only, and its gap to the DPS needed "
+                                + "for the phase enrage (Ultimates tab). Green / red against that requirement."),
         BarElement.Phase => ("Ultimate phase", "P1", "Current phase number, in the supported ultimates (Ultimates tab)."),
         BarElement.EnrageTimer => ("Enrage timer", "Enrage 3:12",
                                    "Time left before the enrage entered for this fight in Party checks. "
@@ -436,6 +439,7 @@ public sealed class ConfigWindow : Window
         {
             ImGui.Indent();
             changed |= Checkbox("Also in dungeons", c.ChatSummaryInDungeons, v => c.ChatSummaryInDungeons = v);
+            changed |= Checkbox("Also at the end of each ultimate phase", c.ChatSummaryPhases, v => c.ChatSummaryPhases = v);
 
             ImGui.TextDisabled("Values shown:");
             foreach (var (element, label) in SummaryLabels)

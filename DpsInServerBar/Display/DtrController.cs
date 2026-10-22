@@ -190,6 +190,22 @@ public sealed class DtrController : IDisposable
                 return new Segment($"GCD {uptime:0.0%}");
             }
 
+            case BarElement.PhaseDps:
+            {
+                // Ultimates: DPS on the bosses of the current phase only (adds and other bosses excluded).
+                if (ActivePhase() is not { BossDps: > 0 } dpsPhase)
+                    return null;
+
+                var text = $"Boss {NumberFormat.Format(dpsPhase.BossDps, config.NumberStyle)}";
+                if (dpsPhase.RequiredDps is not { } required)
+                    return new Segment(text);
+
+                Vector4? phaseColor = config.UseColors
+                                          ? dpsPhase.BossDps < required ? config.BelowThresholdColor : config.AboveThresholdColor
+                                          : null;
+                return new Segment($"{text} ({dpsPhase.BossDps / required - 1:+0.0%;-0.0%})", Color: phaseColor);
+            }
+
             case BarElement.Phase:
                 return plugin.Ultimates.Current is { } phaseView ? new Segment($"P{phaseView.Number}") : null;
 

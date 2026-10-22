@@ -38,6 +38,15 @@ public sealed record PhaseView(
     public TimeSpan? EnrageIn => EnrageSeconds is > 0 ? TimeSpan.FromSeconds(EnrageSeconds.Value) - Elapsed : null;
 }
 
+/// <summary>How an ultimate phase ended: cleared (its bosses died or the next phase started) or not (the pull ended).</summary>
+public sealed record PhaseResult(
+    UltimateFight Fight, UltimatePhase Phase, int Number, TimeSpan Elapsed, double MaxHp, double HpLeft,
+    double? EnrageSeconds, bool Cleared)
+{
+    public double BossDps => Elapsed.TotalSeconds > 1 ? (MaxHp - HpLeft) / Elapsed.TotalSeconds : 0;
+    public double? RequiredDps => EnrageSeconds is > 0 && MaxHp > 0 ? MaxHp / EnrageSeconds : null;
+}
+
 /// <summary>
 /// Follows the phases of the supported ultimates: each phase has its own timer, boss HP and enrage,
 /// independent from the overall fight timer. Game thread only.
@@ -94,6 +103,9 @@ public sealed class UltimateTracker
     /// <summary>Phase time of the last clear of each phase.</summary>
     public Dictionary<string, TimeSpan> LastClears { get; } = new();
 
+    /// <summary>Raised when a phase ends, cleared or not (for the phase chat summary).</summary>
+    public event Action<PhaseResult>? PhaseEnded;
+
     public static UltimateFight? FightFor(uint territory) =>
         UltimateDefinitions.All.FirstOrDefault(f => f.TerritoryId == territory);
 
@@ -119,6 +131,8 @@ public sealed class UltimateTracker
         {
             // The pull ended during this phase.
             LastWipes[fight.Phases[phaseIndex].Key] = now - start;
+            if (Current is { Supported: true, Started: true } last)
+                PhaseEnded?.Invoke(new PhaseResult(fight, last.Phase!, last.Number, now - start, last.MaxHp, last.CurrentHp, last.EnrageSeconds, false));
         }
 
         wasInCombat = inCombat;
@@ -166,6 +180,11 @@ public sealed class UltimateTracker
             if (nextStarted || bossesGone)
             {
                 LastClears[phase.Key] = (nextStarted ? now : lastAliveUtc) - phaseStart;
+                var maxHpAtEnd = maxHpByObject.Values.Sum(v => (double)v);
+                PhaseEnded?.Invoke(new PhaseResult(
+                    fight, phase, phaseIndex + 1, LastClears[phase.Key], maxHpAtEnd, 0,
+                    config.UltimateEnrageSeconds.TryGetValue(phase.Key, out var phaseEnrage) && phaseEnrage > 0 ? phaseEnrage : null,
+                    true));
                 phaseIndex++;
                 ResetPhase();
                 if (nextStarted)

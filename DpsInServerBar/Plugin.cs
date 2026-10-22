@@ -56,6 +56,7 @@ public sealed class Plugin : IDalamudPlugin
         Pulls = new PullTracker(this, DutyState, Condition, ChatGui);
         Boss = new BossTracker(ObjectTable, Condition);
         Ultimates = new UltimateTracker(Configuration, ObjectTable, Condition, ClientState, DataManager);
+        Ultimates.PhaseEnded += OnPhaseEnded;
         ContentCategories = new ContentCategories(DataManager);
         Uptime = new UptimeTracker(ObjectTable, Condition, () => Ultimates.Current is { Started: true } p ? p.Number : null);
         Percentiles = new PercentileService(Configuration, DataManager, PluginInterface.GetPluginConfigDirectory(), Log);
@@ -101,6 +102,7 @@ public sealed class Plugin : IDalamudPlugin
 
         windowSystem.RemoveAllWindows();
         dtr.Dispose();
+        Ultimates.PhaseEnded -= OnPhaseEnded;
         Pulls.Dispose();
         Percentiles.Dispose();
         Sources.Dispose();
@@ -138,6 +140,12 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         Sources.Apply(reconnect);
+    }
+
+    private void OnPhaseEnded(PhaseResult result)
+    {
+        if (Configuration.ChatSummary && Configuration.ChatSummaryPhases)
+            Pulls.PrintPhaseSummary(result);
     }
 
     private void OnFrameworkUpdate(IFramework framework)

@@ -60,6 +60,7 @@ and can be **reordered**, with the separator of your choice between them (space,
 | Projected kill | `ETA 9:12` | When the boss dies at the current party DPS — red if after the enrage |
 | Enrage timer | `Enrage 3:12` | Time left before the enrage entered for this fight — red for the last 30 seconds |
 | Ultimate phase | `P1` | Current phase in a supported ultimate |
+| Ultimate phase boss DPS | `Boss 145,000 (+3.6%)` | DPS on the current phase's bosses only, and its gap to the DPS needed for the phase enrage |
 | GCD uptime | `GCD 98.7%` | Share of the time an enemy was targetable during which your GCD was rolling — per phase in an ultimate |
 | FFLogs percentile | `~92` | Estimated FFLogs percentile of your rDPS, in FFLogs colors |
 
@@ -104,7 +105,7 @@ to a whole zone or to a specific encounter.
 In an ultimate the fight never stops between phases and several bosses are often up at once.
 Each supported phase is tracked on its own: its timer starts when its boss becomes targetable, only its own
 boss counts for the DPS check (adds are ignored), and the Boss HP, Projected kill and Enrage timer elements
-follow the current phase. GCD uptime is also measured per phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
+follow the current phase. GCD uptime is also measured per phase. The **Ultimate phase boss DPS** element shows the DPS on the phase's bosses only (not the whole fight's pDPS), against the DPS needed for its enrage, and a chat summary is printed at the end of each phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
 
 Supported so far: **The Epic of Alexander — P1 (Living Liquid) and P2 (Brute Justice & Cruise Chaser)**.
 A phase ends as soon as the next one starts (for P2: when both bosses are targetable), or when its bosses die. More phases and ultimates will be added one at a time.
@@ -148,7 +149,7 @@ tracker, which also runs next to ACT when rDPS is enabled; ACT's numbers are the
 |---|---|
 | **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, graphs, colors, auto-hide |
 | **Party checks** | Per zone / per encounter: boss HP, enrage time, minimum party DPS |
-| **Pulls** | Chat summary (values shown, comparison with your best kill, in dungeons), record only in duties, minimum pull length, history size, graph window |
+| **Pulls** | Chat summary (values shown, comparison with your best kill, in dungeons, at the end of each ultimate phase), record only in duties, minimum pull length, history size, graph window |
 | **Ultimates** | Phase tracking on/off, enrage time of each phase (or from your last wipe) |
 | **FFLogs** | Percentile estimate, API credentials, manual encounter id |
 | **Data source** | Auto / ACT / built-in, ACT address, connection status |

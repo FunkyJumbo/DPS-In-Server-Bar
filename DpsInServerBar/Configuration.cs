@@ -70,6 +70,7 @@ public enum BarElement
     KillTime,
     EnrageTimer,
     Phase,
+    PhaseDps,
     Uptime,
     Percentile,
 }
@@ -144,6 +145,9 @@ public sealed class Configuration : IPluginConfiguration
     // Pulls / history
     public bool ChatSummary { get; set; } = true;
     public bool ChatSummaryInDungeons { get; set; } = true;
+
+    /// <summary>In ultimates, also a summary at the end of each phase.</summary>
+    public bool ChatSummaryPhases { get; set; } = true;
 
     /// <summary>Values shown in the chat summary.</summary>
     public SummaryElement ChatSummaryElements { get; set; } = SummaryElement.All;
@@ -262,6 +266,7 @@ public sealed class Configuration : IPluginConfiguration
         new() { Element = BarElement.KillTime, Enabled = false },
         new() { Element = BarElement.EnrageTimer, Enabled = false },
         new() { Element = BarElement.Phase, Enabled = false },
+        new() { Element = BarElement.PhaseDps, Enabled = false },
         new() { Element = BarElement.Uptime, Enabled = false },
         new() { Element = BarElement.Percentile, Enabled = false },
     ];
