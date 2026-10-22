@@ -174,6 +174,20 @@ public sealed class Configuration : IPluginConfiguration
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public Dictionary<string, double> UltimateEnrageSeconds { get; set; } = new();
 
+    /// <summary>Combined max HP of each phase's bosses, as last read from the game (all bosses of the phase must die).</summary>
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<string, double> UltimatePhaseHpDetected { get; set; } = new();
+
+    /// <summary>Phase HP entered by hand, overriding the detected one (0 or absent = use the detected HP).</summary>
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<string, double> UltimatePhaseHp { get; set; } = new();
+
+    /// <summary>HP used for a phase's DPS check: entered by hand, else the larger of the live and detected HP.</summary>
+    public double PhaseCheckHp(string phaseKey, double liveHp) =>
+        UltimatePhaseHp.GetValueOrDefault(phaseKey) is > 0 and var manual
+            ? manual
+            : Math.Max(liveHp, UltimatePhaseHpDetected.GetValueOrDefault(phaseKey));
+
     // FFLogs percentile estimate (API v2 client credentials, entered by the user in the settings)
     public bool ShowPercentile { get; set; } = true;
     public string FflogsClientId { get; set; } = string.Empty;

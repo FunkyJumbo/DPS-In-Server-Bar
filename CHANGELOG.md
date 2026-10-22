@@ -15,6 +15,8 @@
   margin, GCD), or HP left when the pull ends during the phase. Option in Settings > Pulls.
 - Ultimates: new bar element "Ultimate phase boss DPS" (`Boss 145,000 (+3.6%)`): DPS on the current phase's bosses
   only, green / red against the DPS needed for the phase enrage.
+- Ultimates tab: combined HP of each phase's bosses (e.g. Brute Justice + Cruise Chaser for TEA P2), read in game the
+  first time the phase is reached or entered by hand, and the resulting required DPS (HP / enrage).
 
 ## 1.0.4.1
 

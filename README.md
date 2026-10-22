@@ -106,6 +106,8 @@ In an ultimate the fight never stops between phases and several bosses are often
 Each supported phase is tracked on its own: its timer starts when its boss becomes targetable, only its own
 boss counts for the DPS check (adds are ignored), and the Boss HP, Projected kill and Enrage timer elements
 follow the current phase. GCD uptime is also measured per phase. The **Ultimate phase boss DPS** element shows the DPS on the phase's bosses only (not the whole fight's pDPS), against the DPS needed for its enrage, and a chat summary is printed at the end of each phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
+The combined HP of each phase's bosses (all of them must die) is read in game the first time the phase is reached and
+shown in the Ultimates tab with the resulting required DPS; it can be overridden by hand.
 
 Supported so far: **The Epic of Alexander — P1 (Living Liquid) and P2 (Brute Justice & Cruise Chaser)**.
 A phase ends as soon as the next one starts (for P2: when both bosses are targetable), or when its bosses die. More phases and ultimates will be added one at a time.
@@ -150,7 +152,7 @@ tracker, which also runs next to ACT when rDPS is enabled; ACT's numbers are the
 | **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, graphs, colors, auto-hide |
 | **Party checks** | Per zone / per encounter: boss HP, enrage time, minimum party DPS |
 | **Pulls** | Chat summary (values shown, comparison with your best kill, in dungeons, at the end of each ultimate phase), record only in duties, minimum pull length, history size, graph window |
-| **Ultimates** | Phase tracking on/off, enrage time of each phase (or from your last wipe) |
+| **Ultimates** | Phase tracking on/off, enrage time of each phase (or from your last wipe), combined boss HP (read in game or by hand), required DPS |
 | **FFLogs** | Percentile estimate, API credentials, manual encounter id |
 | **Data source** | Auto / ACT / built-in, ACT address, connection status |
 

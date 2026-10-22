@@ -514,13 +514,15 @@ public sealed class ConfigWindow : Window
                 continue;
 
             const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
-            using var table = ImRaii.Table($"##ult{fight.Key}", 4, flags);
+            using var table = ImRaii.Table($"##ult{fight.Key}", 6, flags);
             if (!table)
                 continue;
 
             ImGui.TableSetupColumn("Phase", ImGuiTableColumnFlags.WidthStretch, 1.2f);
             ImGui.TableSetupColumn("Tracked boss", ImGuiTableColumnFlags.WidthStretch, 1.2f);
+            ImGui.TableSetupColumn("Boss HP (all)", ImGuiTableColumnFlags.WidthFixed, 110);
             ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, 90);
+            ImGui.TableSetupColumn("Required DPS", ImGuiTableColumnFlags.WidthFixed, 90);
             ImGui.TableSetupColumn("From your pulls", ImGuiTableColumnFlags.WidthStretch, 1.6f);
             ImGui.TableHeadersRow();
 
@@ -536,6 +538,9 @@ public sealed class ConfigWindow : Window
                 ImGui.TextUnformatted(string.Join(", ", phase.TrackedBosses));
 
                 ImGui.TableNextColumn();
+                DrawPhaseHp(phase);
+
+                ImGui.TableNextColumn();
                 var enrage = c.UltimateEnrageSeconds.GetValueOrDefault(phase.Key);
                 var minutes = (int)(enrage / 60);
                 var seconds = (int)(enrage % 60);
@@ -548,6 +553,13 @@ public sealed class ConfigWindow : Window
                 changed |= ImGui.InputInt("##sec", ref seconds, 0);
                 if (changed)
                     SetPhaseEnrage(phase.Key, Math.Clamp(minutes, 0, 60) * 60 + Math.Clamp(seconds, 0, 59));
+
+                ImGui.TableNextColumn();
+                var phaseHp = c.PhaseCheckHp(phase.Key, 0);
+                if (phaseHp > 0 && enrage > 0)
+                    ImGui.TextUnformatted(NumberFormat.Format(phaseHp / enrage, NumberStyle.Grouped));
+                else
+                    ImGui.TextDisabled("-");
 
                 ImGui.TableNextColumn();
                 if (tracker.LastWipes.TryGetValue(phase.Key, out var wipe))
@@ -569,6 +581,36 @@ public sealed class ConfigWindow : Window
 
         ImGui.Spacing();
         ImGui.TextDisabled("More ultimates and phases will be added one at a time.");
+    }
+
+    /// <summary>
+    /// Combined HP of the phase's bosses: detected in game (all of them must die, so they add up), or entered by hand.
+    /// </summary>
+    private void DrawPhaseHp(UltimatePhase phase)
+    {
+        var c = plugin.Configuration;
+        var detected = c.UltimatePhaseHpDetected.GetValueOrDefault(phase.Key);
+        var manual = c.UltimatePhaseHp.GetValueOrDefault(phase.Key);
+
+        ImGui.SetNextItemWidth(-1);
+        var hint = detected > 0 ? NumberFormat.Format(detected, NumberStyle.Grouped) : "not seen yet";
+        var text = manual > 0 ? manual.ToString("0") : string.Empty;
+        if (ImGui.InputTextWithHint("##hp", hint, ref text, 16))
+        {
+            if (double.TryParse(text.Replace(",", string.Empty).Replace(" ", string.Empty), out var value) && value > 0)
+                c.UltimatePhaseHp[phase.Key] = value;
+            else
+                c.UltimatePhaseHp.Remove(phase.Key);
+            plugin.OnConfigChanged();
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            var bosses = phase.TrackedBosses.Count > 1 ? $" ({string.Join(" + ", phase.TrackedBosses)})" : string.Empty;
+            ImGui.SetTooltip($"Combined max HP of the phase's bosses{bosses}.\n"
+                             + (detected > 0 ? $"Read in game: {detected:N0}.\n" : "Read automatically the first time the phase is reached.\n")
+                             + "Type a value to override it, clear the field to go back to the detected HP.");
+        }
     }
 
     private void SetPhaseEnrage(string key, double seconds)

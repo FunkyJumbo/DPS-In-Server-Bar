@@ -19,7 +19,8 @@ public sealed record PhaseView(
     double CurrentHp,
     double MaxHp,
     double? EnrageSeconds,
-    bool InCombat)
+    bool InCombat,
+    double CheckHp = 0)
 {
     /// <summary>False past the last phase defined for this ultimate.</summary>
     public bool Supported => Phase is not null;
@@ -29,8 +30,11 @@ public sealed record PhaseView(
     /// <summary>Damage actually dealt to the tracked bosses per second since the phase started.</summary>
     public double BossDps => Elapsed.TotalSeconds > 1 ? (MaxHp - CurrentHp) / Elapsed.TotalSeconds : 0;
 
-    /// <summary>DPS on the tracked bosses needed to kill them before the enrage.</summary>
-    public double? RequiredDps => EnrageSeconds is > 0 && MaxHp > 0 ? MaxHp / EnrageSeconds : null;
+    /// <summary>
+    /// DPS on the tracked bosses needed to kill them before the enrage, from the phase HP of the Ultimates tab
+    /// (<see cref="CheckHp"/>: combined HP of all its bosses) or, failing that, the HP seen so far.
+    /// </summary>
+    public double? RequiredDps => PhaseHp.Required(CheckHp > 0 ? CheckHp : MaxHp, EnrageSeconds);
 
     /// <summary>Phase time at which the bosses die at the current boss DPS.</summary>
     public TimeSpan? ProjectedKill => BossDps > 0 ? Elapsed + TimeSpan.FromSeconds(CurrentHp / BossDps) : null;
@@ -41,10 +45,16 @@ public sealed record PhaseView(
 /// <summary>How an ultimate phase ended: cleared (its bosses died or the next phase started) or not (the pull ended).</summary>
 public sealed record PhaseResult(
     UltimateFight Fight, UltimatePhase Phase, int Number, TimeSpan Elapsed, double MaxHp, double HpLeft,
-    double? EnrageSeconds, bool Cleared)
+    double? EnrageSeconds, bool Cleared, double CheckHp = 0)
 {
     public double BossDps => Elapsed.TotalSeconds > 1 ? (MaxHp - HpLeft) / Elapsed.TotalSeconds : 0;
-    public double? RequiredDps => EnrageSeconds is > 0 && MaxHp > 0 ? MaxHp / EnrageSeconds : null;
+    public double? RequiredDps => PhaseHp.Required(CheckHp > 0 ? CheckHp : MaxHp, EnrageSeconds);
+}
+
+internal static class PhaseHp
+{
+    public static double? Required(double hp, double? enrageSeconds) =>
+        enrageSeconds is > 0 && hp > 0 ? hp / enrageSeconds : null;
 }
 
 /// <summary>
@@ -132,7 +142,7 @@ public sealed class UltimateTracker
             // The pull ended during this phase.
             LastWipes[fight.Phases[phaseIndex].Key] = now - start;
             if (Current is { Supported: true, Started: true } last)
-                PhaseEnded?.Invoke(new PhaseResult(fight, last.Phase!, last.Number, now - start, last.MaxHp, last.CurrentHp, last.EnrageSeconds, false));
+                PhaseEnded?.Invoke(new PhaseResult(fight, last.Phase!, last.Number, now - start, last.MaxHp, last.CurrentHp, last.EnrageSeconds, false, last.CheckHp));
         }
 
         wasInCombat = inCombat;
@@ -184,7 +194,7 @@ public sealed class UltimateTracker
                 PhaseEnded?.Invoke(new PhaseResult(
                     fight, phase, phaseIndex + 1, LastClears[phase.Key], maxHpAtEnd, 0,
                     config.UltimateEnrageSeconds.TryGetValue(phase.Key, out var phaseEnrage) && phaseEnrage > 0 ? phaseEnrage : null,
-                    true));
+                    true, config.PhaseCheckHp(phase.Key, maxHpAtEnd)));
                 phaseIndex++;
                 ResetPhase();
                 if (nextStarted)
@@ -200,11 +210,19 @@ public sealed class UltimateTracker
 
         var maxHp = maxHpByObject.Values.Sum(v => (double)v);
         var currentHp = alive.Sum(b => (double)b.CurrentHp);
+
+        // Remember the combined HP of the phase's bosses, for the Ultimates tab and the next pulls.
+        if (phaseStartUtc is not null && maxHp > config.UltimatePhaseHpDetected.GetValueOrDefault(phase.Key))
+        {
+            config.UltimatePhaseHpDetected[phase.Key] = maxHp;
+            config.Save();
+        }
+
         double? enrage = config.UltimateEnrageSeconds.TryGetValue(phase.Key, out var e) && e > 0 ? e : null;
 
         Current = new PhaseView(
             fight, phase, phaseIndex + 1, phaseStartUtc is not null,
-            phaseStartUtc is { } s ? now - s : TimeSpan.Zero, currentHp, maxHp, enrage, true);
+            phaseStartUtc is { } s ? now - s : TimeSpan.Zero, currentHp, maxHp, enrage, true, config.PhaseCheckHp(phase.Key, maxHp));
     }
 
     /// <summary>Whether a phase's bosses are up: the first one, or all of them for a multi-boss phase.</summary>
