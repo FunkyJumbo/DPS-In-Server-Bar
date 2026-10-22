@@ -106,6 +106,17 @@ public sealed class ConfigWindow : Window
             plugin.OnConfigChanged();
     }
 
+    private static readonly (SummaryElement Element, string Label)[] SummaryLabels =
+    [
+        (SummaryElement.Job, "Job"),
+        (SummaryElement.Dps, "DPS"),
+        (SummaryElement.Rdps, "rDPS"),
+        (SummaryElement.Percentile, "FFLogs %"),
+        (SummaryElement.Uptime, "GCD"),
+        (SummaryElement.PartyDps, "pDPS"),
+        (SummaryElement.Deaths, "Deaths"),
+    ];
+
     private static readonly (string Label, string Value)[] SeparatorPresets =
     [
         ("Space", " "),
@@ -425,6 +436,24 @@ public sealed class ConfigWindow : Window
         {
             ImGui.Indent();
             changed |= Checkbox("Also in dungeons", c.ChatSummaryInDungeons, v => c.ChatSummaryInDungeons = v);
+
+            ImGui.TextDisabled("Values shown:");
+            foreach (var (element, label) in SummaryLabels)
+            {
+                if (element != SummaryLabels[0].Element)
+                    ImGui.SameLine();
+                var on = c.ChatSummaryElements.HasFlag(element);
+                if (ImGui.Checkbox($"{label}##summary", ref on))
+                {
+                    c.ChatSummaryElements = on ? c.ChatSummaryElements | element : c.ChatSummaryElements & ~element;
+                    changed = true;
+                }
+            }
+
+            changed |= Checkbox("Compare DPS, rDPS, GCD and pDPS with your best kill", c.ChatSummaryCompareBest,
+                                v => c.ChatSummaryCompareBest = v);
+            Help("After each value: NEW BEST, or the gap to your best kill of the same fight. Wipes are never compared.");
+            ImGui.TextDisabled("e.g. [DPS] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST | rDPS 20,511 #3/8 (best -1.2%) | GCD 98.7%");
             ImGui.Unindent();
         }
 

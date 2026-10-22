@@ -74,6 +74,21 @@ public enum BarElement
     Percentile,
 }
 
+/// <summary>Values that can appear in the chat summary after each pull.</summary>
+[Flags]
+public enum SummaryElement
+{
+    None = 0,
+    Job = 1,
+    Dps = 2,
+    Rdps = 4,
+    Percentile = 8,
+    Uptime = 16,
+    PartyDps = 32,
+    Deaths = 64,
+    All = Job | Dps | Rdps | Percentile | Uptime | PartyDps | Deaths,
+}
+
 [Serializable]
 public sealed class BarElementSetting
 {
@@ -129,6 +144,12 @@ public sealed class Configuration : IPluginConfiguration
     // Pulls / history
     public bool ChatSummary { get; set; } = true;
     public bool ChatSummaryInDungeons { get; set; } = true;
+
+    /// <summary>Values shown in the chat summary.</summary>
+    public SummaryElement ChatSummaryElements { get; set; } = SummaryElement.All;
+
+    /// <summary>After DPS, rDPS, GCD and pDPS: "NEW BEST" or the gap to your best kill of the fight.</summary>
+    public bool ChatSummaryCompareBest { get; set; } = true;
     public bool RecordOnlyInDuties { get; set; } = true;
     public int MinPullSeconds { get; set; } = 20;
     public int MaxHistory { get; set; } = 300;

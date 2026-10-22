@@ -59,6 +59,16 @@ public sealed class PullHistory
         SaveAsync();
     }
 
+    /// <summary>Best value of a metric among the kills of the same encounter, excluding the given pull.</summary>
+    public double? BestOf(string title, Func<PullRecord, double?> metric, Guid exclude) =>
+        string.IsNullOrEmpty(title)
+            ? null
+            : pulls.Where(p => p.Id != exclude && p.Outcome == PullOutcome.Kill
+                               && p.Title.Equals(title, StringComparison.OrdinalIgnoreCase))
+                   .Select(metric)
+                   .Where(v => v is > 0)
+                   .Max();
+
     /// <summary>
     /// Best personal DPS among the kills of the same encounter, excluding the given pull. Wipes are ignored:
     /// comparing with a prog pull that ended early says nothing.

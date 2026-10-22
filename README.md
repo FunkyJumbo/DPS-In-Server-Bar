@@ -81,13 +81,14 @@ and can be **reordered**, with the separator of your choice between them (space,
 
 ### After each pull
 
-An optional chat summary:
+An optional chat summary, with the values of your choice (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths):
 
 ```
-[DPS] Brute Bomber (4:32) Kill  DRK 21,234 DPS #2/8  rDPS 20,511 (~87)  GCD 98.7%  best 22,000 (-3.5%)  |  pDPS 182,345 (check OK)
+[DPS] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST
 ```
 
-Comparisons with your best are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
+DPS, rDPS, GCD and pDPS can each be compared with your best kill of the fight (`NEW BEST` or the gap).
+Comparisons are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
 The summary can be turned off in dungeons.
 
 ### Party DPS checks
@@ -145,7 +146,7 @@ tracker, which also runs next to ACT when rDPS is enabled; ACT's numbers are the
 |---|---|
 | **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, graphs, colors, auto-hide |
 | **Party checks** | Per zone / per encounter: boss HP, enrage time, minimum party DPS |
-| **Pulls** | Chat summary (and in dungeons), record only in duties, minimum pull length, history size, graph window |
+| **Pulls** | Chat summary (values shown, comparison with your best kill, in dungeons), record only in duties, minimum pull length, history size, graph window |
 | **Ultimates** | Phase tracking on/off, enrage time of each phase (or from your last wipe) |
 | **FFLogs** | Percentile estimate, API credentials, manual encounter id |
 | **Data source** | Auto / ACT / built-in, ACT address, connection status |

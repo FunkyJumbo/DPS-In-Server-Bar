@@ -47,6 +47,9 @@ public sealed class PullRecord
 
     public double PartyDps { get; set; }
     public int Rank { get; set; }
+
+    /// <summary>Your rank by rDPS (0 when unknown).</summary>
+    public int RdpsRank { get; set; }
     public int PartySize { get; set; }
     public int Deaths { get; set; }
 

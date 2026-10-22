@@ -37,7 +37,7 @@ public sealed class PullTracker : IDisposable
     private DateTime lastFinishedUtc;
 
     // The chat summary waits for the duty outcome (kill / wipe), which can arrive a bit after the encounter ends.
-    private (PullRecord Pull, PullRecord? PreviousBest)? pendingSummary;
+    private PullRecord? pendingSummary;
 
     public PullTracker(Plugin plugin, IDutyState dutyState, ICondition condition, IChatGui chat)
     {
@@ -141,6 +141,7 @@ public sealed class PullTracker : IDisposable
             UptimeActiveBySecond = uptime?.ActiveBySecond ?? [],
             PartyDps = final.PartyDps(config.IncludeLimitBreakInParty),
             Rank = final.YourRank(),
+            RdpsRank = you is { HasRdps: true } ? final.YourRank(byRdps: true) : 0,
             PartySize = partyMembers.Count,
             Deaths = you?.Deaths ?? 0,
             Combatants = final.Combatants
@@ -162,8 +163,6 @@ public sealed class PullTracker : IDisposable
             PartyDamageTimeline = Timeline.Resample(pull.PartyPoints, duration),
         };
 
-        var previousBest = plugin.History.BestFor(record.Title);
-
         plugin.History.Add(record, config.MaxHistory);
         lastFinished = record;
         lastFinishedUtc = DateTime.UtcNow;
@@ -171,7 +170,7 @@ public sealed class PullTracker : IDisposable
         if (config.ChatSummary && (config.ChatSummaryInDungeons || !IsDungeon(record.TerritoryId)))
         {
             FlushSummary(force: true); // a previous one still waiting
-            pendingSummary = (record, previousBest);
+            pendingSummary = record;
             FlushSummary(force: false);
         }
     }
@@ -202,72 +201,128 @@ public sealed class PullTracker : IDisposable
     /// <summary>Prints the pending summary once the outcome is known, or after a few seconds without one.</summary>
     private void FlushSummary(bool force)
     {
-        if (pendingSummary is not { } p)
+        if (pendingSummary is not { } pull)
             return;
-        if (!force && p.Pull.Outcome == PullOutcome.Unknown && (DateTime.UtcNow - lastFinishedUtc).TotalSeconds < 10)
+        if (!force && pull.Outcome == PullOutcome.Unknown && (DateTime.UtcNow - lastFinishedUtc).TotalSeconds < 10)
             return;
 
         pendingSummary = null;
-        PrintSummary(p.Pull, p.PreviousBest);
+        PrintSummary(pull);
     }
 
-    private void PrintSummary(PullRecord pull, PullRecord? previousBest)
+    private void PrintSummary(PullRecord pull)
     {
         var config = plugin.Configuration;
+        var shown = config.ChatSummaryElements;
         var sb = new Lumina.Text.SeStringBuilder();
 
         sb.PushColorRgba(Muted).Append("[DPS] ").PopColor();
         sb.Append(string.IsNullOrEmpty(pull.Title) ? "Pull" : pull.Title)
-          .Append($" ({NumberFormat.Duration(TimeSpan.FromSeconds(pull.DurationSeconds))}) ");
+          .Append($" ({NumberFormat.Duration(TimeSpan.FromSeconds(pull.DurationSeconds))})");
         switch (pull.Outcome)
         {
             case PullOutcome.Kill:
-                sb.PushColorRgba(Good).Append("Kill").PopColor();
+                sb.Append(" ").PushColorRgba(Good).Append("Kill").PopColor();
                 break;
             case PullOutcome.Wipe:
-                sb.PushColorRgba(Bad).Append("Wipe").PopColor();
+                sb.Append(" ").PushColorRgba(Bad).Append("Wipe").PopColor();
                 break;
         }
 
-        sb.Append("  ");
+        // Each selected value is a part, separated by " | ".
+        var parts = new List<System.Action>();
 
-        if (pull.Job.Length > 0)
-            sb.Append(pull.Job).Append(' ');
-        sb.Append($"{NumberFormat.Format(pull.YourDps, config.NumberStyle)} DPS");
-        if (pull.PartySize > 1 && pull.Rank > 0)
-            sb.Append($" #{pull.Rank}/{pull.PartySize}");
-        if (pull.YourRdps is { } rdps)
-            sb.Append($"  rDPS {NumberFormat.Format(rdps, config.NumberStyle)}");
-        if (pull.Percentile is { } pct)
-            sb.Append(" ").PushColorRgba(Fflogs.FflogsNames.Color(pct)).Append($"(~{pct:0})").PopColor();
-        if (pull.Uptime is { } gcd)
-            sb.Append($"  GCD {gcd:0.0%}");
+        if (shown.HasFlag(SummaryElement.Job) && pull.Job.Length > 0)
+            parts.Add(() => sb.Append(pull.Job));
 
-        // Only kills are compared: a wipe or a prog pull ending early says nothing about your DPS.
-        if (previousBest is not null && pull.Outcome == PullOutcome.Kill)
+        if (shown.HasFlag(SummaryElement.Dps))
         {
-            var delta = pull.YourDps / previousBest.YourDps - 1;
-            sb.Append("  ");
-            if (delta >= 0)
-                sb.PushColorRgba(Good).Append("new best!").PopColor();
-            else
-                sb.PushColorRgba(Muted).Append($"best {NumberFormat.Format(previousBest.YourDps, config.NumberStyle)} ({delta:+0.0%;-0.0%})").PopColor();
+            parts.Add(() =>
+            {
+                sb.Append($"DPS {NumberFormat.Format(pull.YourDps, config.NumberStyle)}");
+                AppendRank(sb, pull.Rank, pull.PartySize);
+                AppendBest(sb, pull, pull.YourDps, p => p.YourDps, isRate: false);
+            });
         }
 
-        sb.Append($"  |  pDPS {NumberFormat.Format(pull.PartyDps, config.NumberStyle)}");
-        var threshold = config.FindThreshold(pull.TerritoryId, pull.Title);
-        if (threshold is not null)
+        if (shown.HasFlag(SummaryElement.Rdps) && pull.YourRdps is { } rdps)
         {
-            var ok = pull.PartyDps >= threshold.EffectiveMinPartyDps;
-            sb.Append(' ').PushColorRgba(ok ? Good : Bad)
-              .Append(ok ? "(check OK)" : $"(check {NumberFormat.Format(threshold.EffectiveMinPartyDps, config.NumberStyle)})")
-              .PopColor();
+            parts.Add(() =>
+            {
+                sb.Append($"rDPS {NumberFormat.Format(rdps, config.NumberStyle)}");
+                AppendRank(sb, pull.RdpsRank, pull.PartySize);
+                AppendBest(sb, pull, rdps, p => p.YourRdps, isRate: false);
+            });
         }
 
-        if (pull.Deaths > 0)
-            sb.PushColorRgba(Bad).Append($"  deaths: {pull.Deaths}").PopColor();
+        if (shown.HasFlag(SummaryElement.Percentile) && pull.Percentile is { } pct)
+            parts.Add(() => sb.PushColorRgba(Fflogs.FflogsNames.Color(pct)).Append($"FFLogs ~{pct:0}").PopColor());
+
+        if (shown.HasFlag(SummaryElement.Uptime) && pull.Uptime is { } gcd)
+        {
+            parts.Add(() =>
+            {
+                sb.Append($"GCD {gcd:0.0%}");
+                AppendBest(sb, pull, gcd, p => p.Uptime, isRate: true);
+            });
+        }
+
+        if (shown.HasFlag(SummaryElement.PartyDps))
+        {
+            parts.Add(() =>
+            {
+                sb.Append($"pDPS {NumberFormat.Format(pull.PartyDps, config.NumberStyle)}");
+                var threshold = config.FindThreshold(pull.TerritoryId, pull.Title);
+                if (threshold is not null)
+                {
+                    var ok = pull.PartyDps >= threshold.EffectiveMinPartyDps;
+                    sb.Append(" ").PushColorRgba(ok ? Good : Bad)
+                      .Append(ok ? "(check OK)" : $"(check {NumberFormat.Format(threshold.EffectiveMinPartyDps, config.NumberStyle)})")
+                      .PopColor();
+                }
+
+                AppendBest(sb, pull, pull.PartyDps, p => p.PartyDps, isRate: false);
+            });
+        }
+
+        if (shown.HasFlag(SummaryElement.Deaths) && pull.Deaths > 0)
+            parts.Add(() => sb.PushColorRgba(Bad).Append($"Deaths {pull.Deaths}").PopColor());
+
+        foreach (var part in parts)
+        {
+            sb.PushColorRgba(Muted).Append(" | ").PopColor();
+            part();
+        }
 
         chat.Print(sb.ToReadOnlySeString().ToDalamudString());
+    }
+
+    private static void AppendRank(Lumina.Text.SeStringBuilder sb, int rank, int partySize)
+    {
+        if (partySize > 1 && rank > 0)
+            sb.Append($" #{rank}/{partySize}");
+    }
+
+    /// <summary>
+    /// "NEW BEST" when the value beats your best kill of the fight, the gap otherwise. Only kills are compared:
+    /// a wipe or a prog pull ending early says nothing. Rates (GCD uptime) are compared in points.
+    /// </summary>
+    private void AppendBest(
+        Lumina.Text.SeStringBuilder sb, PullRecord pull, double value, Func<PullRecord, double?> metric, bool isRate)
+    {
+        if (!plugin.Configuration.ChatSummaryCompareBest || pull.Outcome != PullOutcome.Kill)
+            return;
+        if (plugin.History.BestOf(pull.Title, metric, pull.Id) is not { } best)
+            return;
+
+        if (value >= best)
+        {
+            sb.Append(" ").PushColorRgba(Good).Append("NEW BEST").PopColor();
+            return;
+        }
+
+        var gap = isRate ? $"{(value - best) * 100:+0.0;-0.0} pts" : $"{value / best - 1:+0.0%;-0.0%}";
+        sb.Append(" ").PushColorRgba(Muted).Append($"(best {gap})").PopColor();
     }
 }
 

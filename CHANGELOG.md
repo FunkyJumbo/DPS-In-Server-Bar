@@ -11,6 +11,8 @@
   settings are corrected automatically.
 - The pace vs your best kill now reads `Best +4%` in the server bar.
 - Live and History: the player tables fit the number of players (no scrollbar, no empty space in smaller groups).
+- Chat summary: choose the values shown (job, DPS, rDPS, FFLogs %, GCD, pDPS, deaths), separated by `|`; rDPS now has its
+  rank; DPS, rDPS, GCD and pDPS can each show `NEW BEST` or the gap to your best kill.
 
 ## 1.0.3.0
 
