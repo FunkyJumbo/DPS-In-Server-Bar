@@ -114,15 +114,8 @@ public sealed class DtrController : IDisposable
                 segments.Add(s);
         }
 
-        // The main color: threshold check in pDPS mode, grey once the fight is over.
-        Vector4? color = null;
-        if (config.UseColors)
-        {
-            if (config.Metric == DisplayMetric.Party && threshold is not null && value > 0)
-                color = value < threshold.EffectiveMinPartyDps ? config.BelowThresholdColor : config.AboveThresholdColor;
-            else if (ended)
-                color = config.FinalColor;
-        }
+        // The main color: grey once the fight is over. The party DPS check only colors the pDPS value (see Value).
+        Vector4? color = config.UseColors && ended ? config.FinalColor : null;
 
         var key = string.Join("|", segments.Select(s => $"{s.Text}{s.Icon}{s.Color}")) + $"|{color}";
         return new RenderState(key, true, Render(segments, color, config.BarSeparator));
@@ -164,8 +157,22 @@ public sealed class DtrController : IDisposable
                 return new Segment($"#{standing.Rank} ({gap:+0%;-0%})", Color: gapColor);
 
             case BarElement.Value:
+            {
                 // rDPS needs the built-in tracker: show a dash rather than a wrong number when it has nothing.
-                return new Segment($"{(value is { } v ? NumberFormat.Format(v, config.NumberStyle) : "-")} {label}");
+                var text = $"{(value is { } v ? NumberFormat.Format(v, config.NumberStyle) : "-")} {label}";
+
+                // pDPS with a DPS check: gap to the required DPS, and only this value turns green / red.
+                if (config.Metric == DisplayMetric.Party && threshold is { EffectiveMinPartyDps: > 0 } check && value is > 0 and var pdps)
+                {
+                    var required = check.EffectiveMinPartyDps;
+                    Vector4? checkColor = config.UseColors
+                                              ? pdps < required ? config.BelowThresholdColor : config.AboveThresholdColor
+                                              : null;
+                    return new Segment($"{text} ({pdps / required - 1:+0.0%;-0.0%})", Color: checkColor);
+                }
+
+                return new Segment(text);
+            }
 
             case BarElement.Pace:
                 return !ended && plugin.Pulls.PaceVsBest() is { } pace ? new Segment($"Best {pace:+0%;-0%}") : null;

@@ -51,12 +51,15 @@ public sealed class UltimateTracker
     private readonly IObjectTable objectTable;
     private readonly ICondition condition;
     private readonly IClientState clientState;
-    private readonly Dictionary<string, HashSet<uint>> nameIdsByPhase = new();
+    // Per phase, the name ids of each tracked boss (one set per boss name).
+    private readonly Dictionary<string, List<HashSet<uint>>> nameIdsByPhase = new();
 
     private bool wasInCombat;
     private int phaseIndex;
     private DateTime? phaseStartUtc;
     private DateTime lastAliveUtc;
+    // Tracked bosses seen targetable during the phase: invisible copies of a boss (same name, never targetable)
+    // are common in ultimates and must neither count for the HP nor keep the phase alive.
     private readonly Dictionary<ulong, uint> maxHpByObject = new();
 
     public UltimateTracker(Configuration config, IObjectTable objectTable, ICondition condition, IClientState clientState,
@@ -74,10 +77,11 @@ public sealed class UltimateTracker
                                .ToList();
         foreach (var phase in UltimateDefinitions.All.SelectMany(f => f.Phases))
         {
-            nameIdsByPhase[phase.Key] = names
-                .Where(n => phase.TrackedBosses.Any(b => b.Equals(n.Name, StringComparison.OrdinalIgnoreCase)))
-                .Select(n => n.RowId)
-                .ToHashSet();
+            nameIdsByPhase[phase.Key] = phase.TrackedBosses
+                .Select(boss => names.Where(n => n.Name.Equals(boss, StringComparison.OrdinalIgnoreCase))
+                                     .Select(n => n.RowId)
+                                     .ToHashSet())
+                .ToList();
         }
     }
 
@@ -134,33 +138,45 @@ public sealed class UltimateTracker
         }
 
         var phase = fight.Phases[phaseIndex];
-        var ids = nameIdsByPhase[phase.Key];
-        var bosses = objectTable.OfType<IBattleNpc>().Where(n => ids.Contains(n.NameId)).ToList();
-        var alive = bosses.Where(b => !b.IsDead && b.CurrentHp > 0).ToList();
+        var npcs = objectTable.OfType<IBattleNpc>().ToList();
 
-        if (phaseStartUtc is null && alive.Any(b => b.IsTargetable))
+        if (phaseStartUtc is null && HasStarted(phase, npcs))
         {
             phaseStartUtc = now;
             lastAliveUtc = now;
         }
 
+        // Only the bosses of this phase that have been targetable count (see maxHpByObject).
+        var ids = nameIdsByPhase[phase.Key].SelectMany(set => set).ToHashSet();
+        foreach (var b in npcs.Where(n => ids.Contains(n.NameId) && n.IsTargetable && n.MaxHp > 0))
+            maxHpByObject[b.GameObjectId] = Math.Max(maxHpByObject.GetValueOrDefault(b.GameObjectId), b.MaxHp);
+
+        var bosses = npcs.Where(n => maxHpByObject.ContainsKey(n.GameObjectId)).ToList();
+        var alive = bosses.Where(b => !b.IsDead && b.CurrentHp > 0).ToList();
+
         if (phaseStartUtc is { } phaseStart)
         {
             if (alive.Count > 0)
-            {
                 lastAliveUtc = now;
-            }
-            else if (bosses.Count > 0 || now - lastAliveUtc > GoneDelay)
+
+            // The phase ends when the next one starts, or when its bosses are dead (or gone for good).
+            var next = phaseIndex + 1 < fight.Phases.Count ? fight.Phases[phaseIndex + 1] : null;
+            var nextStarted = next is not null && HasStarted(next, npcs);
+            var bossesGone = alive.Count == 0 && (bosses.Count > 0 || now - lastAliveUtc > GoneDelay);
+            if (nextStarted || bossesGone)
             {
-                // Every tracked boss is dead (or gone for good): next phase, with a fresh timer.
-                LastClears[phase.Key] = lastAliveUtc - phaseStart;
+                LastClears[phase.Key] = (nextStarted ? now : lastAliveUtc) - phaseStart;
                 phaseIndex++;
                 ResetPhase();
+                if (nextStarted)
+                {
+                    // The next phase's bosses are already up: its timer starts now.
+                    phaseStartUtc = now;
+                    lastAliveUtc = now;
+                }
+
                 return;
             }
-
-            foreach (var b in bosses)
-                maxHpByObject[b.GameObjectId] = Math.Max(maxHpByObject.GetValueOrDefault(b.GameObjectId), b.MaxHp);
         }
 
         var maxHp = maxHpByObject.Values.Sum(v => (double)v);
@@ -170,6 +186,15 @@ public sealed class UltimateTracker
         Current = new PhaseView(
             fight, phase, phaseIndex + 1, phaseStartUtc is not null,
             phaseStartUtc is { } s ? now - s : TimeSpan.Zero, currentHp, maxHp, enrage, true);
+    }
+
+    /// <summary>Whether a phase's bosses are up: the first one, or all of them for a multi-boss phase.</summary>
+    private bool HasStarted(UltimatePhase phase, List<IBattleNpc> npcs)
+    {
+        bool Up(HashSet<uint> ids) => npcs.Any(n => ids.Contains(n.NameId) && n.IsTargetable && !n.IsDead && n.CurrentHp > 0);
+
+        var bosses = nameIdsByPhase[phase.Key];
+        return phase.StartWhenAllTargetable ? bosses.All(Up) : bosses.Any(Up);
     }
 
     private void ResetPhase()

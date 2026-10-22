@@ -65,7 +65,8 @@ and can be **reordered**, with the separator of your choice between them (space,
 
 - **Left click** cycles DPS → pDPS → rDPS. **Right click** opens the main window.
 - **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, GCD uptime (per phase in an ultimate), best kill, percentile.
-- Colors: party DPS turns green/red against the DPS check of the fight, grey once the fight is over.
+- Colors: with a DPS check for the fight, only the pDPS value turns green/red, with its gap to the required DPS
+  (`182,345 pDPS (+3.2%)`); everything turns grey once the fight is over.
 
 ### Main window
 
@@ -105,7 +106,8 @@ Each supported phase is tracked on its own: its timer starts when its boss becom
 boss counts for the DPS check (adds are ignored), and the Boss HP, Projected kill and Enrage timer elements
 follow the current phase. GCD uptime is also measured per phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
 
-Supported so far: **The Epic of Alexander — P1 (Living Liquid)**. More phases and ultimates will be added one at a time.
+Supported so far: **The Epic of Alexander — P1 (Living Liquid) and P2 (Brute Justice & Cruise Chaser)**.
+A phase ends as soon as the next one starts (for P2: when both bosses are targetable), or when its bosses die. More phases and ultimates will be added one at a time.
 
 ### rDPS
 

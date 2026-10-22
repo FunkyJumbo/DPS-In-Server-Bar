@@ -3,6 +3,15 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## Unreleased
+
+- Party DPS check: only the pDPS value is colored (green / red), now with its gap to the required DPS:
+  `182,345 pDPS (+3.2%)`. The other elements of the bar keep their normal color.
+- Ultimates: The Epic of Alexander P2 (Brute Justice & Cruise Chaser) is supported; it starts when both bosses are
+  targetable.
+- Fix: ultimate phases now end as soon as the next phase starts. Invisible copies of a boss no longer keep a phase
+  alive or skew its HP.
+
 ## 1.0.4.1
 
 - Fix: the plugin icon now shows in Dalamud once the plugin is installed (the packaged manifest had no icon URL).
