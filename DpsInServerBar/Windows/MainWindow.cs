@@ -251,9 +251,13 @@ public sealed class MainWindow : Window
             return;
         }
 
-        DrawHistoryFilter(pulls);
+        var categories = plugin.Configuration.HistoryCategories;
+        var inCategories = pulls.Where(p => (plugin.ContentCategories.Of(p.TerritoryId) & categories) != 0).ToList();
 
-        var visible = pulls
+        DrawCategoryFilter(pulls);
+        DrawHistoryFilter(inCategories);
+
+        var visible = inCategories
             .Where(p => historyFilter.Length == 0 || p.Title.Equals(historyFilter, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
@@ -272,6 +276,38 @@ public sealed class MainWindow : Window
 
         var compare = pulls.FirstOrDefault(p => p.Id == compareId && p.Id != selectedId);
         DrawPullDetails(selected, compare);
+    }
+
+    /// <summary>One toggle per kind of content (several can be on), with the number of pulls in each.</summary>
+    private void DrawCategoryFilter(IReadOnlyList<PullRecord> pulls)
+    {
+        var config = plugin.Configuration;
+        var counts = pulls.GroupBy(p => plugin.ContentCategories.Of(p.TerritoryId)).ToDictionary(g => g.Key, g => g.Count());
+
+        ImGui.TextDisabled("Show");
+        foreach (var (category, label) in ContentCategories.Labels)
+        {
+            // Wrap to the next line when the checkbox would not fit.
+            var text = $"{label} ({counts.GetValueOrDefault(category)})";
+            var width = ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X + ImGui.CalcTextSize(text).X;
+            ImGui.SameLine();
+            if (ImGui.GetContentRegionAvail().X < width)
+                ImGui.NewLine();
+
+            var on = (config.HistoryCategories & category) != 0;
+            if (ImGui.Checkbox($"{text}##cat", ref on))
+            {
+                config.HistoryCategories = on ? config.HistoryCategories | category : config.HistoryCategories & ~category;
+                config.Save();
+            }
+        }
+
+        ImGui.SameLine();
+        if (ImGui.SmallButton(config.HistoryCategories == ContentCategory.All ? "None" : "All"))
+        {
+            config.HistoryCategories = config.HistoryCategories == ContentCategory.All ? ContentCategory.None : ContentCategory.All;
+            config.Save();
+        }
     }
 
     private void DrawHistoryFilter(IReadOnlyList<PullRecord> pulls)

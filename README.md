@@ -74,7 +74,8 @@ and can be **reordered**, with the separator of your choice between them (space,
   Boss HP, projected kill time and a DPS graph (rolling and average, personal or party, compared with your best kill).
   Switch the graph to **Uptime** to see exactly when you lost GCD uptime; periods where nothing was targetable are shaded.
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
-  Filter by encounter, open a pull to see its breakdown and graph, tick another one to **compare** them.
+  Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Ultimate, Other — several at once, read from the game data)
+  and by encounter, open a pull to see its breakdown and graph, tick another one to **compare** them.
   A pull can also set the fight's enrage time from its duration (handy after a wipe to the enrage).
   Each pull also keeps its GCD uptime (overall and per ultimate phase) and its uptime graph.
 

@@ -5,6 +5,7 @@ using System.Numerics;
 using Dalamud.Configuration;
 using Newtonsoft.Json;
 using DpsInServerBar.Combat;
+using DpsInServerBar.Tracking;
 
 namespace DpsInServerBar;
 
@@ -83,7 +84,7 @@ public sealed class BarElementSetting
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 3;
+    public int Version { get; set; } = 4;
 
     /// <summary>Order and visibility of the elements of the server bar text.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -102,6 +103,9 @@ public sealed class Configuration : IPluginConfiguration
 
     /// <summary>Show the DPS graphs in the main window.</summary>
     public bool ShowGraph { get; set; } = true;
+
+    /// <summary>Kinds of content shown in the History tab (several can be selected).</summary>
+    public ContentCategory HistoryCategories { get; set; } = ContentCategory.All;
 
     /// <summary>Order the player tables of the main window by rDPS instead of DPS.</summary>
     public bool SortByRdps { get; set; } = false;
@@ -134,8 +138,8 @@ public sealed class Configuration : IPluginConfiguration
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public List<PartyDpsThreshold> Thresholds { get; set; } =
     [
-        new() { TerritoryId = 1087, Label = "AAC Heavyweight M1 (Savage)", MinPartyDps = 182800 },
-        new() { TerritoryId = 1088, Label = "AAC Heavyweight M2 (Savage)", MinPartyDps = 192000 },
+        new() { TerritoryId = 1321, Label = "AAC Heavyweight M1 (Savage)", MinPartyDps = 182800 },
+        new() { TerritoryId = 1323, Label = "AAC Heavyweight M2 (Savage)", MinPartyDps = 192000 },
     ];
 
     // Ultimates: per-phase tracking (boss HP, timer, enrage) in the supported ultimates.
@@ -187,6 +191,21 @@ public sealed class Configuration : IPluginConfiguration
                 .ToList();
 
             Version = 3;
+            changed = true;
+        }
+
+        if (Version < 4)
+        {
+            // The default AAC checks pointed at the Abyssos zones (1087/1088) instead of AAC Heavyweight M1/M2 Savage.
+            foreach (var t in Thresholds)
+            {
+                if (t.TerritoryId == 1087 && t.Label == "AAC Heavyweight M1 (Savage)")
+                    t.TerritoryId = 1321;
+                else if (t.TerritoryId == 1088 && t.Label == "AAC Heavyweight M2 (Savage)")
+                    t.TerritoryId = 1323;
+            }
+
+            Version = 4;
             changed = true;
         }
 

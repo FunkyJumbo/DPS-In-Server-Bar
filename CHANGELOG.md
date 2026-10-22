@@ -3,6 +3,13 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## Unreleased
+
+- History: filter pulls by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Ultimate, Other), one or several
+  at once. Works for pulls already recorded.
+- Fix: the default AAC Heavyweight M1/M2 (Savage) party checks pointed at the wrong zones (Abyssos); existing
+  settings are corrected automatically.
+
 ## 1.0.3.0
 
 - New option: separator between the server bar elements (space, `|`, `/`, `-` or your own text).
