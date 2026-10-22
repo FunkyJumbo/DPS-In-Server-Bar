@@ -3,7 +3,7 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
-## Unreleased
+## 1.0.5.0
 
 - Party DPS check: only the pDPS value is colored (green / red), now with its gap to the required DPS:
   `182,345 pDPS (+3.2%)`. The other elements of the bar keep their normal color.
