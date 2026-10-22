@@ -18,6 +18,7 @@ public sealed class ConfigWindow : Window
 
     // Connection fields are edited locally and only applied on "Apply", to avoid reconnecting on every keystroke.
     private string hostInput;
+    private bool editingCustomSeparator;
     private int portInput;
 
     public ConfigWindow(Plugin plugin) : base("DPS In Server Bar - Settings###DpsInServerBarConfig")
@@ -74,6 +75,7 @@ public sealed class ConfigWindow : Window
         ImGui.TextUnformatted("Server bar elements");
         Help("Tick what to show and use the arrows to change the order.");
         changed |= DrawBarLayout(c);
+        changed |= DrawSeparator(c);
         ImGui.Spacing();
 
         changed |= Checkbox("Show DPS graphs in the main window", c.ShowGraph, v => c.ShowGraph = v);
@@ -102,6 +104,51 @@ public sealed class ConfigWindow : Window
 
         if (changed)
             plugin.OnConfigChanged();
+    }
+
+    private static readonly (string Label, string Value)[] SeparatorPresets =
+    [
+        ("Space", " "),
+        ("|", " | "),
+        ("/", " / "),
+        ("-", " - "),
+        ("Double space", "  "),
+    ];
+
+    private bool DrawSeparator(Configuration c)
+    {
+        var changed = false;
+        var preset = Array.FindIndex(SeparatorPresets, p => p.Value == c.BarSeparator);
+        var labels = SeparatorPresets.Select(p => p.Label).Append("Custom").ToArray();
+        var custom = labels.Length - 1;
+        var selected = editingCustomSeparator || preset < 0 ? custom : preset;
+
+        ImGui.SetNextItemWidth(130);
+        if (ImGui.Combo("Separator between elements", ref selected, labels, labels.Length))
+        {
+            // "Custom" keeps the current text as a starting point.
+            editingCustomSeparator = selected == custom;
+            if (selected < SeparatorPresets.Length)
+            {
+                c.BarSeparator = SeparatorPresets[selected].Value;
+                changed = true;
+            }
+        }
+
+        if (selected == custom)
+        {
+            var text = c.BarSeparator;
+            ImGui.SetNextItemWidth(130);
+            if (ImGui.InputText("Custom separator", ref text, 16))
+            {
+                c.BarSeparator = text;
+                changed = true;
+            }
+
+            Help("Spaces count: \" | \" puts a space on each side. Some characters may not exist in the game font.");
+        }
+
+        return changed;
     }
 
     private static bool DrawBarLayout(Configuration c)
@@ -174,7 +221,7 @@ public sealed class ConfigWindow : Window
         BarElement.Value => ("Value", "21,234 DPS", null),
         BarElement.Pace => ("Pace vs your best pull", "+4%",
                             "Damage done so far compared with your best pull of the same encounter, at the same second."),
-        BarElement.BossHp => ("Boss HP", "54%", "HP of the enemy with the most HP in the fight, read from the game."),
+        BarElement.BossHp => ("Boss HP", "HP 54%", "HP of the enemy with the most HP in the fight, read from the game."),
         BarElement.Percentile => ("FFLogs percentile (estimate)", "~92",
                                   "Your rDPS placed among FFLogs' rankings for your job on this fight. "
                                   + "Needs FFLogs API credentials (FFLogs tab)."),

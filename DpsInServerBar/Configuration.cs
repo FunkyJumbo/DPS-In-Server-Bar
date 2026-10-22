@@ -97,6 +97,9 @@ public sealed class Configuration : IPluginConfiguration
     // Display
     public DisplayMetric Metric { get; set; } = DisplayMetric.Personal;
     public NumberStyle NumberStyle { get; set; } = NumberStyle.Grouped;
+    /// <summary>Text placed between the elements of the server bar (a space by default, e.g. " | ").</summary>
+    public string BarSeparator { get; set; } = " ";
+
     /// <summary>Show the DPS graphs in the main window.</summary>
     public bool ShowGraph { get; set; } = true;
 

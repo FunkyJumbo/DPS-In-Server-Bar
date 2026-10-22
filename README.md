@@ -46,7 +46,7 @@ This plugin doesn't reinvent the DPS meter: it brings it into the game's UI in a
 ### In the server bar
 
 A single compact entry, for example `● [icon] DRK #1 (+8%) 21,234 rDPS ~92`. Every piece is optional
-and can be **reordered**:
+and can be **reordered**, with the separator of your choice between them (space, `|`, `/`, `-` or custom):
 
 | Element | Example | What it shows |
 |---|---|---|
@@ -56,7 +56,7 @@ and can be **reordered**:
 | Rank in your role | `#1 (+8%)` | Rank among tanks, healers or DPS only, and the gap to #1 (or to #2 when you are first) |
 | Value | `21,234 DPS` | Personal DPS, party DPS (pDPS) or rDPS |
 | Pace | `+4%` | Damage so far vs. your best **kill** of this fight, at the same second |
-| Boss HP | `54%` | HP of the boss, read from the game |
+| Boss HP | `HP 54%` | HP of the boss, read from the game |
 | Projected kill | `ETA 9:12` | When the boss dies at the current party DPS — red if after the enrage |
 | Enrage timer | `Enrage 3:12` | Time left before the enrage entered for this fight — red for the last 30 seconds |
 | Ultimate phase | `P1` | Current phase in a supported ultimate |
@@ -142,7 +142,7 @@ tracker, which also runs next to ACT when rDPS is enabled; ACT's numbers are the
 
 | Tab | Contents |
 |---|---|
-| **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, graphs, colors, auto-hide |
+| **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, graphs, colors, auto-hide |
 | **Party checks** | Per zone / per encounter: boss HP, enrage time, minimum party DPS |
 | **Pulls** | Chat summary (and in dungeons), record only in duties, minimum pull length, history size, graph window |
 | **Ultimates** | Phase tracking on/off, enrage time of each phase (or from your last wipe) |

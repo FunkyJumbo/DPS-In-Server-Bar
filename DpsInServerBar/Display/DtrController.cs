@@ -70,7 +70,8 @@ public sealed class DtrController : IDisposable
     private readonly record struct RenderState(string Key, bool Visible, SeString Text);
 
     /// <summary>A piece of the bar: some text or an icon, with an optional color of its own.</summary>
-    private readonly record struct Segment(string Text, BitmapFontIcon Icon = BitmapFontIcon.None, Vector4? Color = null);
+    /// <param name="Glue">Followed by a plain space instead of the separator (the icon and the end marker belong to what follows).</param>
+    private readonly record struct Segment(string Text, BitmapFontIcon Icon = BitmapFontIcon.None, Vector4? Color = null, bool Glue = false);
 
     private RenderState BuildState(ICombatSource source, CombatSnapshot? snapshot)
     {
@@ -124,7 +125,7 @@ public sealed class DtrController : IDisposable
         }
 
         var key = string.Join("|", segments.Select(s => $"{s.Text}{s.Icon}{s.Color}")) + $"|{color}";
-        return new RenderState(key, true, Render(segments, color));
+        return new RenderState(key, true, Render(segments, color, config.BarSeparator));
     }
 
     private Segment? BuildSegment(
@@ -135,11 +136,11 @@ public sealed class DtrController : IDisposable
         switch (element)
         {
             case BarElement.FinalMarker:
-                return ended ? new Segment("●") : null;
+                return ended ? new Segment("●", Glue: true) : null;
 
             case BarElement.JobIcon:
                 return you is { HasJob: true } && JobIcons.For(you.Job) is var icon && icon != BitmapFontIcon.None
-                           ? new Segment(string.Empty, icon)
+                           ? new Segment(string.Empty, icon, Glue: true)
                            : null;
 
             case BarElement.JobName:
@@ -188,8 +189,8 @@ public sealed class DtrController : IDisposable
             case BarElement.BossHp:
                 // In an ultimate, only the bosses of the current phase count.
                 if (ActivePhase() is { } hpPhase)
-                    return new Segment($"{hpPhase.HpFraction:0%}");
-                return boss is not null ? new Segment($"{boss.HpFraction:0%}") : null;
+                    return new Segment($"HP {hpPhase.HpFraction:0%}");
+                return boss is not null ? new Segment($"HP {boss.HpFraction:0%}") : null;
 
             case BarElement.KillTime:
             {
@@ -284,14 +285,14 @@ public sealed class DtrController : IDisposable
         _ => "DPS",
     };
 
-    private static SeString Render(IReadOnlyList<Segment> segments, Vector4? color)
+    private static SeString Render(IReadOnlyList<Segment> segments, Vector4? color, string separator = " ")
     {
         var builder = new Lumina.Text.SeStringBuilder();
         for (var i = 0; i < segments.Count; i++)
         {
             var s = segments[i];
             if (i > 0)
-                builder.Append(" ");
+                builder.Append(segments[i - 1].Glue ? " " : separator);
 
             if (s.Icon != BitmapFontIcon.None)
             {
