@@ -10,6 +10,7 @@
 - Fix: the default AAC Heavyweight M1/M2 (Savage) party checks pointed at the wrong zones (Abyssos); existing
   settings are corrected automatically.
 - The pace vs your best kill now reads `Best +4%` in the server bar.
+- Live and History: the player tables fit the number of players (no scrollbar, no empty space in smaller groups).
 
 ## 1.0.3.0
 

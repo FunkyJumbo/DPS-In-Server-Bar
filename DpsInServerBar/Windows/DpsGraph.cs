@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -10,6 +11,9 @@ namespace DpsInServerBar.Windows;
 public sealed class DpsGraph
 {
     public readonly record struct Series(string Label, float[] Values);
+
+    // Below this the graph is unreadable: the window scrolls instead.
+    private const float MinHeight = 150;
 
     // Window of the uptime curve, in seconds: short enough to see when uptime was lost.
     private const int UptimeWindow = 3;
@@ -70,7 +74,7 @@ public sealed class DpsGraph
             return;
         }
 
-        if (!ImPlot.BeginPlot(id, new Vector2(-1, height), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
+        if (!ImPlot.BeginPlot(id, new Vector2(-1, Math.Max(height, MinHeight)), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
             return;
 
         ImPlot.SetupAxes("Time (s)", "Uptime %", ImPlotAxisFlags.AutoFit, ImPlotAxisFlags.None);
@@ -91,7 +95,7 @@ public sealed class DpsGraph
 
     public static void Draw(string id, IReadOnlyList<Series> series, float height, double? threshold = null)
     {
-        if (!ImPlot.BeginPlot(id, new Vector2(-1, height), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
+        if (!ImPlot.BeginPlot(id, new Vector2(-1, Math.Max(height, MinHeight)), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
             return;
 
         ImPlot.SetupAxes("Time (s)", "DPS", ImPlotAxisFlags.AutoFit, ImPlotAxisFlags.AutoFit);

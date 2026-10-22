@@ -136,15 +136,12 @@ public sealed class MainWindow : Window
         }
 
         ImGui.Spacing();
-        var tableHeight = Math.Min(ImGui.GetTextLineHeightWithSpacing() * (snapshot.Combatants.Count + 1.5f),
-                                   ImGui.GetContentRegionAvail().Y * (config.ShowGraph ? 0.45f : 1f));
         DrawCombatantTable(
             snapshot.Combatants.OrderByDescending(c => c.EncDps).Select(c => new PullCombatant
             {
                 Name = c.Name, Job = c.Job, Dps = c.EncDps, Rdps = c.HasRdps ? c.RDps : null, Breakdown = c.RdpsBreakdown, DamagePercent = c.DamagePercent,
                 CritPercent = c.CritPercent, DirectHitPercent = c.DirectHitPercent, Deaths = c.Deaths, IsYou = c.IsYou,
-            }),
-            tableHeight);
+            }));
 
         if (config.ShowGraph)
         {
@@ -496,9 +493,7 @@ public sealed class MainWindow : Window
                                + NumberFormat.Duration(TimeSpan.FromSeconds(compare.DurationSeconds)));
         }
 
-        var tableHeight = Math.Min(ImGui.GetTextLineHeightWithSpacing() * (pull.Combatants.Count + 1.5f),
-                                   ImGui.GetContentRegionAvail().Y * (config.ShowGraph ? 0.4f : 1f));
-        DrawCombatantTable(pull.Combatants, tableHeight);
+        DrawCombatantTable(pull.Combatants);
 
         if (!config.ShowGraph)
             return;
@@ -529,7 +524,8 @@ public sealed class MainWindow : Window
 
     // ---------------------------------------------------------------- Shared
 
-    private void DrawCombatantTable(IEnumerable<PullCombatant> combatants, float height)
+    /// <summary>Player table, sized to its rows: no scrollbar, no empty space with fewer than 8 players.</summary>
+    private void DrawCombatantTable(IEnumerable<PullCombatant> combatants)
     {
         var rows = combatants.ToList();
         var showRdps = rows.Any(c => c.Rdps is not null);
@@ -552,22 +548,19 @@ public sealed class MainWindow : Window
                 config.SortByRdps = true;
                 config.Save();
             }
-
-            height = Math.Max(ImGui.GetTextLineHeightWithSpacing() * 2, height - ImGui.GetFrameHeightWithSpacing());
         }
 
         rows = showRdps && config.SortByRdps
                    ? rows.OrderByDescending(c => c.Rdps ?? c.Dps).ToList()
                    : rows.OrderByDescending(c => c.Dps).ToList();
 
-        const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH
-                                      | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingStretchProp;
+        // Without ScrollY and with a height of 0, the table takes exactly the height of its rows.
+        const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
 
-        using var table = ImRaii.Table("##combatants", showRdps ? 8 : 7, flags, new Vector2(-1, height));
+        using var table = ImRaii.Table("##combatants", showRdps ? 8 : 7, flags, new Vector2(-1, 0));
         if (!table)
             return;
 
-        ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, 3f);
         ImGui.TableSetupColumn("Job", ImGuiTableColumnFlags.WidthStretch, 1f);
         ImGui.TableSetupColumn("DPS", ImGuiTableColumnFlags.WidthStretch, 1.6f);
