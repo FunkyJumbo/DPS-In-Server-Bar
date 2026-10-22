@@ -219,7 +219,7 @@ public sealed class ConfigWindow : Window
                                "Compared with players of your role only (tanks, healers or DPS): with the first one, "
                                + "or with the second one when you are first. Uses rDPS when the metric is rDPS."),
         BarElement.Value => ("Value", "21,234 DPS", null),
-        BarElement.Pace => ("Pace vs your best pull", "+4%",
+        BarElement.Pace => ("Pace vs your best pull", "Best +4%",
                             "Damage done so far compared with your best pull of the same encounter, at the same second."),
         BarElement.BossHp => ("Boss HP", "HP 54%", "HP of the enemy with the most HP in the fight, read from the game."),
         BarElement.Percentile => ("FFLogs percentile (estimate)", "~92",

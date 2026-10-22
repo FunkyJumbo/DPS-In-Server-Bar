@@ -168,7 +168,7 @@ public sealed class DtrController : IDisposable
                 return new Segment($"{(value is { } v ? NumberFormat.Format(v, config.NumberStyle) : "-")} {label}");
 
             case BarElement.Pace:
-                return !ended && plugin.Pulls.PaceVsBest() is { } pace ? new Segment($"{pace:+0%;-0%}") : null;
+                return !ended && plugin.Pulls.PaceVsBest() is { } pace ? new Segment($"Best {pace:+0%;-0%}") : null;
 
             case BarElement.Uptime:
             {

@@ -9,6 +9,7 @@
   at once. Works for pulls already recorded.
 - Fix: the default AAC Heavyweight M1/M2 (Savage) party checks pointed at the wrong zones (Abyssos); existing
   settings are corrected automatically.
+- The pace vs your best kill now reads `Best +4%` in the server bar.
 
 ## 1.0.3.0
 

@@ -55,7 +55,7 @@ and can be **reordered**, with the separator of your choice between them (space,
 | Rank | `#2` | Your rank in the party |
 | Rank in your role | `#1 (+8%)` | Rank among tanks, healers or DPS only, and the gap to #1 (or to #2 when you are first) |
 | Value | `21,234 DPS` | Personal DPS, party DPS (pDPS) or rDPS |
-| Pace | `+4%` | Damage so far vs. your best **kill** of this fight, at the same second |
+| Pace | `Best +4%` | Damage so far vs. your best **kill** of this fight, at the same second |
 | Boss HP | `HP 54%` | HP of the boss, read from the game |
 | Projected kill | `ETA 9:12` | When the boss dies at the current party DPS — red if after the enrage |
 | Enrage timer | `Enrage 3:12` | Time left before the enrage entered for this fight — red for the last 30 seconds |
