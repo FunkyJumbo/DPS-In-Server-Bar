@@ -3,7 +3,7 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
-## Unreleased
+## 1.0.6.0
 
 - Ultimates: TEA now goes P1 → Limit Cut → P2. Limit Cut (a transition: no boss, no DPS check) starts when Living
   Liquid dies and lasts until Brute Justice and Cruise Chaser are both targetable.

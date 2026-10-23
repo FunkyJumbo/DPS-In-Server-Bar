@@ -6,7 +6,7 @@
     "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, graphs, pull history with comparisons, party DPS checks and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.",
     "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
     "InternalName": "DpsInServerBar",
-    "AssemblyVersion": "1.0.5.0",
+    "AssemblyVersion": "1.0.6.0",
     "DalamudApiLevel": 15,
     "ApplicableVersion": "any",
     "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"],
@@ -16,9 +16,9 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
     "ImageUrls": [],
-    "Changelog": "- Party DPS check: only the pDPS value is colored (green / red), now with its gap to the required DPS, e.g. 182,345 pDPS (+3.2%).\n- Ultimates: The Epic of Alexander P2 (Brute Justice & Cruise Chaser), starting when both bosses are targetable.\n- Ultimates: chat summary at the end of each phase (phase time, DPS on the phase bosses vs the DPS needed, enrage margin, GCD), or HP left when the pull ends during the phase.\n- Ultimates: new bar element Ultimate phase boss DPS (Boss 145,000 (+3.6%)), green / red against the DPS needed for the phase enrage.\n- Ultimates tab: combined HP of each phase bosses (read in game or entered by hand) and the resulting required DPS.\n- Fix: ultimate phases now end as soon as the next phase starts; invisible copies of a boss no longer keep a phase alive or skew its HP.",
-    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.5.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.5.0/latest.zip",
+    "Changelog": "- Ultimates: TEA now goes P1 -> Limit Cut -> P2. Limit Cut (a transition: no boss, no DPS check) starts when Living Liquid dies and lasts until Brute Justice and Cruise Chaser are both targetable.\n- Ultimates: only the phase summaries are printed in chat, no more pull summary on top of them.\n- Server bar: once the fight is over, every element keeps its last value (ETA, enrage timer, pace, phase values...) until the next fight.",
+    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.6.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.6.0/latest.zip",
     "DownloadLinkTesting": ""
   }
 ]
