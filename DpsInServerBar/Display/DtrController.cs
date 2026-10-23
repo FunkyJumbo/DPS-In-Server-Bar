@@ -25,6 +25,11 @@ public sealed class DtrController : IDisposable
     // Cache of what was last written, so the bar is only touched when something actually changes.
     private string lastKey = string.Empty;
 
+    // Last value of each element during the current fight: once the fight is over, elements that have nothing new
+    // to show (pace, ETA, enrage timer, ultimate phase values...) keep displaying it until the next fight.
+    private readonly Dictionary<BarElement, Segment> lastSegments = new();
+    private DateTime lastSegmentsFight;
+
     public DtrController(Plugin plugin, IDtrBar dtrBar)
     {
         this.plugin = plugin;
@@ -106,12 +111,26 @@ public sealed class DtrController : IDisposable
         var threshold = config.FindThreshold(plugin.CurrentTerritory, snapshot.Encounter.Title);
         var boss = plugin.Boss.Current;
 
+        if (snapshot.StartUtc != lastSegmentsFight)
+        {
+            lastSegments.Clear();
+            lastSegmentsFight = snapshot.StartUtc;
+        }
+
         var segments = new List<Segment>();
         foreach (var element in config.BarLayout.Where(e => e.Enabled).Select(e => e.Element))
         {
             var segment = BuildSegment(element, config, snapshot, value, label, ended, partyDps, threshold, boss);
             if (segment is { } s)
+            {
+                if (!ended)
+                    lastSegments[element] = s;
                 segments.Add(s);
+            }
+            else if (ended && lastSegments.TryGetValue(element, out var last))
+            {
+                segments.Add(last);
+            }
         }
 
         // The main color: grey once the fight is over. The party DPS check only colors the pDPS value (see Value).
@@ -207,9 +226,12 @@ public sealed class DtrController : IDisposable
             }
 
             case BarElement.Phase:
-                return plugin.Ultimates.Current is { } phaseView ? new Segment($"P{phaseView.Number}") : null;
+                return plugin.Ultimates.Current is { } phaseView ? new Segment(phaseView.Label) : null;
 
             case BarElement.BossHp:
+                if (InTransition())
+                    return null;
+
                 // In an ultimate, only the bosses of the current phase count.
                 if (ActivePhase() is { } hpPhase)
                     return new Segment($"HP {hpPhase.HpFraction:0%}");
@@ -217,6 +239,9 @@ public sealed class DtrController : IDisposable
 
             case BarElement.KillTime:
             {
+                if (InTransition())
+                    return null;
+
                 TimeSpan? eta;
                 double? enrageSeconds;
                 if (ActivePhase() is { } etaPhase)
@@ -242,6 +267,9 @@ public sealed class DtrController : IDisposable
 
             case BarElement.EnrageTimer:
             {
+                if (InTransition())
+                    return null;
+
                 double? left = null;
                 if (ActivePhase() is { } enragePhase)
                     left = enragePhase.EnrageIn?.TotalSeconds;
@@ -270,14 +298,15 @@ public sealed class DtrController : IDisposable
 
     private static void AppendPhase(StringBuilder sb, PhaseView phase, Configuration config)
     {
-        sb.Append($"\n{phase.Fight.Key} - P{phase.Number}");
+        sb.Append($"\n{phase.Fight.Key} - {phase.Label}");
         if (!phase.Supported)
         {
             sb.Append(": phase not supported yet");
             return;
         }
 
-        sb.Append($" {phase.Phase!.Name}");
+        if (!phase.IsTransition)
+            sb.Append($" {phase.Phase!.Name}");
         if (!phase.Started)
         {
             sb.Append(phase.InCombat ? " (waiting for the boss)" : string.Empty);
@@ -285,6 +314,8 @@ public sealed class DtrController : IDisposable
         }
 
         sb.Append($"  {NumberFormat.Duration(phase.Elapsed)}{(phase.InCombat ? "" : " (pull ended)")}");
+        if (phase.IsTransition)
+            return; // no boss to follow until the next phase
         sb.Append($"\nBoss HP: {phase.HpFraction:0.0%} ({NumberFormat.Format(phase.CurrentHp, NumberStyle.Compact)}"
                   + $" / {NumberFormat.Format(phase.MaxHp, NumberStyle.Compact)})");
         sb.Append($"\nDPS on boss: {NumberFormat.Format(phase.BossDps, config.NumberStyle)}");
@@ -299,7 +330,10 @@ public sealed class DtrController : IDisposable
 
     /// <summary>The ultimate phase being fought, when its bosses are up.</summary>
     private PhaseView? ActivePhase() =>
-        plugin.Ultimates.Current is { Supported: true, Started: true, InCombat: true } phase ? phase : null;
+        plugin.Ultimates.Current is { Supported: true, Started: true, InCombat: true, IsTransition: false } phase ? phase : null;
+
+    /// <summary>During an ultimate transition there is no boss to follow: boss HP, ETA and enrage are hidden.</summary>
+    private bool InTransition() => plugin.Ultimates.Current is { IsTransition: true, InCombat: true };
 
     private static string MetricLabel(DisplayMetric metric) => metric switch
     {
@@ -406,7 +440,7 @@ public sealed class DtrController : IDisposable
             {
                 sb.Append($"\nGCD uptime: {gcd.Uptime:0.0%} (lost {gcd.LostSeconds:0.0}s)");
                 if (gcd.Phases.Count > 0)
-                    sb.Append("\n  " + string.Join(" | ", gcd.Phases.Select(p => $"P{p.Number} {p.Uptime:0.0%}")));
+                    sb.Append("\n  " + string.Join(" | ", gcd.Phases.Select(p => $"{UltimateDefinitions.Label(plugin.CurrentTerritory, p.Number)} {p.Uptime:0.0%}")));
             }
 
             if (plugin.EstimatePercentile(snapshot) is { } percentile)

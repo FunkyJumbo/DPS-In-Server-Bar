@@ -153,11 +153,17 @@ public sealed class MainWindow : Window
     /// <summary>Ultimate phase line: phase timer, boss HP, DPS on the boss vs the DPS needed, projected kill.</summary>
     private static void DrawPhase(PhaseView phase)
     {
-        ImGui.TextUnformatted($"{phase.Fight.Key} P{phase.Number}");
+        ImGui.TextUnformatted($"{phase.Fight.Key} {phase.Label}");
         ImGui.SameLine();
         if (!phase.Supported)
         {
             ImGui.TextDisabled("phase not supported yet");
+            return;
+        }
+
+        if (phase.IsTransition)
+        {
+            ImGui.TextDisabled($"transition {NumberFormat.Duration(phase.Elapsed)}");
             return;
         }
 
@@ -466,7 +472,7 @@ public sealed class MainWindow : Window
         if (pull.Uptime is { } gcd)
         {
             var phases = pull.PhaseUptimes.Count > 0
-                ? "  |  " + string.Join("  ", pull.PhaseUptimes.Select(p => $"P{p.Number} {p.Uptime:0.0%}"))
+                ? "  |  " + string.Join("  ", pull.PhaseUptimes.Select(p => $"{UltimateDefinitions.Label(pull.TerritoryId, p.Number)} {p.Uptime:0.0%}"))
                 : string.Empty;
             ImGui.TextUnformatted($"GCD uptime {gcd:0.0%}");
             ImGui.SameLine();

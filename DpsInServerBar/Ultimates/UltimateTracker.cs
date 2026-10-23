@@ -25,6 +25,11 @@ public sealed record PhaseView(
     /// <summary>False past the last phase defined for this ultimate.</summary>
     public bool Supported => Phase is not null;
 
+    /// <summary>"P1", "Limit Cut"...</summary>
+    public string Label => Phase?.Label ?? $"P{Number}";
+
+    public bool IsTransition => Phase?.IsTransition == true;
+
     public double HpFraction => MaxHp > 0 ? CurrentHp / MaxHp : 0;
 
     /// <summary>Damage actually dealt to the tracked bosses per second since the phase started.</summary>
@@ -141,7 +146,7 @@ public sealed class UltimateTracker
         {
             // The pull ended during this phase.
             LastWipes[fight.Phases[phaseIndex].Key] = now - start;
-            if (Current is { Supported: true, Started: true } last)
+            if (Current is { Supported: true, Started: true, Phase.IsTransition: false } last)
                 PhaseEnded?.Invoke(new PhaseResult(fight, last.Phase!, last.Number, now - start, last.MaxHp, last.CurrentHp, last.EnrageSeconds, false, last.CheckHp));
         }
 
@@ -183,23 +188,29 @@ public sealed class UltimateTracker
             if (alive.Count > 0)
                 lastAliveUtc = now;
 
-            // The phase ends when the next one starts, or when its bosses are dead (or gone for good).
-            var next = phaseIndex + 1 < fight.Phases.Count ? fight.Phases[phaseIndex + 1] : null;
-            var nextStarted = next is not null && HasStarted(next, npcs);
-            var bossesGone = alive.Count == 0 && (bosses.Count > 0 || now - lastAliveUtc > GoneDelay);
+            // Any phase ends when the next boss phase starts (transitions in between are skipped); a boss phase
+            // also ends when its bosses are dead (or gone for good), which leads into the following transition.
+            var nextBoss = NextBossPhase(fight, phaseIndex);
+            var nextStarted = nextBoss is { } nb && HasStarted(fight.Phases[nb], npcs);
+            var bossesGone = !phase.IsTransition && alive.Count == 0 && (bosses.Count > 0 || now - lastAliveUtc > GoneDelay);
             if (nextStarted || bossesGone)
             {
-                LastClears[phase.Key] = (nextStarted ? now : lastAliveUtc) - phaseStart;
-                var maxHpAtEnd = maxHpByObject.Values.Sum(v => (double)v);
-                PhaseEnded?.Invoke(new PhaseResult(
-                    fight, phase, phaseIndex + 1, LastClears[phase.Key], maxHpAtEnd, 0,
-                    config.UltimateEnrageSeconds.TryGetValue(phase.Key, out var phaseEnrage) && phaseEnrage > 0 ? phaseEnrage : null,
-                    true, config.PhaseCheckHp(phase.Key, maxHpAtEnd)));
-                phaseIndex++;
-                ResetPhase();
-                if (nextStarted)
+                if (!phase.IsTransition)
                 {
-                    // The next phase's bosses are already up: its timer starts now.
+                    LastClears[phase.Key] = (nextStarted ? now : lastAliveUtc) - phaseStart;
+                    var maxHpAtEnd = maxHpByObject.Values.Sum(v => (double)v);
+                    PhaseEnded?.Invoke(new PhaseResult(
+                        fight, phase, phaseIndex + 1, LastClears[phase.Key], maxHpAtEnd, 0,
+                        config.UltimateEnrageSeconds.TryGetValue(phase.Key, out var phaseEnrage) && phaseEnrage > 0 ? phaseEnrage : null,
+                        true, config.PhaseCheckHp(phase.Key, maxHpAtEnd)));
+                }
+
+                phaseIndex = nextStarted ? nextBoss!.Value : phaseIndex + 1;
+                ResetPhase();
+
+                // The new phase starts now if its bosses are already up, or if it is a transition.
+                if (nextStarted || (phaseIndex < fight.Phases.Count && fight.Phases[phaseIndex].IsTransition))
+                {
                     phaseStartUtc = now;
                     lastAliveUtc = now;
                 }
@@ -225,9 +236,24 @@ public sealed class UltimateTracker
             phaseStartUtc is { } s ? now - s : TimeSpan.Zero, currentHp, maxHp, enrage, true, config.PhaseCheckHp(phase.Key, maxHp));
     }
 
+    /// <summary>Index of the first boss phase after the given one (transitions skipped), or null.</summary>
+    private static int? NextBossPhase(UltimateFight fight, int index)
+    {
+        for (var i = index + 1; i < fight.Phases.Count; i++)
+        {
+            if (!fight.Phases[i].IsTransition)
+                return i;
+        }
+
+        return null;
+    }
+
     /// <summary>Whether a phase's bosses are up: the first one, or all of them for a multi-boss phase.</summary>
     private bool HasStarted(UltimatePhase phase, List<IBattleNpc> npcs)
     {
+        if (phase.IsTransition)
+            return false; // a transition starts when the previous phase ends
+
         bool Up(HashSet<uint> ids) => npcs.Any(n => ids.Contains(n.NameId) && n.IsTargetable && !n.IsDead && n.CurrentHp > 0);
 
         var bosses = nameIdsByPhase[phase.Key];

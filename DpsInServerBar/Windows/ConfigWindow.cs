@@ -533,7 +533,16 @@ public sealed class ConfigWindow : Window
                 ImGui.TableNextRow();
 
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted($"P{i + 1} {phase.Name}");
+                if (phase.IsTransition)
+                {
+                    // A transition has no boss, so no HP, enrage or required DPS.
+                    ImGui.TextDisabled(phase.Label);
+                    ImGui.TableNextColumn();
+                    ImGui.TextDisabled("transition, until the next phase's bosses are targetable");
+                    continue;
+                }
+
+                ImGui.TextUnformatted($"{phase.Label} {phase.Name}");
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(string.Join(", ", phase.TrackedBosses));
 

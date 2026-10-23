@@ -65,6 +65,7 @@ and can be **reordered**, with the separator of your choice between them (space,
 | FFLogs percentile | `~92` | Estimated FFLogs percentile of your rDPS, in FFLogs colors |
 
 - **Left click** cycles DPS → pDPS → rDPS. **Right click** opens the main window.
+- Once the fight is over, every element keeps its last value until the next fight.
 - **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, GCD uptime (per phase in an ultimate), best kill, percentile.
 - Colors: with a DPS check for the fight, only the pDPS value turns green/red, with its gap to the required DPS
   (`182,345 pDPS (+3.2%)`); everything turns grey once the fight is over.
@@ -109,8 +110,9 @@ follow the current phase. GCD uptime is also measured per phase. The **Ultimate 
 The combined HP of each phase's bosses (all of them must die) is read in game the first time the phase is reached and
 shown in the Ultimates tab with the resulting required DPS; it can be overridden by hand.
 
-Supported so far: **The Epic of Alexander — P1 (Living Liquid) and P2 (Brute Justice & Cruise Chaser)**.
-A phase ends as soon as the next one starts (for P2: when both bosses are targetable), or when its bosses die. More phases and ultimates will be added one at a time.
+Supported so far: **The Epic of Alexander — P1 (Living Liquid), Limit Cut (transition) and P2 (Brute Justice & Cruise Chaser)**.
+A boss phase ends when its bosses die (then the transition starts) or as soon as the next boss phase starts (for P2: when
+both bosses are targetable). In a supported ultimate, the phase summaries replace the usual pull summary. More phases and ultimates will be added one at a time.
 
 ### rDPS
 

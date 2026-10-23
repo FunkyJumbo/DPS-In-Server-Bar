@@ -168,7 +168,9 @@ public sealed class PullTracker : IDisposable
         lastFinished = record;
         lastFinishedUtc = DateTime.UtcNow;
 
-        if (config.ChatSummary && (config.ChatSummaryInDungeons || !IsDungeon(record.TerritoryId)))
+        // In a supported ultimate the phase summaries replace the pull summary.
+        var ultimateSummaries = config.UltimateMode && config.ChatSummaryPhases && UltimateTracker.FightFor(record.TerritoryId) is not null;
+        if (config.ChatSummary && !ultimateSummaries && (config.ChatSummaryInDungeons || !IsDungeon(record.TerritoryId)))
         {
             FlushSummary(force: true); // a previous one still waiting
             pendingSummary = record;
@@ -308,7 +310,7 @@ public sealed class PullTracker : IDisposable
         var sb = new Lumina.Text.SeStringBuilder();
 
         sb.PushColorRgba(Muted).Append("[DPS] ").PopColor();
-        sb.Append($"{result.Fight.Key} P{result.Number} {result.Phase.Name} ({NumberFormat.Duration(result.Elapsed)})");
+        sb.Append($"{result.Fight.Key} {result.Phase.Label} {result.Phase.Name} ({NumberFormat.Duration(result.Elapsed)})");
         if (result.Cleared)
             sb.Append(" ").PushColorRgba(Good).Append("Cleared").PopColor();
         else
