@@ -115,6 +115,7 @@ public sealed class ConfigWindow : Window
         (SummaryElement.Uptime, "GCD"),
         (SummaryElement.PartyDps, "pDPS"),
         (SummaryElement.Deaths, "Deaths"),
+        (SummaryElement.KilledBy, "Killed by"),
     ];
 
     private static readonly (string Label, string Value)[] SeparatorPresets =
@@ -444,8 +445,14 @@ public sealed class ConfigWindow : Window
             ImGui.TextDisabled("Values shown:");
             foreach (var (element, label) in SummaryLabels)
             {
+                // Same line as the previous checkbox when it fits.
                 if (element != SummaryLabels[0].Element)
+                {
                     ImGui.SameLine();
+                    var width = ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X + ImGui.CalcTextSize(label).X;
+                    if (ImGui.GetContentRegionAvail().X < width)
+                        ImGui.NewLine();
+                }
                 var on = c.ChatSummaryElements.HasFlag(element);
                 if (ImGui.Checkbox($"{label}##summary", ref on))
                 {

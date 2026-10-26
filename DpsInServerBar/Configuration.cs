@@ -87,7 +87,10 @@ public enum SummaryElement
     Uptime = 16,
     PartyDps = 32,
     Deaths = 64,
-    All = Job | Dps | Rdps | Percentile | Uptime | PartyDps | Deaths,
+
+    /// <summary>On a wipe, the ability that killed you.</summary>
+    KilledBy = 128,
+    All = Job | Dps | Rdps | Percentile | Uptime | PartyDps | Deaths | KilledBy,
 }
 
 [Serializable]
@@ -100,7 +103,7 @@ public sealed class BarElementSetting
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 4;
+    public int Version { get; set; } = 5;
 
     /// <summary>Order and visibility of the elements of the server bar text.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -245,6 +248,15 @@ public sealed class Configuration : IPluginConfiguration
             }
 
             Version = 4;
+            changed = true;
+        }
+
+        if (Version < 5)
+        {
+            // "Killed by" was added to the chat summary: turn it on for those who had every value on.
+            if (ChatSummaryElements == (SummaryElement.All & ~SummaryElement.KilledBy))
+                ChatSummaryElements = SummaryElement.All;
+            Version = 5;
             changed = true;
         }
 

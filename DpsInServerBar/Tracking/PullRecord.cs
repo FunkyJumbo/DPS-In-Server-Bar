@@ -53,6 +53,9 @@ public sealed class PullRecord
     public int PartySize { get; set; }
     public int Deaths { get; set; }
 
+    /// <summary>What killed you last in this pull, e.g. "Hydrothermal Missile (Living Liquid, 98,432)".</summary>
+    public string KilledBy { get; set; } = string.Empty;
+
     public List<PullCombatant> Combatants { get; set; } = [];
 
     /// <summary>Cumulative damage at each whole second of the pull (index = second).</summary>

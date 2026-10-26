@@ -73,8 +73,10 @@ public sealed class CombatSourceManager : IDisposable
         else if (reconnectAct || !Act.IsRunning)
             Act.Start(new Uri(config.WebSocketUrl));
 
-        // The built-in tracker also runs next to ACT when rDPS is wanted, since only it sees buffs.
-        Native.SetEnabled(config.Source != CombatSourceKind.Act || config.ComputeRdps);
+        // The built-in tracker also runs next to ACT when rDPS is wanted (only it sees buffs) or to tell what killed
+        // you (only it sees the hits you take).
+        Native.SetEnabled(config.Source != CombatSourceKind.Act || config.ComputeRdps
+                          || (config.ChatSummary && config.ChatSummaryElements.HasFlag(SummaryElement.KilledBy)));
     }
 
     public void Tick() => Native.Tick();

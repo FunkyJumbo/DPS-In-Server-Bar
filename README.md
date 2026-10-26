@@ -84,13 +84,16 @@ and can be **reordered**, with the separator of your choice between them (space,
 
 ### After each pull
 
-An optional chat summary, with the values of your choice (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths):
+An optional chat summary, with the values of your choice (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths,
+and on a wipe the ability that killed you):
 
 ```
 [DPS] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST (+0.8%)
 ```
 
 DPS, rDPS, GCD and pDPS can each be compared with your best kill of the fight (`NEW BEST (+2.1%)` or the gap).
+On a wipe, `Killed by Hydrothermal Missile (Living Liquid, 98,432)` tells the last hit you took before dying (also in the
+ultimate phase summaries; read by the built-in tracker).
 Comparisons are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
 The summary can be turned off in dungeons.
 

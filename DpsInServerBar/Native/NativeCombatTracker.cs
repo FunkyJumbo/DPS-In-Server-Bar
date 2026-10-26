@@ -37,6 +37,7 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
     private readonly IDataManager dataManager;
     private readonly IPluginLog log;
     private readonly RdpsEngine rdps;
+    private readonly DeathRecorder deaths;
 
     private readonly Hook<ActionEffectHandler.Delegates.Receive>? effectHook;
     private readonly Hook<PacketDispatcher.Delegates.HandleActorControlPacket>? actorControlHook;
@@ -63,6 +64,7 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         this.dataManager = dataManager;
         this.log = log;
         rdps = new RdpsEngine(objectTable, playerState, ResolvePartyOwner);
+        deaths = new DeathRecorder(dataManager);
 
         limitBreakActions = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>()
             .Where(a => a.ActionCategory.RowId == 9)
@@ -88,6 +90,9 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
     public bool IsReady => IsEnabled;
     public string? HookError { get; }
     public CombatSnapshot? Latest => latest;
+
+    /// <summary>What killed you last (needs the built-in tracker to be running).</summary>
+    public DeathRecorder Deaths => deaths;
 
     public string StatusText => HookError is not null
         ? $"unavailable ({HookError})"
@@ -150,6 +155,8 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
 
         try
         {
+            RecordHitsOnYou(casterEntityId, header, effects, targetEntityIds);
+
             var owner = ResolvePartyOwner(casterEntityId);
             if (owner == 0)
                 return;
@@ -201,6 +208,8 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
 
         try
         {
+            RecordDamageOrDeathOfYou(entityId, category, arg1, arg2, arg3, arg4);
+
             switch (category)
             {
                 // DoT tick: entity = target, arg1 = status id, arg2 = type, arg3 = amount, arg4 = source (often unknown).
@@ -221,6 +230,49 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
             log.Error(ex, "Error while processing an actor control packet");
         }
     }
+
+    /// <summary>Remembers the hits you take, to tell what killed you.</summary>
+    private void RecordHitsOnYou(
+        uint casterEntityId, ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects,
+        GameObjectId* targetEntityIds)
+    {
+        var you = objectTable.LocalPlayer?.EntityId ?? 0;
+        if (you == 0)
+            return;
+
+        for (var t = 0; t < header->NumTargets; t++)
+        {
+            if (targetEntityIds[t].ObjectId != you)
+                continue;
+
+            long amount = 0;
+            foreach (ref readonly var effect in effects[t].Effects)
+            {
+                if (effect.Type is not (3 or 5 or 6))
+                    continue;
+                amount += effect.Value;
+                if ((effect.Param4 & 0x40) != 0)
+                    amount += (long)effect.Param3 << 16;
+            }
+
+            if (amount > 0)
+                deaths.OnHitTaken(header->ActionType, header->ActionId, NameOf(casterEntityId), amount);
+        }
+    }
+
+    private void RecordDamageOrDeathOfYou(uint entityId, uint category, uint arg1, uint arg2, uint arg3, uint arg4)
+    {
+        var you = objectTable.LocalPlayer?.EntityId ?? 0;
+        if (you == 0 || entityId != you)
+            return;
+
+        if (category == ActorControlDeath)
+            deaths.OnDeath();
+        else if (category == ActorControlDotHot && arg2 == DotHotTypeDamage && arg3 > 0)
+            deaths.OnDotTaken(arg1, arg4 is 0 or InvalidId ? string.Empty : NameOf(arg4), arg3);
+    }
+
+    private string NameOf(uint entityId) => objectTable.SearchByEntityId(entityId)?.Name.TextValue ?? string.Empty;
 
     private void AddDamage(uint ownerId, uint targetId, long amount, bool crit, bool directHit, uint actionId, uint? dotStatusId)
     {

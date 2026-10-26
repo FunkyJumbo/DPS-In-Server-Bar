@@ -8,6 +8,7 @@ using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using DpsInServerBar.Combat;
 using DpsInServerBar.Display;
+using DpsInServerBar.Native;
 using DpsInServerBar.Ultimates;
 using Lumina.Excel.Sheets;
 
@@ -145,6 +146,7 @@ public sealed class PullTracker : IDisposable
             RdpsRank = you is { HasRdps: true } ? final.YourRank(byRdps: true) : 0,
             PartySize = partyMembers.Count,
             Deaths = you?.Deaths ?? 0,
+            KilledBy = plugin.Sources.Native.Deaths.DeathBetween(pull.StartUtc, DateTime.UtcNow) is { } death ? Describe(death) : string.Empty,
             Combatants = final.Combatants
                 .OrderByDescending(c => c.EncDps)
                 .Select(c => new PullCombatant
@@ -291,6 +293,9 @@ public sealed class PullTracker : IDisposable
         if (shown.HasFlag(SummaryElement.Deaths) && pull.Deaths > 0)
             parts.Add(() => sb.PushColorRgba(Bad).Append($"Deaths {pull.Deaths}").PopColor());
 
+        if (shown.HasFlag(SummaryElement.KilledBy) && pull.Outcome != PullOutcome.Kill && pull.KilledBy.Length > 0)
+            parts.Add(() => sb.Append("Killed by ").PushColorRgba(Bad).Append(pull.KilledBy).PopColor());
+
         foreach (var part in parts)
         {
             sb.PushColorRgba(Muted).Append(" | ").PopColor();
@@ -345,6 +350,13 @@ public sealed class PullTracker : IDisposable
         if (plugin.Uptime.Snapshot()?.Phases.FirstOrDefault(p => p.Number == result.Number) is { AvailableSeconds: >= 5 } gcd)
             parts.Add(() => sb.Append($"GCD {gcd.Uptime:0.0%}"));
 
+        // Phase not cleared: what killed you during this phase, if you died.
+        if (!result.Cleared && config.ChatSummaryElements.HasFlag(SummaryElement.KilledBy)
+            && plugin.Sources.Native.Deaths.DeathBetween(DateTime.UtcNow - result.Elapsed - TimeSpan.FromSeconds(1), DateTime.UtcNow) is { } death)
+        {
+            parts.Add(() => sb.Append("Killed by ").PushColorRgba(Bad).Append(Describe(death)).PopColor());
+        }
+
         foreach (var part in parts)
         {
             sb.PushColorRgba(Muted).Append(" | ").PopColor();
@@ -352,6 +364,17 @@ public sealed class PullTracker : IDisposable
         }
 
         chat.Print(sb.ToReadOnlySeString().ToDalamudString());
+    }
+
+    /// <summary>"Hydrothermal Missile (Living Liquid, 98,432)".</summary>
+    private static string Describe(DeathInfo death)
+    {
+        var details = new List<string>();
+        if (death.Source.Length > 0)
+            details.Add(death.Source);
+        if (death.Damage > 0)
+            details.Add(death.Damage.ToString("N0", System.Globalization.CultureInfo.InvariantCulture));
+        return details.Count > 0 ? $"{death.Ability} ({string.Join(", ", details)})" : death.Ability;
     }
 
     private static void AppendRank(Lumina.Text.SeStringBuilder sb, int rank, int partySize)

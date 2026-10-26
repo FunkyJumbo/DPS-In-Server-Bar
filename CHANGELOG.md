@@ -3,6 +3,12 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## Unreleased
+
+- Chat summary: on a wipe, the ability that killed you, its source and its damage, e.g.
+  `Killed by Hydrothermal Missile (Living Liquid, 98,432)`. Also in the ultimate phase summaries. New "Killed by"
+  value in Settings > Pulls (on by default).
+
 ## 1.0.6.0
 
 - Ultimates: TEA now goes P1 → Limit Cut → P2. Limit Cut (a transition: no boss, no DPS check) starts when Living
