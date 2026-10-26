@@ -212,6 +212,13 @@ public sealed class PullTracker : IDisposable
             return;
 
         pendingSummary = null;
+        // Your death can be seen, or its cause refined (a body still falling), after the encounter was closed.
+        if (plugin.Sources.Native.Deaths.DeathBetween(pull.StartUtc, DateTime.UtcNow) is { } death && Describe(death) != pull.KilledBy)
+        {
+            pull.KilledBy = Describe(death);
+            plugin.History.Changed();
+        }
+
         PrintSummary(pull);
     }
 
@@ -221,7 +228,7 @@ public sealed class PullTracker : IDisposable
         var shown = config.ChatSummaryElements;
         var sb = new Lumina.Text.SeStringBuilder();
 
-        sb.PushColorRgba(Muted).Append("[DPS] ").PopColor();
+        sb.PushColorRgba(Muted).Append("[Recap] ").PopColor();
         sb.Append(string.IsNullOrEmpty(pull.Title) ? "Pull" : pull.Title)
           .Append($" ({NumberFormat.Duration(TimeSpan.FromSeconds(pull.DurationSeconds))})");
         switch (pull.Outcome)
@@ -314,7 +321,7 @@ public sealed class PullTracker : IDisposable
         var config = plugin.Configuration;
         var sb = new Lumina.Text.SeStringBuilder();
 
-        sb.PushColorRgba(Muted).Append("[DPS] ").PopColor();
+        sb.PushColorRgba(Muted).Append("[Recap] ").PopColor();
         sb.Append($"{result.Fight.Key} {result.Phase.Label} {result.Phase.Name} ({NumberFormat.Duration(result.Elapsed)})");
         if (result.Cleared)
             sb.Append(" ").PushColorRgba(Good).Append("Cleared").PopColor();

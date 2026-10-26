@@ -6,7 +6,7 @@
     "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, graphs, pull history with comparisons, party DPS checks and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.",
     "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
     "InternalName": "DpsInServerBar",
-    "AssemblyVersion": "1.0.8.0",
+    "AssemblyVersion": "1.0.9.0",
     "DalamudApiLevel": 15,
     "ApplicableVersion": "any",
     "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"],
@@ -16,9 +16,9 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
     "ImageUrls": [],
-    "Changelog": "- Chat summary: \"Killed by\" now shows whenever you died during the pull, in any content (dungeons, trials, raids, ultimates), kills included \u2014 not only on wipes.",
-    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.8.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.8.0/latest.zip",
+    "Changelog": "- Chat summary: fixed \"Killed by\" missing. It is now on for everyone (it stayed off for those who had customized the summary values), your death is also caught when its packet is missed or arrives after the pull ends, and auto-attacks show as Killed by Auto-attack (Hydaelyn, 45,210).\n- \"Killed by\" only names a hit that could take the HP you had (a boss auto-attack landing as you touch the arena edge is no longer blamed). Without one: the debuff that ran out (Doom (debuff)), falling off the arena when your height drops before or right after dying, or instant death (arena edge?) instead of \"unknown\". Each death is detailed in /xllog ([DeathRecorder]).\n- Chat summaries now start with [Recap] instead of [DPS].",
+    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.9.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.9.0/latest.zip",
     "DownloadLinkTesting": ""
   }
 ]

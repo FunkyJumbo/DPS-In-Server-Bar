@@ -3,6 +3,17 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.0.9.0
+
+- Chat summary: fixed "Killed by" missing. It is now on for everyone (it stayed off for those who had customized
+  the summary values), your death is also caught when its packet is missed or arrives after the pull ends, and
+  auto-attacks show as `Killed by Auto-attack (Hydaelyn, 45,210)`.
+- "Killed by" only names a hit that could take the HP you had (a boss auto-attack landing as you touch the arena
+  edge is no longer blamed). Without one: the debuff that ran out (`Doom (debuff)`), `falling off the arena` when
+  your height drops before or right after dying, or `instant death (arena edge?)` instead of "unknown". Each death
+  is detailed in /xllog ([DeathRecorder]).
+- Chat summaries now start with `[Recap]` instead of `[DPS]`.
+
 ## 1.0.8.0
 
 - Chat summary: "Killed by" now shows whenever you died during the pull, in any content (dungeons, trials, raids,

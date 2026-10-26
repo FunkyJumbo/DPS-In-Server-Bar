@@ -103,7 +103,7 @@ public sealed class BarElementSetting
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 5;
+    public int Version { get; set; } = 6;
 
     /// <summary>Order and visibility of the elements of the server bar text.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -257,6 +257,14 @@ public sealed class Configuration : IPluginConfiguration
             if (ChatSummaryElements == (SummaryElement.All & ~SummaryElement.KilledBy))
                 ChatSummaryElements = SummaryElement.All;
             Version = 5;
+            changed = true;
+        }
+
+        if (Version < 6)
+        {
+            // "Killed by" is now wanted everywhere: turn it on for everyone.
+            ChatSummaryElements |= SummaryElement.KilledBy;
+            Version = 6;
             changed = true;
         }
 

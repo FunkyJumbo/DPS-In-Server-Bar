@@ -88,12 +88,14 @@ An optional chat summary, with the values of your choice (job, DPS, rDPS, FFLogs
 and on a wipe the ability that killed you):
 
 ```
-[DPS] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST (+0.8%)
+[Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST (+0.8%)
 ```
 
 DPS, rDPS, GCD and pDPS can each be compared with your best kill of the fight (`NEW BEST (+2.1%)` or the gap).
 If you died during the pull (any content, wipe or kill), `Killed by Hydrothermal Missile (Living Liquid, 98,432)` tells the
-last hit you took before dying (also in the ultimate phase summaries; read by the built-in tracker).
+last hit you took before dying, auto-attacks included (also in the ultimate phase summaries; read by the built-in tracker).
+Only a hit that could take the HP you had counts; without one it guesses: `falling off the arena`, a debuff that ran out (`Doom (debuff)`) or
+`instant death (arena edge?)`.
 Comparisons are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
 The summary can be turned off in dungeons.
 

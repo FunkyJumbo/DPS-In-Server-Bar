@@ -64,7 +64,7 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         this.dataManager = dataManager;
         this.log = log;
         rdps = new RdpsEngine(objectTable, playerState, ResolvePartyOwner);
-        deaths = new DeathRecorder(dataManager);
+        deaths = new DeathRecorder(dataManager, log);
 
         limitBreakActions = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>()
             .Where(a => a.ActionCategory.RowId == 9)
@@ -127,6 +127,7 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
             return;
 
         RefreshParty();
+        deaths.Observe(objectTable.LocalPlayer, NameOf);
 
         if (!active)
             return;
