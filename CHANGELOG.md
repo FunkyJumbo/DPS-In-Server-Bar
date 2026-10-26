@@ -3,7 +3,7 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
-## Unreleased
+## 1.0.7.0
 
 - Chat summary: on a wipe, the ability that killed you, its source and its damage, e.g.
   `Killed by Hydrothermal Missile (Living Liquid, 98,432)`. Also in the ultimate phase summaries. New "Killed by"
