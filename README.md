@@ -92,8 +92,8 @@ and on a wipe the ability that killed you):
 ```
 
 DPS, rDPS, GCD and pDPS can each be compared with your best kill of the fight (`NEW BEST (+2.1%)` or the gap).
-On a wipe, `Killed by Hydrothermal Missile (Living Liquid, 98,432)` tells the last hit you took before dying (also in the
-ultimate phase summaries; read by the built-in tracker).
+If you died during the pull (any content, wipe or kill), `Killed by Hydrothermal Missile (Living Liquid, 98,432)` tells the
+last hit you took before dying (also in the ultimate phase summaries; read by the built-in tracker).
 Comparisons are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
 The summary can be turned off in dungeons.
 

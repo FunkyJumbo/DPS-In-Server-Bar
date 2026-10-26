@@ -6,7 +6,7 @@
     "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, graphs, pull history with comparisons, party DPS checks and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.",
     "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
     "InternalName": "DpsInServerBar",
-    "AssemblyVersion": "1.0.7.0",
+    "AssemblyVersion": "1.0.8.0",
     "DalamudApiLevel": 15,
     "ApplicableVersion": "any",
     "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"],
@@ -16,9 +16,9 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
     "ImageUrls": [],
-    "Changelog": "- Chat summary: on a wipe, the ability that killed you, its source and its damage, e.g. Killed by Hydrothermal Missile (Living Liquid, 98,432). Also in the ultimate phase summaries. New Killed by value in Settings > Pulls (on by default).",
-    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.7.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.7.0/latest.zip",
+    "Changelog": "- Chat summary: \"Killed by\" now shows whenever you died during the pull, in any content (dungeons, trials, raids, ultimates), kills included \u2014 not only on wipes.",
+    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.8.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.0.8.0/latest.zip",
     "DownloadLinkTesting": ""
   }
 ]

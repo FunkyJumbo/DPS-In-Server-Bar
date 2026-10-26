@@ -3,6 +3,11 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.0.8.0
+
+- Chat summary: "Killed by" now shows whenever you died during the pull, in any content (dungeons, trials, raids,
+  ultimates), kills included — not only on wipes.
+
 ## 1.0.7.0
 
 - Chat summary: on a wipe, the ability that killed you, its source and its damage, e.g.
@@ -11,7 +16,7 @@
 
 ## 1.0.6.0
 
-- Ultimates: TEA now goes P1 → Limit Cut → P2. Limit Cut (a transition: no boss, no DPS check) starts when Living
+- Ultimates: TEA now goes P1 â Limit Cut â P2. Limit Cut (a transition: no boss, no DPS check) starts when Living
   Liquid dies and lasts until Brute Justice and Cruise Chaser are both targetable.
 - Ultimates: only the phase summaries are printed in chat, no more pull summary on top of them.
 - Server bar: once the fight is over, every element keeps its last value (ETA, enrage timer, pace, phase values...)
