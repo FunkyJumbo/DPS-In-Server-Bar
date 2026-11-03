@@ -30,6 +30,9 @@ public sealed class DtrController : IDisposable
     private readonly Dictionary<BarElement, Segment> lastSegments = new();
     private DateTime lastSegmentsFight;
 
+    private static readonly TimeSpan PreviewDuration = TimeSpan.FromSeconds(10);
+    private DateTime previewUntilUtc;
+
     public DtrController(Plugin plugin, IDtrBar dtrBar)
     {
         this.plugin = plugin;
@@ -42,6 +45,12 @@ public sealed class DtrController : IDisposable
 
     public void Update()
     {
+        if (DateTime.UtcNow < previewUntilUtc)
+        {
+            UpdatePreview();
+            return;
+        }
+
         var source = plugin.Sources.Current;
         var snapshot = plugin.Sources.Latest;
 
@@ -58,6 +67,64 @@ public sealed class DtrController : IDisposable
 
     /// <summary>Forces the next <see cref="Update"/> to redraw (e.g. after a config change).</summary>
     public void Invalidate() => lastKey = string.Empty;
+
+    /// <summary>Shows placeholder values for every enabled element for a few seconds, to check the layout.</summary>
+    public void StartPreview()
+    {
+        previewUntilUtc = DateTime.UtcNow + PreviewDuration;
+        Invalidate();
+    }
+
+    public void StopPreview()
+    {
+        previewUntilUtc = DateTime.MinValue;
+        Invalidate();
+    }
+
+    public TimeSpan PreviewLeft => previewUntilUtc > DateTime.UtcNow ? previewUntilUtc - DateTime.UtcNow : TimeSpan.Zero;
+
+    private void UpdatePreview()
+    {
+        var config = plugin.Configuration;
+        var segments = config.BarLayout.Where(e => e.Enabled).Select(e => PreviewSegment(e.Element, config)).ToList();
+        var key = "preview|" + string.Join("|", segments.Select(s => $"{s.Text}{s.Icon}{s.Color}")) + $"|{config.BarSeparator}";
+        if (key == lastKey)
+            return;
+
+        lastKey = key;
+        entry.Shown = true;
+        entry.Text = Render(segments, null, config.BarSeparator);
+        entry.Tooltip = "Preview: placeholder values for the elements ticked in the settings.";
+    }
+
+    /// <summary>Example value of each element, colored like in a fight going well.</summary>
+    private Segment PreviewSegment(BarElement element, Configuration config)
+    {
+        Vector4? good = config.UseColors ? config.AboveThresholdColor : null;
+        var job = plugin.Sources.Latest?.You is { HasJob: true } you ? you.Job : "DRK";
+        var label = MetricLabel(config.Metric);
+        return element switch
+        {
+            BarElement.JobIcon => new Segment(string.Empty, JobIcons.For(job) is var icon && icon != BitmapFontIcon.None ? icon : JobIcons.For("DRK"), Glue: true),
+            BarElement.JobName => new Segment(job),
+            BarElement.Rank => new Segment("#2"),
+            BarElement.RoleGap => new Segment("#1 (+8%)", Color: good),
+            BarElement.Value => config.Metric switch
+            {
+                DisplayMetric.Party => new Segment($"{NumberFormat.Format(182_345, config.NumberStyle)} {label} (+3.2%)", Color: good),
+                DisplayMetric.Raid => new Segment($"{NumberFormat.Format(20_511, config.NumberStyle)} {label}"),
+                _ => new Segment($"{NumberFormat.Format(21_234, config.NumberStyle)} {label}"),
+            },
+            BarElement.Pace => new Segment("Best +4%"),
+            BarElement.BossHp => new Segment("HP 54%"),
+            BarElement.EnrageTimer => new Segment("Enrage 1:12"),
+            BarElement.Phase => new Segment("P2"),
+            BarElement.PhaseDps => new Segment($"Boss {NumberFormat.Format(145_000, config.NumberStyle)} (+3.6%)", Color: good),
+            BarElement.Uptime => new Segment("GCD 98.7%"),
+            BarElement.Percentile => new Segment("~87", Color: config.UseColors ? FflogsNames.Color(87) : null),
+            _ => new Segment(element.ToString()),
+        };
+    }
 
     private void OnClick(DtrInteractionEvent e)
     {
@@ -147,9 +214,6 @@ public sealed class DtrController : IDisposable
         var you = snapshot.You;
         switch (element)
         {
-            case BarElement.FinalMarker:
-                return ended ? new Segment("●", Glue: true) : null;
-
             case BarElement.JobIcon:
                 return you is { HasJob: true } && JobIcons.For(you.Job) is var icon && icon != BitmapFontIcon.None
                            ? new Segment(string.Empty, icon, Glue: true)
@@ -236,34 +300,6 @@ public sealed class DtrController : IDisposable
                 if (ActivePhase() is { } hpPhase)
                     return new Segment($"HP {hpPhase.HpFraction:0%}");
                 return boss is not null ? new Segment($"HP {boss.HpFraction:0%}") : null;
-
-            case BarElement.KillTime:
-            {
-                if (InTransition())
-                    return null;
-
-                TimeSpan? eta;
-                double? enrageSeconds;
-                if (ActivePhase() is { } etaPhase)
-                {
-                    // Phase time, from the damage actually dealt to the phase's bosses.
-                    (eta, enrageSeconds) = (etaPhase.ProjectedKill, etaPhase.EnrageSeconds);
-                }
-                else
-                {
-                    (eta, enrageSeconds) = (ended ? null : BossTracker.ProjectedKill(boss, snapshot.Encounter.Duration, partyDps),
-                                            threshold is { EnrageSeconds: > 0 } ? threshold.EnrageSeconds : null);
-                }
-
-                if (eta is not { } etaValue)
-                    return null;
-
-                // Red when the projected kill comes after the enrage.
-                Vector4? etaColor = null;
-                if (config.UseColors && enrageSeconds is { } limit)
-                    etaColor = etaValue.TotalSeconds > limit ? config.BelowThresholdColor : config.AboveThresholdColor;
-                return new Segment($"ETA {NumberFormat.Duration(etaValue)}", Color: etaColor);
-            }
 
             case BarElement.EnrageTimer:
             {

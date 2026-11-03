@@ -3,6 +3,23 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.0.10.0
+
+- Settings > Display: "Preview the server bar" shows placeholder values for 10 seconds, for every element ticked,
+  in their order, with your separator and colors. Changes made meanwhile show up right away.
+- Settings > Chat summary: "Preview the chat summary" prints a made-up summary with the values ticked (and an ultimate
+  phase summary when those are on). Only you see it.
+- Settings reorganized: new **Chat summary** tab (everything about the chat summary), **Pulls** renamed **Pulls history**,
+  **Party checks** and **Ultimates** merged into **DPS check**. DPS check lists every ultimate, savage raid and extreme
+  trial from the game data, most recent first, with a row ready for each (boss HP, enrage, min pDPS) and a search box;
+  ultimate phases sit under their ultimate. Other zones and single encounters go under "Other / custom".
+- Server bar: removed the final value marker (●) and the projected kill time (ETA).
+- New look for the settings window: midnight-blue and gold theme, sections in a side menu, titled groups, help
+  icons and highlighted main buttons.
+- New look for the main window, same theme: figure cards (your DPS / rDPS, party DPS against the check, boss HP
+  with projected kill, GCD uptime, pace), job icons and role-colored damage bars in the player tables, Kill / Wipe
+  badges and content filter chips in the history, graphs in the theme colors.
+
 ## 1.0.9.0
 
 - Chat summary: fixed "Killed by" missing. It is now on for everyone (it stayed off for those who had customized

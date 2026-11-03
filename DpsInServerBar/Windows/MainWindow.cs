@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using DpsInServerBar.Combat;
 using DpsInServerBar.Display;
 using DpsInServerBar.Tracking;
+using DpsInServerBar.UI;
 using DpsInServerBar.Ultimates;
 
 namespace DpsInServerBar.Windows;
@@ -15,67 +17,66 @@ namespace DpsInServerBar.Windows;
 /// <summary>Live encounter breakdown and pull history, opened with right click on the bar entry or /dpsbar.</summary>
 public sealed class MainWindow : Window
 {
-    private static readonly Vector4 YouColor = new(1f, 0.85f, 0.4f, 1f);
-    private static readonly Vector4 GoodColor = new(0.45f, 0.9f, 0.45f, 1f);
-    private static readonly Vector4 BadColor = new(1f, 0.4f, 0.4f, 1f);
-
     private readonly Plugin plugin;
     private readonly DpsGraph graph = new();
 
-    private bool selectHistoryTab;
+    private int selectedTab;
     private string historyFilter = string.Empty;
     private Guid? selectedId;
     private Guid? compareId;
+    private IDisposable? themeScope;
 
     public MainWindow(Plugin plugin) : base("DPS In Server Bar###DpsInServerBarMain")
     {
         this.plugin = plugin;
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(520, 360) };
-        Size = new Vector2(680, 560);
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(560, 380) };
+        Size = new Vector2(760, 640);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
     public void ShowHistory()
     {
         IsOpen = true;
-        selectHistoryTab = true;
+        selectedTab = 1;
+    }
+
+    public override void PreDraw() => themeScope = Theme.Push();
+
+    public override void PostDraw()
+    {
+        themeScope?.Dispose();
+        themeScope = null;
     }
 
     public override void Draw()
     {
-        DrawSourceStatus();
-        ImGui.SameLine(ImGui.GetContentRegionAvail().X - 70);
-        if (ImGui.Button("Settings"))
-            plugin.ToggleConfigUi();
+        DrawHeader();
+        Theme.TabStrip("main", ref selectedTab, (FontAwesomeIcon.Bolt, "Live"), (FontAwesomeIcon.History, "History"));
+        Theme.Rule(2);
 
-        using var tabs = ImRaii.TabBar("##maintabs");
-        if (!tabs)
-            return;
-
-        using (var tab = ImRaii.TabItem("Live"))
-        {
-            if (tab)
-                DrawLive();
-        }
-
-        var flags = selectHistoryTab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None;
-        selectHistoryTab = false;
-        using (var tab = ImRaii.TabItem("History", flags))
-        {
-            if (tab)
-                DrawHistory();
-        }
+        if (selectedTab == 0)
+            DrawLive();
+        else
+            DrawHistory();
     }
 
-    private void DrawSourceStatus()
+    /// <summary>Title, data source state and the settings button.</summary>
+    private void DrawHeader()
     {
+        Theme.Icon(FontAwesomeIcon.ChartBar, Theme.Gold);
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.GoldBright, "DPS In Server Bar");
+
         var source = plugin.Sources.Current;
-        ImGui.TextColored(source.IsReady ? GoodColor : BadColor, $"{source.Name}: {source.StatusText}");
-        if (plugin.Configuration.Source == CombatSourceKind.Auto)
-        {
-            ImGui.SameLine();
-            ImGui.TextDisabled("(auto)");
-        }
+        var status = $"{source.Name}: {source.StatusText}{(plugin.Configuration.Source == CombatSourceKind.Auto ? " (auto)" : "")}";
+        var badgeWidth = ImGui.CalcTextSize(status).X + Theme.Px(14);
+        var buttonWidth = ImGui.GetFrameHeight();
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
+        ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - badgeWidth - buttonWidth - spacing);
+        Theme.Badge(status, source.IsReady ? Theme.Good : Theme.Bad);
+        ImGui.SameLine();
+        if (Theme.IconButton("settings", FontAwesomeIcon.Cog, "Settings"))
+            plugin.ToggleConfigUi();
     }
 
     // ---------------------------------------------------------------- Live
@@ -86,58 +87,30 @@ public sealed class MainWindow : Window
         var snapshot = plugin.Sources.Latest;
         if (snapshot is null)
         {
-            ImGui.TextDisabled("No combat data yet. Start a fight.");
+            Theme.Hint("No combat data yet. Start a fight.");
             return;
         }
 
         var enc = snapshot.Encounter;
-        ImGui.TextUnformatted(string.IsNullOrEmpty(enc.Title) ? "Encounter" : enc.Title);
+        ImGui.TextColored(Theme.GoldBright, string.IsNullOrEmpty(enc.Title) ? "Encounter" : enc.Title);
         ImGui.SameLine();
-        ImGui.TextDisabled($"{NumberFormat.Duration(enc.Duration)}{(snapshot.IsActive ? "" : "  (ended)")}");
+        Theme.Badge(NumberFormat.Duration(enc.Duration), Theme.Crystal);
+        if (!snapshot.IsActive)
+        {
+            ImGui.SameLine();
+            Theme.Badge("ended", Theme.TextMuted);
+        }
 
         var partyDps = snapshot.PartyDps(config.IncludeLimitBreakInParty);
-        ImGui.TextUnformatted($"Party DPS: {NumberFormat.Format(partyDps, NumberStyle.Grouped)}");
         var threshold = config.FindThreshold(plugin.CurrentTerritory, enc.Title);
-        if (threshold is not null)
-        {
-            ImGui.SameLine();
-            ImGui.TextColored(partyDps >= threshold.EffectiveMinPartyDps ? GoodColor : BadColor,
-                              $"(check {NumberFormat.Format(threshold.EffectiveMinPartyDps, NumberStyle.Grouped)})");
-        }
-
-        if (plugin.Pulls.PaceVsBest() is { } pace)
-        {
-            ImGui.SameLine();
-            ImGui.TextColored(pace >= 0 ? GoodColor : BadColor, $"Pace vs best: {pace:+0.0%;-0.0%}");
-        }
+        DrawLiveCards(snapshot, partyDps, threshold);
 
         if (plugin.Ultimates.Current is { } phase)
             DrawPhase(phase);
-        else if (plugin.Boss.Current is { } boss)
-        {
-            ImGui.TextUnformatted($"{boss.Name}: {boss.HpFraction:0.0%}");
-            ImGui.SameLine();
-            ImGui.TextDisabled($"({boss.CurrentHp:N0} / {boss.MaxHp:N0})");
 
-            if (snapshot.IsActive && BossTracker.ProjectedKill(boss, enc.Duration, partyDps) is { } eta)
-            {
-                ImGui.SameLine();
-                var text = $"Projected kill {NumberFormat.Duration(eta)}";
-                if (threshold is { EnrageSeconds: > 0 })
-                {
-                    text += $" / enrage {NumberFormat.Duration(TimeSpan.FromSeconds(threshold.EnrageSeconds))}";
-                    ImGui.TextColored(eta.TotalSeconds <= threshold.EnrageSeconds ? GoodColor : BadColor, text);
-                }
-                else
-                {
-                    ImGui.TextUnformatted(text);
-                }
-            }
-        }
-
-        ImGui.Spacing();
+        Theme.SectionHeader("Party", FontAwesomeIcon.Users);
         DrawCombatantTable(
-            snapshot.Combatants.OrderByDescending(c => c.EncDps).Select(c => new PullCombatant
+            snapshot.Combatants.Select(c => new PullCombatant
             {
                 Name = c.Name, Job = c.Job, Dps = c.EncDps, Rdps = c.HasRdps ? c.RDps : null, Breakdown = c.RdpsBreakdown, DamagePercent = c.DamagePercent,
                 CritPercent = c.CritPercent, DirectHitPercent = c.DirectHitPercent, Deaths = c.Deaths, IsYou = c.IsYou,
@@ -145,63 +118,132 @@ public sealed class MainWindow : Window
 
         if (config.ShowGraph)
         {
-            ImGui.Spacing();
+            Theme.SectionHeader("Graph", FontAwesomeIcon.ChartLine);
             DrawLiveGraph(threshold);
         }
     }
 
-    /// <summary>Ultimate phase line: phase timer, boss HP, DPS on the boss vs the DPS needed, projected kill.</summary>
+    /// <summary>The key figures of the fight in progress, one card each.</summary>
+    private void DrawLiveCards(CombatSnapshot snapshot, double partyDps, PartyDpsThreshold? threshold)
+    {
+        var cards = new List<System.Action<float>>();
+        var you = snapshot.You;
+
+        if (you is not null)
+        {
+            var rank = snapshot.YourRank();
+            var party = snapshot.Combatants.Count(c => c.HasJob);
+            cards.Add(w => Theme.StatCard("Your DPS", NumberFormat.Format(you.EncDps, NumberStyle.Grouped), Theme.Gold, w,
+                                          party > 1 && rank > 0 ? $"#{rank} of {party}" : null));
+            if (you.HasRdps)
+                cards.Add(w => Theme.StatCard("Your rDPS", NumberFormat.Format(you.RDps, NumberStyle.Grouped), Theme.Crystal, w,
+                                              party > 1 ? $"#{snapshot.YourRank(byRdps: true)} of {party}" : null));
+        }
+
+        if (threshold is { EffectiveMinPartyDps: > 0 } check)
+        {
+            var ok = partyDps >= check.EffectiveMinPartyDps;
+            var color = ok ? Theme.Good : Theme.Bad;
+            cards.Add(w => Theme.StatCard("Party DPS", NumberFormat.Format(partyDps, NumberStyle.Grouped), color, w,
+                                          $"need {NumberFormat.Format(check.EffectiveMinPartyDps, NumberStyle.Grouped)} "
+                                          + $"({partyDps / check.EffectiveMinPartyDps - 1:+0.0%;-0.0%})", color));
+        }
+        else
+        {
+            cards.Add(w => Theme.StatCard("Party DPS", NumberFormat.Format(partyDps, NumberStyle.Grouped), Theme.Gold, w));
+        }
+
+        if (plugin.Ultimates.Current is null && plugin.Boss.Current is { } boss)
+        {
+            string? hint = null;
+            Vector4? hintColor = null;
+            if (snapshot.IsActive && BossTracker.ProjectedKill(boss, snapshot.Encounter.Duration, partyDps) is { } eta)
+            {
+                hint = $"kill in {NumberFormat.Duration(eta)}";
+                if (threshold is { EnrageSeconds: > 0 })
+                {
+                    hint += $" / enrage {NumberFormat.Duration(TimeSpan.FromSeconds(threshold.EnrageSeconds))}";
+                    hintColor = eta.TotalSeconds <= threshold.EnrageSeconds ? Theme.Good : Theme.Bad;
+                }
+            }
+
+            cards.Add(w => Theme.StatCard(boss.Name, $"{boss.HpFraction:0.0%}", Theme.Bad, w, hint, hintColor));
+        }
+
+        if (plugin.Uptime.Snapshot() is { AvailableSeconds: >= 5 } up)
+            cards.Add(w => Theme.StatCard("GCD uptime", $"{up.Uptime:0.0%}", Theme.Crystal, w, $"lost {up.LostSeconds:0.0}s"));
+
+        if (plugin.Pulls.PaceVsBest() is { } pace)
+        {
+            var color = pace >= 0 ? Theme.Good : Theme.Bad;
+            cards.Add(w => Theme.StatCard("Pace vs best", $"{pace:+0.0%;-0.0%}", color, w, "damage so far", valueColor: color));
+        }
+
+        DrawCards(cards);
+    }
+
+    /// <summary>Lays the cards out on one line, sharing the width.</summary>
+    private static void DrawCards(List<System.Action<float>> cards)
+    {
+        var width = Theme.CardWidth(cards.Count);
+        for (var i = 0; i < cards.Count; i++)
+        {
+            if (i > 0)
+                ImGui.SameLine();
+            cards[i](width);
+        }
+    }
+
+    /// <summary>Ultimate phase: phase timer, boss HP, DPS on the boss vs the DPS needed, projected kill.</summary>
     private static void DrawPhase(PhaseView phase)
     {
-        ImGui.TextUnformatted($"{phase.Fight.Key} {phase.Label}");
-        ImGui.SameLine();
+        Theme.SectionHeader($"{phase.Fight.Key} {phase.Label}", FontAwesomeIcon.LayerGroup);
         if (!phase.Supported)
         {
-            ImGui.TextDisabled("phase not supported yet");
+            Theme.Hint("Phase not supported yet.");
             return;
         }
 
         if (phase.IsTransition)
         {
-            ImGui.TextDisabled($"transition {NumberFormat.Duration(phase.Elapsed)}");
+            Theme.Hint($"Transition, {NumberFormat.Duration(phase.Elapsed)}.");
             return;
         }
 
         if (!phase.Started)
         {
-            ImGui.TextDisabled($"{phase.Phase!.Name} - waiting for the boss");
+            Theme.Hint($"{phase.Phase!.Name}: waiting for the boss.");
             return;
         }
 
-        ImGui.TextUnformatted($"{phase.Phase!.Name} {phase.HpFraction:0.0%}");
-        ImGui.SameLine();
-        ImGui.TextDisabled($"phase {NumberFormat.Duration(phase.Elapsed)}");
+        var cards = new List<System.Action<float>>
+        {
+            w => Theme.StatCard(phase.Phase!.Name, $"{phase.HpFraction:0.0%}", Theme.Bad, w,
+                                $"phase time {NumberFormat.Duration(phase.Elapsed)}"),
+        };
 
-        var dpsText = $"DPS on boss {NumberFormat.Format(phase.BossDps, NumberStyle.Grouped)}";
         if (phase.RequiredDps is { } required)
         {
-            ImGui.TextColored(phase.BossDps >= required ? GoodColor : BadColor,
-                              $"{dpsText} / need {NumberFormat.Format(required, NumberStyle.Grouped)}");
+            var color = phase.BossDps >= required ? Theme.Good : Theme.Bad;
+            cards.Add(w => Theme.StatCard("DPS on boss", NumberFormat.Format(phase.BossDps, NumberStyle.Grouped), color, w,
+                                          $"need {NumberFormat.Format(required, NumberStyle.Grouped)} "
+                                          + $"({phase.BossDps / required - 1:+0.0%;-0.0%})", color));
         }
         else
         {
-            ImGui.TextUnformatted(dpsText);
+            cards.Add(w => Theme.StatCard("DPS on boss", NumberFormat.Format(phase.BossDps, NumberStyle.Grouped), Theme.Gold, w,
+                                          "no enrage set"));
         }
 
         if (phase.ProjectedKill is { } eta)
         {
-            ImGui.SameLine();
-            var text = $"Projected kill {NumberFormat.Duration(eta)}";
-            if (phase.EnrageSeconds is { } enrage)
-            {
-                ImGui.TextColored(eta.TotalSeconds <= enrage ? GoodColor : BadColor,
-                                  $"{text} / enrage {NumberFormat.Duration(TimeSpan.FromSeconds(enrage))}");
-            }
-            else
-            {
-                ImGui.TextUnformatted(text);
-            }
+            Vector4? color = phase.EnrageSeconds is { } enrage ? eta.TotalSeconds <= enrage ? Theme.Good : Theme.Bad : null;
+            cards.Add(w => Theme.StatCard("Projected kill", NumberFormat.Duration(eta), color ?? Theme.Crystal, w,
+                                          phase.EnrageSeconds is { } e ? $"enrage {NumberFormat.Duration(TimeSpan.FromSeconds(e))}" : null,
+                                          color));
         }
+
+        DrawCards(cards);
     }
 
     private void DrawLiveGraph(PartyDpsThreshold? threshold)
@@ -215,14 +257,14 @@ public sealed class MainWindow : Window
             if (plugin.Uptime.Snapshot() is { } up)
                 DpsGraph.DrawUptime("##liveuptime", [("You", up.AvailableBySecond, up.ActiveBySecond)], ImGui.GetContentRegionAvail().Y);
             else
-                ImGui.TextDisabled("No fight yet.");
+                Theme.Hint("No fight yet.");
             return;
         }
 
         var pull = plugin.Pulls.Current;
         if (pull is null)
         {
-            ImGui.TextDisabled("The graph shows the pull in progress; finished pulls are in the History tab.");
+            Theme.Hint("The graph shows the pull in progress; finished pulls are in the History tab.");
             return;
         }
 
@@ -247,10 +289,10 @@ public sealed class MainWindow : Window
         var pulls = plugin.History.Pulls;
         if (pulls.Count == 0)
         {
-            ImGui.TextDisabled("No pull recorded yet.");
-            ImGui.TextDisabled(plugin.Configuration.RecordOnlyInDuties
-                                   ? "Pulls are recorded inside duties only (see Settings > Pulls)."
-                                   : "Pulls shorter than the minimum duration are ignored.");
+            Theme.Hint("No pull recorded yet.");
+            Theme.Hint(plugin.Configuration.RecordOnlyInDuties
+                           ? "Pulls are recorded inside duties only (see Settings > Pulls history)."
+                           : "Pulls shorter than the minimum duration are ignored.");
             return;
         }
 
@@ -273,7 +315,7 @@ public sealed class MainWindow : Window
         var selected = pulls.FirstOrDefault(p => p.Id == selectedId);
         if (selected is null)
         {
-            ImGui.TextDisabled("Select a pull to see its details. Tick \"vs\" on another one to compare.");
+            Theme.Hint("Select a pull to see its details. Tick \"vs\" on another one to compare.");
             return;
         }
 
@@ -281,32 +323,36 @@ public sealed class MainWindow : Window
         DrawPullDetails(selected, compare);
     }
 
-    /// <summary>One toggle per kind of content (several can be on), with the number of pulls in each.</summary>
+    /// <summary>One chip per kind of content (several can be on), with the number of pulls in each.</summary>
     private void DrawCategoryFilter(IReadOnlyList<PullRecord> pulls)
     {
         var config = plugin.Configuration;
         var counts = pulls.GroupBy(p => plugin.ContentCategories.Of(p.TerritoryId)).ToDictionary(g => g.Key, g => g.Count());
 
-        ImGui.TextDisabled("Show");
+        var first = true;
         foreach (var (category, label) in ContentCategories.Labels)
         {
-            // Wrap to the next line when the checkbox would not fit.
-            var text = $"{label} ({counts.GetValueOrDefault(category)})";
-            var width = ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X + ImGui.CalcTextSize(text).X;
-            ImGui.SameLine();
-            if (ImGui.GetContentRegionAvail().X < width)
-                ImGui.NewLine();
-
-            var on = (config.HistoryCategories & category) != 0;
-            if (ImGui.Checkbox($"{text}##cat", ref on))
+            // Wrap to the next line when the chip would not fit.
+            var text = $"{label} {counts.GetValueOrDefault(category)}";
+            var width = ImGui.CalcTextSize(text).X + Theme.Px(20);
+            if (!first)
             {
-                config.HistoryCategories = on ? config.HistoryCategories | category : config.HistoryCategories & ~category;
+                ImGui.SameLine(0, Theme.Px(4));
+                if (ImGui.GetContentRegionAvail().X < width)
+                    ImGui.NewLine();
+            }
+
+            first = false;
+            var on = (config.HistoryCategories & category) != 0;
+            if (Theme.Chip(text, on))
+            {
+                config.HistoryCategories = on ? config.HistoryCategories & ~category : config.HistoryCategories | category;
                 config.Save();
             }
         }
 
-        ImGui.SameLine();
-        if (ImGui.SmallButton(config.HistoryCategories == ContentCategory.All ? "None" : "All"))
+        ImGui.SameLine(0, Theme.Px(4));
+        if (Theme.Chip(config.HistoryCategories == ContentCategory.All ? "None" : "All", false))
         {
             config.HistoryCategories = config.HistoryCategories == ContentCategory.All ? ContentCategory.None : ContentCategory.All;
             config.Save();
@@ -318,7 +364,7 @@ public sealed class MainWindow : Window
         var titles = pulls.Select(p => p.Title).Where(t => t.Length > 0)
                           .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(t => t).ToList();
 
-        ImGui.SetNextItemWidth(260);
+        ImGui.SetNextItemWidth(Theme.Px(260));
         using (var combo = ImRaii.Combo("Encounter", historyFilter.Length == 0 ? "All" : historyFilter))
         {
             if (combo)
@@ -333,10 +379,11 @@ public sealed class MainWindow : Window
             }
         }
 
-        ImGui.SameLine(ImGui.GetContentRegionAvail().X - 90);
+        var label = "Clear all";
+        ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - ImGui.CalcTextSize(label).X - Theme.Px(20));
         using (ImRaii.Disabled(!ImGui.GetIO().KeyCtrl))
         {
-            if (ImGui.Button("Clear all"))
+            if (Theme.GhostButton(label))
             {
                 plugin.History.Clear();
                 selectedId = compareId = null;
@@ -356,19 +403,20 @@ public sealed class MainWindow : Window
             return;
 
         ImGui.TableSetupScrollFreeze(0, 1);
-        ImGui.TableSetupColumn("When", ImGuiTableColumnFlags.WidthStretch, 1.6f);
+        ImGui.TableSetupColumn("When", ImGuiTableColumnFlags.WidthStretch, 1.5f);
         ImGui.TableSetupColumn("Encounter", ImGuiTableColumnFlags.WidthStretch, 2.4f);
         ImGui.TableSetupColumn("Time", ImGuiTableColumnFlags.WidthStretch, 0.9f);
-        ImGui.TableSetupColumn("Result", ImGuiTableColumnFlags.WidthStretch, 0.9f);
-        ImGui.TableSetupColumn("Job", ImGuiTableColumnFlags.WidthStretch, 0.7f);
+        ImGui.TableSetupColumn("Result", ImGuiTableColumnFlags.WidthStretch, 1f);
+        ImGui.TableSetupColumn("Job", ImGuiTableColumnFlags.WidthStretch, 0.9f);
         ImGui.TableSetupColumn("DPS", ImGuiTableColumnFlags.WidthStretch, 1.2f);
         ImGui.TableSetupColumn("rDPS", ImGuiTableColumnFlags.WidthStretch, 1.2f);
         ImGui.TableSetupColumn("pDPS", ImGuiTableColumnFlags.WidthStretch, 1.3f);
         ImGui.TableSetupColumn("Rank", ImGuiTableColumnFlags.WidthStretch, 0.7f);
-        ImGui.TableSetupColumn("vs", ImGuiTableColumnFlags.WidthFixed, 24);
-        ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 24);
+        ImGui.TableSetupColumn("vs", ImGuiTableColumnFlags.WidthFixed, ImGui.GetFrameHeight());
+        ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, ImGui.GetFrameHeight());
         ImGui.TableHeadersRow();
 
+        var iconSize = ImGui.GetTextLineHeight();
         Guid? toDelete = null;
         foreach (var p in pulls)
         {
@@ -385,15 +433,15 @@ public sealed class MainWindow : Window
             ImGui.TableNextColumn();
             ImGui.TextUnformatted(p.Title.Length > 0 ? p.Title : p.Zone);
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(NumberFormat.Duration(TimeSpan.FromSeconds(p.DurationSeconds)));
+            ImGui.TextColored(Theme.TextMuted, NumberFormat.Duration(TimeSpan.FromSeconds(p.DurationSeconds)));
             ImGui.TableNextColumn();
             switch (p.Outcome)
             {
                 case PullOutcome.Kill:
-                    ImGui.TextColored(GoodColor, "Kill");
+                    Theme.Badge("Kill", Theme.Good);
                     break;
                 case PullOutcome.Wipe:
-                    ImGui.TextColored(BadColor, "Wipe");
+                    Theme.Badge("Wipe", Theme.Bad);
                     break;
                 default:
                     ImGui.TextDisabled("-");
@@ -401,6 +449,8 @@ public sealed class MainWindow : Window
             }
 
             ImGui.TableNextColumn();
+            JobInfo.DrawIcon(p.Job, iconSize);
+            ImGui.SameLine(0, Theme.Px(4));
             ImGui.TextUnformatted(p.Job);
             ImGui.TableNextColumn();
             ImGui.TextUnformatted(NumberFormat.Format(p.YourDps, NumberStyle.Grouped));
@@ -409,15 +459,17 @@ public sealed class MainWindow : Window
             ImGui.TableNextColumn();
             ImGui.TextUnformatted(NumberFormat.Format(p.PartyDps, NumberStyle.Grouped));
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(p.PartySize > 1 && p.Rank > 0 ? $"{p.Rank}/{p.PartySize}" : "-");
+            ImGui.TextColored(Theme.TextMuted, p.PartySize > 1 && p.Rank > 0 ? $"{p.Rank}/{p.PartySize}" : "-");
 
             ImGui.TableNextColumn();
             var isCompare = compareId == p.Id;
             if (ImGui.Checkbox("##cmp", ref isCompare))
                 compareId = isCompare ? p.Id : null;
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Compare the selected pull with this one.");
 
             ImGui.TableNextColumn();
-            if (ImGui.SmallButton("X"))
+            if (Theme.IconButton("del", FontAwesomeIcon.TrashAlt, "Delete this pull", Theme.TextFaint))
                 toDelete = p.Id;
         }
 
@@ -431,7 +483,7 @@ public sealed class MainWindow : Window
         }
     }
 
-    /// <summary>A pull that wiped to the enrage gives its exact timing: one click stores it in the party check.</summary>
+    /// <summary>A pull that wiped to the enrage gives its exact timing: one click stores it in the DPS check.</summary>
     private void DrawSetEnrageButton(PullRecord pull)
     {
         var config = plugin.Configuration;
@@ -439,12 +491,12 @@ public sealed class MainWindow : Window
         var current = config.FindThreshold(pull.TerritoryId, pull.Title)?.EnrageSeconds ?? 0;
         var durationText = NumberFormat.Duration(TimeSpan.FromSeconds(duration));
 
-        ImGui.SameLine();
         using (ImRaii.Disabled(current == duration))
         {
-            if (ImGui.SmallButton($"Set as enrage time ({durationText})"))
+            if (Theme.GhostButton($"Set as enrage time ({durationText})"))
             {
-                config.SetEnrage(pull.TerritoryId, pull.Title, duration);
+                config.SetEnrage(pull.TerritoryId, pull.Title, duration,
+                                  plugin.Fights.All.FirstOrDefault(f => f.TerritoryId == pull.TerritoryId)?.Name);
                 plugin.OnConfigChanged();
             }
         }
@@ -452,10 +504,10 @@ public sealed class MainWindow : Window
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
             ImGui.SetTooltip(
-                "Use this pull's duration as the enrage time of this fight (Party checks), e.g. after a wipe to the enrage.\n"
+                "Use this pull's duration as the enrage time of this fight (DPS check tab), e.g. after a wipe to the enrage.\n"
                 + (current > 0
                        ? $"Current enrage time: {NumberFormat.Duration(TimeSpan.FromSeconds(current))}."
-                       : "No enrage time yet: a party check is created for this encounter."));
+                       : "No enrage time yet: a DPS check is created for this fight."));
         }
     }
 
@@ -463,47 +515,23 @@ public sealed class MainWindow : Window
     {
         var config = plugin.Configuration;
 
-        ImGui.TextUnformatted($"{(pull.Title.Length > 0 ? pull.Title : pull.Zone)} - {pull.StartUtc.ToLocalTime():g}");
+        ImGui.TextColored(Theme.GoldBright, pull.Title.Length > 0 ? pull.Title : pull.Zone);
         ImGui.SameLine();
-        ImGui.TextDisabled($"({pull.Source})");
-
+        ImGui.TextColored(Theme.TextMuted, $"{pull.StartUtc.ToLocalTime():g}");
+        ImGui.SameLine();
+        Theme.Badge(pull.Source, Theme.TextMuted);
+        ImGui.SameLine();
         DrawSetEnrageButton(pull);
 
-        if (pull.Uptime is { } gcd)
-        {
-            var phases = pull.PhaseUptimes.Count > 0
-                ? "  |  " + string.Join("  ", pull.PhaseUptimes.Select(p => $"{UltimateDefinitions.Label(pull.TerritoryId, p.Number)} {p.Uptime:0.0%}"))
-                : string.Empty;
-            ImGui.TextUnformatted($"GCD uptime {gcd:0.0%}");
-            ImGui.SameLine();
-            ImGui.TextDisabled($"(lost {pull.UptimeLostSeconds:0.0}s){phases}");
-            if (compare?.Uptime is { } compareGcd)
-            {
-                ImGui.SameLine();
-                var diff = gcd - compareGcd;
-                ImGui.TextColored(diff >= 0 ? GoodColor : BadColor, $"{diff * 100:+0.0;-0.0} pts vs compared");
-            }
-        }
+        DrawPullCards(pull, compare);
 
-        if (compare is not null)
-        {
-            var dpsDelta = compare.YourDps > 0 ? pull.YourDps / compare.YourDps - 1 : 0;
-            var partyDelta = compare.PartyDps > 0 ? pull.PartyDps / compare.PartyDps - 1 : 0;
-            ImGui.TextUnformatted($"vs {compare.StartUtc.ToLocalTime():g}:");
-            ImGui.SameLine();
-            ImGui.TextColored(dpsDelta >= 0 ? GoodColor : BadColor, $"DPS {dpsDelta:+0.0%;-0.0%}");
-            ImGui.SameLine();
-            ImGui.TextColored(partyDelta >= 0 ? GoodColor : BadColor, $"pDPS {partyDelta:+0.0%;-0.0%}");
-            ImGui.SameLine();
-            ImGui.TextDisabled($"time {NumberFormat.Duration(TimeSpan.FromSeconds(pull.DurationSeconds))} vs "
-                               + NumberFormat.Duration(TimeSpan.FromSeconds(compare.DurationSeconds)));
-        }
-
+        Theme.SectionHeader("Party", FontAwesomeIcon.Users);
         DrawCombatantTable(pull.Combatants);
 
         if (!config.ShowGraph)
             return;
 
+        Theme.SectionHeader("Graph", FontAwesomeIcon.ChartLine);
         var window = config.GraphWindowSeconds;
         graph.DrawOptions(window);
 
@@ -528,9 +556,62 @@ public sealed class MainWindow : Window
         DpsGraph.Draw("##historygraph", series, ImGui.GetContentRegionAvail().Y, threshold);
     }
 
+    /// <summary>The pull's figures, with the gap to the compared pull under each.</summary>
+    private void DrawPullCards(PullRecord pull, PullRecord? compare)
+    {
+        static (string?, Vector4?) Gap(double value, double? other, bool rate = false)
+        {
+            if (other is not > 0)
+                return (null, null);
+            var diff = rate ? (value - other.Value) * 100 : value / other.Value - 1;
+            var text = rate ? $"{diff:+0.0;-0.0} pts vs compared" : $"{diff:+0.0%;-0.0%} vs compared";
+            return (text, diff >= 0 ? Theme.Good : Theme.Bad);
+        }
+
+        var cards = new List<System.Action<float>>();
+
+        var (dpsHint, dpsColor) = Gap(pull.YourDps, compare?.YourDps);
+        if (dpsHint is null && pull.PartySize > 1 && pull.Rank > 0)
+            dpsHint = $"#{pull.Rank} of {pull.PartySize}";
+        cards.Add(w => Theme.StatCard("Your DPS", NumberFormat.Format(pull.YourDps, NumberStyle.Grouped), Theme.Gold, w, dpsHint, dpsColor));
+
+        if (pull.YourRdps is { } rdps)
+        {
+            var (hint, color) = Gap(rdps, compare?.YourRdps);
+            if (hint is null && pull.PartySize > 1 && pull.RdpsRank > 0)
+                hint = $"#{pull.RdpsRank} of {pull.PartySize}";
+            cards.Add(w => Theme.StatCard("Your rDPS", NumberFormat.Format(rdps, NumberStyle.Grouped), Theme.Crystal, w, hint, color));
+        }
+
+        var (partyHint, partyColor) = Gap(pull.PartyDps, compare?.PartyDps);
+        cards.Add(w => Theme.StatCard("Party DPS", NumberFormat.Format(pull.PartyDps, NumberStyle.Grouped), Theme.Gold, w, partyHint, partyColor));
+
+        var durationHint = compare is not null ? $"vs {NumberFormat.Duration(TimeSpan.FromSeconds(compare.DurationSeconds))}" : null;
+        cards.Add(w => Theme.StatCard("Duration", NumberFormat.Duration(TimeSpan.FromSeconds(pull.DurationSeconds)),
+                                      pull.Outcome switch { PullOutcome.Kill => Theme.Good, PullOutcome.Wipe => Theme.Bad, _ => Theme.TextMuted },
+                                      w, durationHint));
+
+        if (pull.Uptime is { } gcd)
+        {
+            var (hint, color) = Gap(gcd, compare?.Uptime, rate: true);
+            hint ??= $"lost {pull.UptimeLostSeconds:0.0}s";
+            cards.Add(w => Theme.StatCard("GCD uptime", $"{gcd:0.0%}", Theme.Crystal, w, hint, color));
+        }
+
+        DrawCards(cards);
+
+        if (pull.PhaseUptimes.Count > 0)
+        {
+            Theme.Hint("GCD per phase: " + string.Join("   ", pull.PhaseUptimes.Select(
+                                               p => $"{UltimateDefinitions.Label(pull.TerritoryId, p.Number)} {p.Uptime:0.0%}")));
+        }
+    }
+
     // ---------------------------------------------------------------- Shared
 
-    /// <summary>Player table, sized to its rows: no scrollbar, no empty space with fewer than 8 players.</summary>
+    /// <summary>
+    /// Player table, sized to its rows: job icon, name over a damage bar in the role's color, then the figures.
+    /// </summary>
     private void DrawCombatantTable(IEnumerable<PullCombatant> combatants)
     {
         var rows = combatants.ToList();
@@ -540,25 +621,27 @@ public sealed class MainWindow : Window
         var config = plugin.Configuration;
         if (showRdps)
         {
-            ImGui.TextDisabled("Sort by");
+            ImGui.TextColored(Theme.TextMuted, "Sort by");
             ImGui.SameLine();
-            if (ImGui.RadioButton("DPS##sort", !config.SortByRdps))
+            if (Theme.Chip("DPS", !config.SortByRdps) && config.SortByRdps)
             {
                 config.SortByRdps = false;
                 config.Save();
             }
 
-            ImGui.SameLine();
-            if (ImGui.RadioButton("rDPS##sort", config.SortByRdps))
+            ImGui.SameLine(0, Theme.Px(4));
+            if (Theme.Chip("rDPS", config.SortByRdps) && !config.SortByRdps)
             {
                 config.SortByRdps = true;
                 config.Save();
             }
         }
 
-        rows = showRdps && config.SortByRdps
+        var byRdps = showRdps && config.SortByRdps;
+        rows = byRdps
                    ? rows.OrderByDescending(c => c.Rdps ?? c.Dps).ToList()
                    : rows.OrderByDescending(c => c.Dps).ToList();
+        var top = rows.Count > 0 ? rows.Max(c => byRdps ? c.Rdps ?? c.Dps : c.Dps) : 0;
 
         // Without ScrollY and with a height of 0, the table takes exactly the height of its rows.
         const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
@@ -567,49 +650,71 @@ public sealed class MainWindow : Window
         if (!table)
             return;
 
-        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, 3f);
-        ImGui.TableSetupColumn("Job", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableSetupColumn("DPS", ImGuiTableColumnFlags.WidthStretch, 1.6f);
+        ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, Theme.Px(22));
+        ImGui.TableSetupColumn("Player", ImGuiTableColumnFlags.WidthStretch, 3.4f);
+        ImGui.TableSetupColumn("DPS", ImGuiTableColumnFlags.WidthStretch, 1.4f);
         if (showRdps)
-            ImGui.TableSetupColumn("rDPS", ImGuiTableColumnFlags.WidthStretch, 1.6f);
-        ImGui.TableSetupColumn("%", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableSetupColumn("Crit", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableSetupColumn("DH", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableSetupColumn("Deaths", ImGuiTableColumnFlags.WidthStretch, 1f);
+            ImGui.TableSetupColumn("rDPS", ImGuiTableColumnFlags.WidthStretch, 1.4f);
+        ImGui.TableSetupColumn("%", ImGuiTableColumnFlags.WidthStretch, 0.8f);
+        ImGui.TableSetupColumn("Crit", ImGuiTableColumnFlags.WidthStretch, 0.8f);
+        ImGui.TableSetupColumn("DH", ImGuiTableColumnFlags.WidthStretch, 0.8f);
+        ImGui.TableSetupColumn("Deaths", ImGuiTableColumnFlags.WidthStretch, 0.9f);
         ImGui.TableHeadersRow();
 
+        var iconSize = ImGui.GetTextLineHeight() + Theme.Px(4);
+        var rank = 0;
         foreach (var c in rows)
         {
-            ImGui.TableNextRow();
+            ImGui.TableNextRow(ImGuiTableRowFlags.None, iconSize + Theme.Px(4));
+            var hasJob = c.Job.Length > 0;
+            if (hasJob)
+                rank++;
 
-            void Cell(string text)
+            ImGui.TableNextColumn();
+            ImGui.TextColored(Theme.TextFaint, hasJob ? rank.ToString() : "");
+
+            // Damage bar behind the name, as wide as the share of the top player's value.
+            ImGui.TableNextColumn();
+            var value = byRdps ? c.Rdps ?? c.Dps : c.Dps;
+            var start = ImGui.GetCursorScreenPos();
+            var width = ImGui.GetContentRegionAvail().X;
+            if (top > 0)
+            {
+                var barColor = JobInfo.RoleColor(c.Job);
+                var end = start + new Vector2(width * (float)Math.Clamp(value / top, 0, 1), iconSize);
+                ImGui.GetWindowDrawList().AddRectFilled(start, end, Theme.U32(barColor, c.IsYou ? 0.34f : 0.2f), Theme.Px(3));
+            }
+
+            JobInfo.DrawIcon(c.Job, iconSize);
+            ImGui.SameLine(0, Theme.Px(6));
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (iconSize - ImGui.GetTextLineHeight()) / 2);
+            ImGui.TextColored(c.IsYou ? Theme.GoldBright : Theme.Text, c.Name);
+
+            void Cell(string text, Vector4? color = null)
             {
                 ImGui.TableNextColumn();
-                if (c.IsYou)
-                    ImGui.TextColored(YouColor, text);
-                else
-                    ImGui.TextUnformatted(text);
+                ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (iconSize - ImGui.GetTextLineHeight()) / 2);
+                ImGui.TextColored(color ?? (c.IsYou ? Theme.GoldBright : Theme.Text), text);
             }
 
-            Cell(c.Name);
-            Cell(c.Job);
             Cell(NumberFormat.Format(c.Dps, NumberStyle.Grouped));
             if (showRdps)
-                Cell(c.Rdps is { } r ? NumberFormat.Format(r, NumberStyle.Grouped) : "-");
-
-            if (showRdps && c.Breakdown is { } b && ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip(
-                    $"Given to others' buffs: -{NumberFormat.Format(b.GivenDps, NumberStyle.Grouped)} DPS\n"
-                    + $"Received from own buffs: +{NumberFormat.Format(b.ReceivedDps, NumberStyle.Grouped)} DPS\n"
-                    + $"Crit rate used: {b.CritRate:0.0%}   DH rate used: {b.DirectHitRate:0.0%}\n"
-                    + $"({b.Samples} hits observed; exact stats are used for you at level 100)");
+                Cell(c.Rdps is { } r ? NumberFormat.Format(r, NumberStyle.Grouped) : "-");
+                if (c.Breakdown is { } b && ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip(
+                        $"Given to others' buffs: -{NumberFormat.Format(b.GivenDps, NumberStyle.Grouped)} DPS\n"
+                        + $"Received from own buffs: +{NumberFormat.Format(b.ReceivedDps, NumberStyle.Grouped)} DPS\n"
+                        + $"Crit rate used: {b.CritRate:0.0%}   DH rate used: {b.DirectHitRate:0.0%}\n"
+                        + $"({b.Samples} hits observed; exact stats are used for you at level 100)");
+                }
             }
 
-            Cell($"{c.DamagePercent:0}%");
-            Cell($"{c.CritPercent:0}%");
-            Cell($"{c.DirectHitPercent:0}%");
-            Cell(c.Deaths.ToString());
+            Cell($"{c.DamagePercent:0}%", Theme.TextMuted);
+            Cell($"{c.CritPercent:0}%", Theme.TextMuted);
+            Cell($"{c.DirectHitPercent:0}%", Theme.TextMuted);
+            Cell(c.Deaths.ToString(), c.Deaths > 0 ? Theme.Bad : Theme.TextFaint);
         }
     }
 }

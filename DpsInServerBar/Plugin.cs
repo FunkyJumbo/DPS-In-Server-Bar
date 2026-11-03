@@ -33,6 +33,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
+    [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
 
     private readonly WindowSystem windowSystem = new("DpsInServerBar");
     private readonly MainWindow mainWindow;
@@ -58,6 +59,7 @@ public sealed class Plugin : IDalamudPlugin
         Ultimates = new UltimateTracker(Configuration, ObjectTable, Condition, ClientState, DataManager);
         Ultimates.PhaseEnded += OnPhaseEnded;
         ContentCategories = new ContentCategories(DataManager);
+        Fights = new FightCatalog(DataManager);
         Uptime = new UptimeTracker(ObjectTable, Condition, () => Ultimates.Current is { Started: true } p ? p.Number : null);
         Percentiles = new PercentileService(Configuration, DataManager, PluginInterface.GetPluginConfigDirectory(), Log);
         dtr = new DtrController(this, DtrBar);
@@ -84,10 +86,12 @@ public sealed class Plugin : IDalamudPlugin
     public CombatSourceManager Sources { get; }
     public PullHistory History { get; }
     public PullTracker Pulls { get; }
+    public DtrController Bar => dtr;
     public BossTracker Boss { get; }
     public UltimateTracker Ultimates { get; }
     public UptimeTracker Uptime { get; }
     public ContentCategories ContentCategories { get; }
+    public FightCatalog Fights { get; }
     public PercentileService Percentiles { get; }
     public ActClient Act => Sources.Act;
     public uint CurrentTerritory => ClientState.TerritoryType;

@@ -59,6 +59,7 @@ public sealed class PartyDpsThreshold
 /// <summary>A piece of the server bar text.</summary>
 public enum BarElement
 {
+    /// <summary>Removed (saved as numbers: kept so the other values do not move).</summary>
     FinalMarker,
     JobIcon,
     JobName,
@@ -67,6 +68,7 @@ public enum BarElement
     Value,
     Pace,
     BossHp,
+    /// <summary>Removed.</summary>
     KillTime,
     EnrageTimer,
     Phase,
@@ -103,7 +105,7 @@ public sealed class BarElementSetting
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 6;
+    public int Version { get; set; } = 7;
 
     /// <summary>Order and visibility of the elements of the server bar text.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -268,8 +270,16 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
+        if (Version < 7)
+        {
+            // The end-of-fight marker and the projected kill time were removed from the bar.
+            BarLayout.RemoveAll(e => RemovedElements.Contains(e.Element));
+            Version = 7;
+            changed = true;
+        }
+
         // Elements added in later versions show up, hidden, at the end.
-        foreach (var element in Enum.GetValues<BarElement>())
+        foreach (var element in Enum.GetValues<BarElement>().Except(RemovedElements))
         {
             if (BarLayout.All(e => e.Element != element))
             {
@@ -281,6 +291,9 @@ public sealed class Configuration : IPluginConfiguration
         return changed;
     }
 
+    /// <summary>Bar elements that no longer exist.</summary>
+    public static readonly BarElement[] RemovedElements = [BarElement.FinalMarker, BarElement.KillTime];
+
     private void SetShown(BarElement element, bool shown)
     {
         foreach (var e in BarLayout.Where(e => e.Element == element))
@@ -289,7 +302,6 @@ public sealed class Configuration : IPluginConfiguration
 
     private static List<BarElementSetting> DefaultLayout() =>
     [
-        new() { Element = BarElement.FinalMarker },
         new() { Element = BarElement.JobIcon },
         new() { Element = BarElement.JobName },
         new() { Element = BarElement.Rank },
@@ -297,7 +309,6 @@ public sealed class Configuration : IPluginConfiguration
         new() { Element = BarElement.Value },
         new() { Element = BarElement.Pace, Enabled = false },
         new() { Element = BarElement.BossHp, Enabled = false },
-        new() { Element = BarElement.KillTime, Enabled = false },
         new() { Element = BarElement.EnrageTimer, Enabled = false },
         new() { Element = BarElement.Phase, Enabled = false },
         new() { Element = BarElement.PhaseDps, Enabled = false },
@@ -326,12 +337,15 @@ public sealed class Configuration : IPluginConfiguration
     /// Sets the enrage time of the check matching this fight, creating an encounter check if there is none.
     /// Typically fed with the duration of a pull that wiped to the enrage.
     /// </summary>
-    public PartyDpsThreshold SetEnrage(uint territory, string encounterTitle, double seconds)
+    /// <param name="fightName">Name of the fight when it is listed in the DPS check tab: its zone-wide check is created.</param>
+    public PartyDpsThreshold SetEnrage(uint territory, string encounterTitle, double seconds, string? fightName = null)
     {
         var threshold = FindThreshold(territory, encounterTitle);
         if (threshold is null)
         {
-            threshold = new PartyDpsThreshold { TerritoryId = territory, EncounterName = encounterTitle, Label = encounterTitle };
+            threshold = fightName is not null
+                            ? new PartyDpsThreshold { TerritoryId = territory, Label = fightName }
+                            : new PartyDpsThreshold { TerritoryId = territory, EncounterName = encounterTitle, Label = encounterTitle };
             Thresholds.Add(threshold);
         }
 

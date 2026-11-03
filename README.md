@@ -45,19 +45,17 @@ This plugin doesn't reinvent the DPS meter: it brings it into the game's UI in a
 
 ### In the server bar
 
-A single compact entry, for example `● [icon] DRK #1 (+8%) 21,234 rDPS ~92`. Every piece is optional
+A single compact entry, for example `[icon] DRK #1 (+8%) 21,234 rDPS ~92`. Every piece is optional
 and can be **reordered**, with the separator of your choice between them (space, `|`, `/`, `-` or custom):
 
 | Element | Example | What it shows |
 |---|---|---|
-| Final marker | `●` | The fight is over, this is the final value |
 | Job icon / name | `[icon] DRK` | Your job, with the game's own icon |
 | Rank | `#2` | Your rank in the party |
 | Rank in your role | `#1 (+8%)` | Rank among tanks, healers or DPS only, and the gap to #1 (or to #2 when you are first) |
 | Value | `21,234 DPS` | Personal DPS, party DPS (pDPS) or rDPS |
 | Pace | `Best +4%` | Damage so far vs. your best **kill** of this fight, at the same second |
 | Boss HP | `HP 54%` | HP of the boss, read from the game |
-| Projected kill | `ETA 9:12` | When the boss dies at the current party DPS — red if after the enrage |
 | Enrage timer | `Enrage 3:12` | Time left before the enrage entered for this fight — red for the last 30 seconds |
 | Ultimate phase | `P1` | Current phase in a supported ultimate |
 | Ultimate phase boss DPS | `Boss 145,000 (+3.6%)` | DPS on the current phase's bosses only, and its gap to the DPS needed for the phase enrage |
@@ -99,21 +97,22 @@ Only a hit that could take the HP you had counts; without one it guesses: `falli
 Comparisons are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
 The summary can be turned off in dungeons.
 
-### Party DPS checks
+### DPS checks
 
-For each fight you can enter the **boss HP** (one click reads it from the game) and the **enrage time**:
+The **DPS check** tab lists every **ultimate, savage raid and extreme trial** from the game data, most recent first,
+one row each (a search box finds a fight quickly). For each fight you can enter the **boss HP** (one click reads it from the game) and the **enrage time**:
 the minimum party DPS is then `HP / enrage`. The enrage time also drives the enrage timer in the bar.
-After a wipe to the enrage, open the pull in History and click **Set as enrage time** to store its exact duration. A manual minimum can be used instead. Checks can apply
-to a whole zone or to a specific encounter.
+After a wipe to the enrage, open the pull in History and click **Set as enrage time** to store its exact duration. A manual minimum can be used instead. Any other zone or a single
+encounter can be added under **Other / custom**.
 
 ### Ultimates
 
 In an ultimate the fight never stops between phases and several bosses are often up at once.
 Each supported phase is tracked on its own: its timer starts when its boss becomes targetable, only its own
-boss counts for the DPS check (adds are ignored), and the Boss HP, Projected kill and Enrage timer elements
+boss counts for the DPS check (adds are ignored), and the Boss HP and Enrage timer elements
 follow the current phase. GCD uptime is also measured per phase. The **Ultimate phase boss DPS** element shows the DPS on the phase's bosses only (not the whole fight's pDPS), against the DPS needed for its enrage, and a chat summary is printed at the end of each phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
 The combined HP of each phase's bosses (all of them must die) is read in game the first time the phase is reached and
-shown in the Ultimates tab with the resulting required DPS; it can be overridden by hand.
+shown under the ultimate in the DPS check tab with the resulting required DPS; it can be overridden by hand.
 
 Supported so far: **The Epic of Alexander — P1 (Living Liquid), Limit Cut (transition) and P2 (Brute Justice & Cruise Chaser)**.
 A boss phase ends when its bosses die (then the transition starts) or as soon as the next boss phase starts (for P2: when
@@ -156,10 +155,10 @@ tracker, which also runs next to ACT when rDPS is enabled; ACT's numbers are the
 
 | Tab | Contents |
 |---|---|
-| **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, graphs, colors, auto-hide |
-| **Party checks** | Per zone / per encounter: boss HP, enrage time, minimum party DPS |
-| **Pulls** | Chat summary (values shown, comparison with your best kill, in dungeons, at the end of each ultimate phase), record only in duties, minimum pull length, history size, graph window |
-| **Ultimates** | Phase tracking on/off, enrage time of each phase (or from your last wipe), combined boss HP (read in game or by hand), required DPS |
+| **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), graphs, colors, auto-hide |
+| **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, values shown, comparison with your best kill, **preview in chat** |
+| **Pulls history** | Record only in duties, minimum pull length, history size, graph window |
+| **DPS check** | Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |
 | **FFLogs** | Percentile estimate, API credentials, manual encounter id |
 | **Data source** | Auto / ACT / built-in, ACT address, connection status |
 
@@ -205,7 +204,7 @@ in the current partition — close to FFLogs' *rank %*. During a fight it is onl
 
 - rDPS is an estimate (see [Accuracy](#how-rdps-is-computed)); raid buff values need updating when a patch changes them.
 - Only the guaranteed crit/DH effects listed in `RaidBuffs.cs` are recognised.
-- Enrage times are not in the game data and must be entered by hand (Party checks).
+- Enrage times are not in the game data and must be entered by hand (DPS check tab).
 - GCD uptime: an enemy that stays targetable while invulnerable still counts as available time. Only your own uptime is measured (the game does not expose other players' GCD).
 - Ultimate mode only covers the phases listed in [Ultimates](#ultimates); later phases show as "not supported yet".
 - For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for the DPS check.
@@ -216,6 +215,7 @@ in the current partition — close to FFLogs' *rank %*. During a fight it is onl
 - [Dalamud](https://github.com/goatcorp/Dalamud) and [FFXIVClientStructs](https://github.com/aers/FFXIVClientStructs).
 - joncho's *FFLogs Buff Allocation Math* for the rDPS method.
 - [FFLogs](https://www.fflogs.com/) for rDPS and the rankings API.
+- [LootView](https://github.com/GitHixy/LootView), whose midnight-blue and gold interface inspired ours.
 
 This project is not affiliated with FFLogs, Archon or Square Enix.
 

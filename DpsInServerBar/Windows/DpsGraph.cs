@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Bindings.ImPlot;
 using DpsInServerBar.Tracking;
+using DpsInServerBar.UI;
 
 namespace DpsInServerBar.Windows;
 
@@ -74,6 +75,7 @@ public sealed class DpsGraph
             return;
         }
 
+        using var style = PushStyle();
         if (!ImPlot.BeginPlot(id, new Vector2(-1, Math.Max(height, MinHeight)), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
             return;
 
@@ -81,10 +83,13 @@ public sealed class DpsGraph
         ImPlot.SetupAxisLimits(ImAxis.Y1, 0, 105, ImPlotCond.Always);
 
         var downtime = Timeline.Downtime(pulls[0].Available);
+        ImPlot.SetNextFillStyle(Theme.Alpha(Theme.TextFaint, 0.35f));
         ImPlot.PlotShaded("No target", ref downtime[0], downtime.Length, 0, 1, 0, ImPlotShadedFlags.None, 0, sizeof(float));
 
+        var index = 0;
         foreach (var (label, available, active) in pulls)
         {
+            ImPlot.SetNextLineStyle(Theme.Series[index++ % Theme.Series.Length], 2f);
             var curve = Timeline.Uptime(available, active, UptimeWindow);
             if (curve.Length > 0)
                 ImPlot.PlotLine(label, ref curve[0], curve.Length, 1, 0, ImPlotLineFlags.SkipNaN, 0, sizeof(float));
@@ -93,25 +98,45 @@ public sealed class DpsGraph
         ImPlot.EndPlot();
     }
 
+    /// <summary>Plot colors matching the theme: dark frame, muted grid and text.</summary>
+    private static IDisposable PushStyle()
+    {
+        ImPlot.PushStyleColor(ImPlotCol.FrameBg, Theme.Alpha(Theme.Panel, 0.8f));
+        ImPlot.PushStyleColor(ImPlotCol.LegendBg, Theme.Alpha(Theme.Panel, 0.9f));
+        ImPlot.PushStyleColor(ImPlotCol.LegendBorder, Theme.Line);
+        ImPlot.PushStyleColor(ImPlotCol.AxisGrid, Theme.Alpha(Theme.Line, 0.8f));
+        ImPlot.PushStyleColor(ImPlotCol.AxisText, Theme.TextMuted);
+        return new PopStyle(5);
+    }
+
+    private sealed class PopStyle(int count) : IDisposable
+    {
+        public void Dispose() => ImPlot.PopStyleColor(count);
+    }
+
     public static void Draw(string id, IReadOnlyList<Series> series, float height, double? threshold = null)
     {
+        using var style = PushStyle();
         if (!ImPlot.BeginPlot(id, new Vector2(-1, Math.Max(height, MinHeight)), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
             return;
 
         ImPlot.SetupAxes("Time (s)", "DPS", ImPlotAxisFlags.AutoFit, ImPlotAxisFlags.AutoFit);
 
         var longest = 0;
+        var index = 0;
         foreach (var s in series)
         {
             if (s.Values.Length == 0)
                 continue;
             longest = System.Math.Max(longest, s.Values.Length);
+            ImPlot.SetNextLineStyle(Theme.Series[index++ % Theme.Series.Length], 2f);
             ImPlot.PlotLine(s.Label, ref s.Values[0], s.Values.Length, 1, 0, ImPlotLineFlags.None, 0, sizeof(float));
         }
 
         if (threshold is { } t && longest > 1)
         {
             var line = new[] { (float)t, (float)t };
+            ImPlot.SetNextLineStyle(Theme.Bad, 1.5f);
             ImPlot.PlotLine("Check", ref line[0], 2, longest - 1, 0, ImPlotLineFlags.None, 0, sizeof(float));
         }
 

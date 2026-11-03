@@ -222,7 +222,41 @@ public sealed class PullTracker : IDisposable
         PrintSummary(pull);
     }
 
-    private void PrintSummary(PullRecord pull)
+    /// <summary>Prints made-up summaries with the values ticked in the settings, to check what they look like.</summary>
+    public void PrintPreview()
+    {
+        var config = plugin.Configuration;
+        var job = plugin.Sources.Latest?.You is { HasJob: true } you ? you.Job : "DRK";
+        PrintSummary(new PullRecord
+        {
+            StartUtc = DateTime.UtcNow,
+            Title = "Preview Boss",
+            DurationSeconds = 272,
+            Outcome = PullOutcome.Kill,
+            Job = job,
+            YourDps = 21_234,
+            YourRdps = 20_511,
+            Percentile = 87,
+            Uptime = 0.987,
+            PartyDps = 182_345,
+            Rank = 2,
+            RdpsRank = 3,
+            PartySize = 8,
+            Deaths = 1,
+            KilledBy = "Auto-attack (Preview Boss, 45,210)",
+        }, preview: true);
+
+        // The ultimate phase summaries too, when they are on: a cleared phase and a wipe.
+        if (config.UltimateMode && config.ChatSummaryPhases && UltimateDefinitions.All.FirstOrDefault() is { Phases.Count: > 0 } fight)
+        {
+            var phases = fight.Phases.Where(p => !p.IsTransition).ToList();
+            PrintPhaseSummary(new PhaseResult(fight, phases[0], 1, TimeSpan.FromSeconds(118), 8_000_000, 0, 125, Cleared: true), preview: true);
+            if (phases.Count > 1)
+                PrintPhaseSummary(new PhaseResult(fight, phases[1], 3, TimeSpan.FromSeconds(95), 20_000_000, 3_100_000, 180, Cleared: false), preview: true);
+        }
+    }
+
+    private void PrintSummary(PullRecord pull, bool preview = false)
     {
         var config = plugin.Configuration;
         var shown = config.ChatSummaryElements;
@@ -253,7 +287,7 @@ public sealed class PullTracker : IDisposable
             {
                 sb.Append($"DPS {NumberFormat.Format(pull.YourDps, config.NumberStyle)}");
                 AppendRank(sb, pull.Rank, pull.PartySize);
-                AppendBest(sb, pull, pull.YourDps, p => p.YourDps, isRate: false);
+                AppendBest(sb, pull, pull.YourDps, p => p.YourDps, isRate: false, preview ? 1.021 : null);
             });
         }
 
@@ -263,7 +297,7 @@ public sealed class PullTracker : IDisposable
             {
                 sb.Append($"rDPS {NumberFormat.Format(rdps, config.NumberStyle)}");
                 AppendRank(sb, pull.RdpsRank, pull.PartySize);
-                AppendBest(sb, pull, rdps, p => p.YourRdps, isRate: false);
+                AppendBest(sb, pull, rdps, p => p.YourRdps, isRate: false, preview ? 0.988 : null);
             });
         }
 
@@ -275,7 +309,7 @@ public sealed class PullTracker : IDisposable
             parts.Add(() =>
             {
                 sb.Append($"GCD {gcd:0.0%}");
-                AppendBest(sb, pull, gcd, p => p.Uptime, isRate: true);
+                AppendBest(sb, pull, gcd, p => p.Uptime, isRate: true, preview ? -0.004 : null);
             });
         }
 
@@ -285,7 +319,9 @@ public sealed class PullTracker : IDisposable
             {
                 sb.Append($"pDPS {NumberFormat.Format(pull.PartyDps, config.NumberStyle)}");
                 var threshold = config.FindThreshold(pull.TerritoryId, pull.Title);
-                if (threshold is not null)
+                if (preview)
+                    sb.Append(" ").PushColorRgba(Good).Append("(check OK)").PopColor();
+                else if (threshold is not null)
                 {
                     var ok = pull.PartyDps >= threshold.EffectiveMinPartyDps;
                     sb.Append(" ").PushColorRgba(ok ? Good : Bad)
@@ -293,7 +329,7 @@ public sealed class PullTracker : IDisposable
                       .PopColor();
                 }
 
-                AppendBest(sb, pull, pull.PartyDps, p => p.PartyDps, isRate: false);
+                AppendBest(sb, pull, pull.PartyDps, p => p.PartyDps, isRate: false, preview ? 1.008 : null);
             });
         }
 
@@ -316,7 +352,7 @@ public sealed class PullTracker : IDisposable
     /// Chat summary of an ultimate phase: phase time, DPS on the phase's bosses against the DPS needed for the enrage,
     /// enrage margin and GCD uptime of the phase. For a phase not cleared, the boss HP left instead of the margin.
     /// </summary>
-    public void PrintPhaseSummary(PhaseResult result)
+    public void PrintPhaseSummary(PhaseResult result, bool preview = false)
     {
         var config = plugin.Configuration;
         var sb = new Lumina.Text.SeStringBuilder();
@@ -354,15 +390,20 @@ public sealed class PullTracker : IDisposable
                               .PushColorRgba(margin >= 0 ? Good : Bad).Append($"{margin:+0;-0}s margin").PopColor());
         }
 
-        if (plugin.Uptime.Snapshot()?.Phases.FirstOrDefault(p => p.Number == result.Number) is { AvailableSeconds: >= 5 } gcd)
-            parts.Add(() => sb.Append($"GCD {gcd.Uptime:0.0%}"));
+        var phaseGcd = preview
+                           ? 0.975
+                           : plugin.Uptime.Snapshot()?.Phases.FirstOrDefault(p => p.Number == result.Number) is { AvailableSeconds: >= 5 } gcd
+                               ? gcd.Uptime
+                               : (double?)null;
+        if (phaseGcd is { } phaseUptime)
+            parts.Add(() => sb.Append($"GCD {phaseUptime:0.0%}"));
 
         // What killed you during this phase, if you died.
-        if (config.ChatSummaryElements.HasFlag(SummaryElement.KilledBy)
-            && plugin.Sources.Native.Deaths.DeathBetween(DateTime.UtcNow - result.Elapsed - TimeSpan.FromSeconds(1), DateTime.UtcNow) is { } death)
-        {
+        var death = preview
+                        ? result.Cleared ? null : new DeathInfo(DateTime.UtcNow, "Hydrothermal Missile", "Living Liquid", 98_432)
+                        : plugin.Sources.Native.Deaths.DeathBetween(DateTime.UtcNow - result.Elapsed - TimeSpan.FromSeconds(1), DateTime.UtcNow);
+        if (config.ChatSummaryElements.HasFlag(SummaryElement.KilledBy) && death is not null)
             parts.Add(() => sb.Append("Killed by ").PushColorRgba(Bad).Append(Describe(death)).PopColor());
-        }
 
         foreach (var part in parts)
         {
@@ -394,12 +435,20 @@ public sealed class PullTracker : IDisposable
     /// "NEW BEST" when the value beats your best kill of the fight, the gap otherwise. Only kills are compared:
     /// a wipe or a prog pull ending early says nothing. Rates (GCD uptime) are compared in points.
     /// </summary>
+    /// <param name="previewGain">Preview only: made-up gain over the best (ratio, or points for a rate) instead of the history.</param>
     private void AppendBest(
-        Lumina.Text.SeStringBuilder sb, PullRecord pull, double value, Func<PullRecord, double?> metric, bool isRate)
+        Lumina.Text.SeStringBuilder sb, PullRecord pull, double value, Func<PullRecord, double?> metric, bool isRate,
+        double? previewGain = null)
     {
         if (!plugin.Configuration.ChatSummaryCompareBest || pull.Outcome != PullOutcome.Kill)
             return;
-        if (plugin.History.BestOf(pull.Title, metric, pull.Id) is not { } best)
+
+        double best;
+        if (previewGain is { } gain)
+            best = isRate ? value - gain : value / gain;
+        else if (plugin.History.BestOf(pull.Title, metric, pull.Id) is { } recorded)
+            best = recorded;
+        else
             return;
 
         var gap = isRate ? $"{(value - best) * 100:+0.0;-0.0} pts" : $"{value / best - 1:+0.0%;-0.0%}";
