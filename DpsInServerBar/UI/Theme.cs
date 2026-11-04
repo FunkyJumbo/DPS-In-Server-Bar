@@ -50,7 +50,7 @@ public static class Theme
     /// <summary>Applies the theme and background opacity chosen in the settings.</summary>
     public static void Configure(Configuration config)
     {
-        palette = config.ThemePreset == ThemePreset.Custom ? config.CustomTheme : ThemePalette.For(config.ThemePreset);
+        palette = config.ActivePalette;
         opacity = Math.Clamp(config.BackgroundOpacity, 0.2f, 1f);
     }
 
@@ -236,6 +236,14 @@ public static class Theme
             ImGui.TextUnformatted(text);
             ImGui.PopTextWrapPos();
         }
+    }
+
+    /// <summary>Header row of a table: white text on the accent color (toned down so the text stays readable).</summary>
+    public static void TableHeaders()
+    {
+        using var color = ImRaii.PushColor(ImGuiCol.TableHeaderBg, Alpha(Gold, 0.45f))
+            .Push(ImGuiCol.Text, Vector4.One);
+        ImGui.TableHeadersRow();
     }
 
     /// <summary>A rounded pill for counts and states.</summary>

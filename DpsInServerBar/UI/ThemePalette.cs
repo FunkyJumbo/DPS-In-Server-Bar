@@ -104,3 +104,11 @@ public sealed class ThemePalette
 
     private static Vector4 Rgb(int r, int g, int b) => new(r / 255f, g / 255f, b / 255f, 1f);
 }
+
+/// <summary>A custom theme saved by the user under a name.</summary>
+[Serializable]
+public sealed class SavedTheme
+{
+    public string Name { get; set; } = string.Empty;
+    public ThemePalette Palette { get; set; } = ThemePalette.For(ThemePreset.Midnight);
+}

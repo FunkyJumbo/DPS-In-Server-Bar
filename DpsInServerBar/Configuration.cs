@@ -147,6 +147,20 @@ public sealed class Configuration : IPluginConfiguration
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public ThemePalette CustomTheme { get; set; } = ThemePalette.For(ThemePreset.Midnight);
 
+    /// <summary>Custom themes saved under a name (Appearance settings).</summary>
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public List<SavedTheme> SavedThemes { get; set; } = [];
+
+    /// <summary>The saved theme in use, -1 for a preset or the unsaved custom theme.</summary>
+    public int SavedThemeIndex { get; set; } = -1;
+
+    /// <summary>The colors in use: a saved theme, the custom theme or a preset.</summary>
+    [JsonIgnore]
+    public ThemePalette ActivePalette =>
+        SavedThemeIndex >= 0 && SavedThemeIndex < SavedThemes.Count ? SavedThemes[SavedThemeIndex].Palette
+        : ThemePreset == ThemePreset.Custom ? CustomTheme
+        : ThemePalette.For(ThemePreset);
+
     /// <summary>Opacity of the windows' background, 0.2 to 1.</summary>
     public float BackgroundOpacity { get; set; } = 0.96f;
 

@@ -23,6 +23,9 @@ public sealed class ConfigWindow : Window
     private string hostInput;
     private bool editingCustomSeparator;
     private string fightFilter = string.Empty;
+    private int renamingTheme = -1;
+    private bool focusRename;
+    private string renameBuffer = string.Empty;
     private int portInput;
 
     public ConfigWindow(Plugin plugin) : base("DPS In Server Bar - Settings###DpsInServerBarConfig")
@@ -161,6 +164,7 @@ public sealed class ConfigWindow : Window
     {
         var c = plugin.Configuration;
         var changed = false;
+        var savedSelected = c.SavedThemeIndex >= 0 && c.SavedThemeIndex < c.SavedThemes.Count;
 
         Theme.SectionHeader("Theme");
         foreach (var preset in Enum.GetValues<ThemePreset>())
@@ -168,12 +172,16 @@ public sealed class ConfigWindow : Window
             var colors = preset == ThemePreset.Custom ? c.CustomTheme : ThemePalette.For(preset);
             DrawSwatches(colors);
             ImGui.SameLine();
-            if (ImGui.RadioButton(ThemePalette.Name(preset), c.ThemePreset == preset) && c.ThemePreset != preset)
+            var selected = !savedSelected && c.ThemePreset == preset;
+            if (ImGui.RadioButton(ThemePalette.Name(preset), selected) && !selected)
             {
                 c.ThemePreset = preset;
+                c.SavedThemeIndex = -1;
                 changed = true;
             }
         }
+
+        changed |= DrawSavedThemes();
 
         Theme.SectionHeader("Background");
         var percent = (int)Math.Round(c.BackgroundOpacity * 100);
@@ -186,10 +194,16 @@ public sealed class ConfigWindow : Window
 
         Help("How much of the game shows through the plugin's windows. Text and fields stay opaque.");
 
-        Theme.SectionHeader("Custom colors");
-        Theme.Hint("Pick your own colors. Changing one switches to the Custom theme; hover, border and muted text shades "
-                   + "are derived from them.");
-        using (ImRaii.Disabled(c.ThemePreset == ThemePreset.Custom))
+        // The colors edited: those of the saved theme in use, otherwise the custom theme.
+        savedSelected = c.SavedThemeIndex >= 0 && c.SavedThemeIndex < c.SavedThemes.Count;
+        var edited = savedSelected ? c.SavedThemes[c.SavedThemeIndex].Palette : c.CustomTheme;
+        Theme.SectionHeader(savedSelected ? $"Colors of \"{c.SavedThemes[c.SavedThemeIndex].Name}\"" : "Custom colors");
+        Theme.Hint(savedSelected
+                       ? "Changes are saved in this theme right away."
+                       : "Pick your own colors. Changing one switches to the Custom theme; hover, border and muted text "
+                         + "shades are derived from them.");
+
+        using (ImRaii.Disabled(savedSelected || c.ThemePreset == ThemePreset.Custom))
         {
             if (Theme.GhostButton("Start from the selected theme"))
             {
@@ -200,24 +214,39 @@ public sealed class ConfigWindow : Window
         }
 
         ImGui.SameLine();
-        if (Theme.GhostButton("Reset custom colors"))
+        if (Theme.GhostButton("Save as a new theme"))
         {
-            c.CustomTheme = ThemePalette.For(ThemePreset.Midnight);
+            c.SavedThemes.Add(new SavedTheme { Name = NewThemeName(c), Palette = c.ActivePalette.Copy() });
+            c.SavedThemeIndex = c.SavedThemes.Count - 1;
             changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Saves the colors in use as a theme of its own, which you can rename.");
+
+        if (!savedSelected)
+        {
+            ImGui.SameLine();
+            if (Theme.GhostButton("Reset custom colors"))
+            {
+                c.CustomTheme = ThemePalette.For(ThemePreset.Midnight);
+                changed = true;
+            }
         }
 
         using (var table = ImRaii.Table("##customcolors", 2, ImGuiTableFlags.SizingStretchSame))
         {
             if (table)
             {
-                foreach (var (label, get, set) in c.CustomTheme.Entries())
+                foreach (var (label, get, set) in edited.Entries())
                 {
                     ImGui.TableNextColumn();
                     var color = get();
                     if (ImGui.ColorEdit4(label, ref color, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha))
                     {
                         set(color);
-                        c.ThemePreset = ThemePreset.Custom;
+                        if (!savedSelected)
+                            c.ThemePreset = ThemePreset.Custom;
                         changed = true;
                     }
                 }
@@ -226,7 +255,7 @@ public sealed class ConfigWindow : Window
 
         Theme.SectionHeader("Preview");
         var width = Theme.CardWidth(3);
-        Theme.StatCard("Your DPS", "21,234", Theme.Gold, width, "#2 of 8");
+        Theme.StatCard("DPS", "21,234", Theme.Gold, width, "#2 of 8");
         ImGui.SameLine();
         Theme.StatCard("Party DPS", "182,345", Theme.Good, width, "need 176,600 (+3.3%)", Theme.Good);
         ImGui.SameLine();
@@ -245,6 +274,93 @@ public sealed class ConfigWindow : Window
 
         if (changed)
             plugin.OnConfigChanged();
+    }
+
+    /// <summary>The saved themes, each selectable, renamable and deletable.</summary>
+    private bool DrawSavedThemes()
+    {
+        var c = plugin.Configuration;
+        var changed = false;
+        if (c.SavedThemes.Count == 0)
+            return false;
+
+        Theme.SectionHeader("Saved themes");
+        int? toDelete = null;
+        for (var i = 0; i < c.SavedThemes.Count; i++)
+        {
+            var saved = c.SavedThemes[i];
+            using var id = ImRaii.PushId(i);
+            DrawSwatches(saved.Palette);
+            ImGui.SameLine();
+
+            if (renamingTheme == i)
+            {
+                // Enter or leaving the field validates; an empty name keeps the old one.
+                ImGui.SetNextItemWidth(Theme.Px(220));
+                if (focusRename)
+                {
+                    ImGui.SetKeyboardFocusHere();
+                    focusRename = false;
+                }
+
+                var done = ImGui.InputText("##rename", ref renameBuffer, 64, ImGuiInputTextFlags.EnterReturnsTrue);
+                if (done || ImGui.IsItemDeactivated())
+                {
+                    if (renameBuffer.Trim().Length > 0)
+                        saved.Name = renameBuffer.Trim();
+                    renamingTheme = -1;
+                    changed = true;
+                }
+            }
+            else
+            {
+                var selected = c.SavedThemeIndex == i;
+                if (ImGui.RadioButton(saved.Name, selected) && !selected)
+                {
+                    c.SavedThemeIndex = i;
+                    changed = true;
+                }
+
+                ImGui.SameLine();
+                if (Theme.IconButton("rename", FontAwesomeIcon.Pen, "Rename"))
+                {
+                    renamingTheme = i;
+                    renameBuffer = saved.Name;
+                    focusRename = true;
+                }
+            }
+
+            ImGui.SameLine();
+            if (Theme.IconButton("delete", FontAwesomeIcon.TrashAlt, "Delete this theme (hold Ctrl)", Theme.TextFaint)
+                && ImGui.GetIO().KeyCtrl)
+            {
+                toDelete = i;
+            }
+        }
+
+        if (toDelete is { } index)
+        {
+            c.SavedThemes.RemoveAt(index);
+            if (c.SavedThemeIndex == index)
+                c.SavedThemeIndex = -1;
+            else if (c.SavedThemeIndex > index)
+                c.SavedThemeIndex--;
+            renamingTheme = -1;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    // "Custom theme 1", "Custom theme 2"... the first number not taken.
+    private static string NewThemeName(Configuration c)
+    {
+        for (var n = 1; ; n++)
+        {
+            var name = $"Custom theme {n}";
+            if (c.SavedThemes.All(t => !t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                return name;
+        }
     }
 
     /// <summary>Small squares showing a theme's background, surface and accents.</summary>
@@ -523,7 +639,7 @@ public sealed class ConfigWindow : Window
         ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("##notes", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableHeadersRow();
+        Theme.TableHeaders();
 
         // Savage raids come in tiers of four fights: a thin band between tiers (not while searching, the list is cut).
         var tierSeparators = category == FightCategory.Savage && fightFilter.Length == 0;
@@ -635,7 +751,7 @@ public sealed class ConfigWindow : Window
         ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("Required DPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("##notes", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableHeadersRow();
+        Theme.TableHeaders();
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
@@ -733,7 +849,7 @@ public sealed class ConfigWindow : Window
         ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, Theme.Px(24));
-        ImGui.TableHeadersRow();
+        Theme.TableHeaders();
 
         for (var i = 0; i < c.Thresholds.Count; i++)
         {
@@ -826,7 +942,7 @@ public sealed class ConfigWindow : Window
     /// </summary>
     private static (ImGuiTableFlags Flags, Vector2 Size, float InnerWidth) CheckTable(int rows, float minWidth)
     {
-        var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
+        var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.PadOuterX;
         var narrow = ImGui.GetContentRegionAvail().X < minWidth;
         var height = 0f;
         if (narrow)

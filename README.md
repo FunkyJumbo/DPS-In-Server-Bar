@@ -156,7 +156,7 @@ tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
 | Tab | Contents |
 |---|---|
 | **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), graphs, colors, auto-hide |
-| **Appearance** | Theme presets, background opacity, custom colors, preview |
+| **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
 | **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, values shown, comparison with your best kill, **preview in chat** |
 | **Pulls history** | Record only in duties, minimum pull length, history size, graph window |
 | **DPS check** | Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |

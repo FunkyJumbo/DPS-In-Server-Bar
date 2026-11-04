@@ -3,6 +3,11 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.0.12.0
+
+- Appearance: save your custom themes and rename them.
+- Various UI changes and adjustments.
+
 ## 1.0.11.0
 
 - New Appearance settings: theme presets, custom colors and background opacity.
