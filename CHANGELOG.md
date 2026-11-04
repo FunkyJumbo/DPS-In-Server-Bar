@@ -3,6 +3,12 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.0.13.0
+
+- Display: server bar presets, renamable, switchable with `/dpsbar preset N` (macro friendly).
+- Server bar: fight duration element.
+- Compact meter: small pop-up party meter with customizable columns and opacity, `/dpsbar compact`.
+
 ## 1.0.12.0
 
 - Appearance: save your custom themes and rename them.

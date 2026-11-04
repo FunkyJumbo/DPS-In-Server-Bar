@@ -76,6 +76,9 @@ public enum BarElement
     PhaseDps,
     Uptime,
     Percentile,
+
+    /// <summary>Time since the pull.</summary>
+    Duration,
 }
 
 /// <summary>Values that can appear in the chat summary after each pull.</summary>
@@ -96,11 +99,64 @@ public enum SummaryElement
     All = Job | Dps | Rdps | Percentile | Uptime | PartyDps | Deaths | KilledBy,
 }
 
+/// <summary>Optional columns of the compact meter.</summary>
+[Flags]
+public enum CompactColumn
+{
+    None = 0,
+    Share = 1,
+    Crit = 2,
+    DirectHit = 4,
+    Deaths = 8,
+}
+
 [Serializable]
 public sealed class BarElementSetting
 {
     public BarElement Element { get; set; }
     public bool Enabled { get; set; } = true;
+}
+
+/// <summary>A named server bar setup (value, format and elements), switchable with /dpsbar preset N.</summary>
+[Serializable]
+public sealed class BarPreset
+{
+    public string Name { get; set; } = string.Empty;
+    public DisplayMetric Metric { get; set; }
+    public NumberStyle NumberStyle { get; set; } = NumberStyle.Grouped;
+    public string Separator { get; set; } = " ";
+
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public List<BarElementSetting> Layout { get; set; } = [];
+
+    /// <summary>Copies the current display settings into this preset.</summary>
+    public void CaptureFrom(Configuration c)
+    {
+        Metric = c.Metric;
+        NumberStyle = c.NumberStyle;
+        Separator = c.BarSeparator;
+        Layout = CopyLayout(c.BarLayout);
+    }
+
+    /// <summary>Applies this preset to the current display settings.</summary>
+    public void ApplyTo(Configuration c)
+    {
+        c.Metric = Metric;
+        c.NumberStyle = NumberStyle;
+        c.BarSeparator = Separator;
+        c.BarLayout = CopyLayout(Layout);
+        c.Migrate(); // elements added since the preset was saved show up, hidden
+    }
+
+    /// <summary>True when the current display settings are the ones saved in this preset.</summary>
+    public bool Matches(Configuration c) =>
+        Metric == c.Metric
+        && NumberStyle == c.NumberStyle
+        && Separator == c.BarSeparator
+        && Layout.Select(e => (e.Element, e.Enabled)).SequenceEqual(c.BarLayout.Select(e => (e.Element, e.Enabled)));
+
+    private static List<BarElementSetting> CopyLayout(IEnumerable<BarElementSetting> layout) =>
+        layout.Select(e => new BarElementSetting { Element = e.Element, Enabled = e.Enabled }).ToList();
 }
 
 [Serializable]
@@ -123,6 +179,17 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Text placed between the elements of the server bar (a space by default, e.g. " | ").</summary>
     public string BarSeparator { get; set; } = " ";
 
+    /// <summary>Saved server bar setups, numbered from 1 for /dpsbar preset N.</summary>
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public List<BarPreset> BarPresets { get; set; } = [];
+
+    /// <summary>The preset last applied, -1 for none. Changes go into it only when saved explicitly.</summary>
+    public int ActiveBarPreset { get; set; } = -1;
+
+    [JsonIgnore]
+    public BarPreset? CurrentBarPreset =>
+        ActiveBarPreset >= 0 && ActiveBarPreset < BarPresets.Count ? BarPresets[ActiveBarPreset] : null;
+
     /// <summary>Show the DPS graphs in the main window.</summary>
     public bool ShowGraph { get; set; } = true;
 
@@ -131,6 +198,18 @@ public sealed class Configuration : IPluginConfiguration
 
     /// <summary>Order the player tables of the main window by rDPS instead of DPS.</summary>
     public bool SortByRdps { get; set; } = false;
+
+    /// <summary>Live tab: only the party's DPS meter (value, share, deaths).</summary>
+    public bool LiveCompact { get; set; } = false;
+
+    /// <summary>Columns of the compact meter shown after the player and the DPS / rDPS.</summary>
+    public CompactColumn CompactColumns { get; set; } = CompactColumn.Share | CompactColumn.Deaths;
+
+    /// <summary>Opacity of the compact meter's background, 0 (see-through) to 1.</summary>
+    public float CompactOpacity { get; set; } = 1f;
+
+    /// <summary>Replaced by CompactOpacity: only read once.</summary>
+    public bool? CompactTransparent { get; set; }
     public bool IncludeLimitBreakInParty { get; set; } = true;
 
 
@@ -240,6 +319,13 @@ public sealed class Configuration : IPluginConfiguration
     public bool Migrate()
     {
         var changed = false;
+
+        if (CompactTransparent is { } transparent)
+        {
+            CompactOpacity = transparent ? 0f : 1f;
+            CompactTransparent = null;
+            changed = true;
+        }
 
         if (Version < 3)
         {

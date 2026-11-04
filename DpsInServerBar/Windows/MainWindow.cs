@@ -86,6 +86,13 @@ public sealed class MainWindow : Window
     {
         var config = plugin.Configuration;
         var snapshot = plugin.Sources.Latest;
+
+        if (Theme.Chip("Compact view", false))
+            plugin.SetCompact(true);
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Only the party's DPS meter, in a small pop-up window.");
+
         if (snapshot is null)
         {
             Theme.Hint("No combat data yet. Start a fight.");

@@ -60,9 +60,12 @@ and can be **reordered**, with the separator of your choice between them (space,
 | Ultimate phase | `P1` | Current phase in a supported ultimate |
 | Ultimate phase boss DPS | `Boss 145,000 (+3.6%)` | DPS on the current phase's bosses only, and its gap to the DPS needed for the phase enrage |
 | GCD uptime | `GCD 98.7%` | Share of the time an enemy was targetable during which your GCD was rolling — per phase in an ultimate |
+| Fight duration | `3:42` | Time since the pull |
 | FFLogs percentile | `~92` | Estimated FFLogs percentile of your rDPS, in FFLogs colors |
 
 - **Left click** cycles DPS → pDPS → rDPS. **Right click** opens the main window.
+- **Presets**: save several setups (value, format, elements and order), rename them, and switch with
+  `/dpsbar preset 2`, handy in a macro.
 - Once the fight is over, every element keeps its last value until the next fight.
 - **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, GCD uptime (per phase in an ultimate), best kill, percentile.
 - Colors: with a DPS check for the fight, only the pDPS value turns green/red, with its gap to the required DPS
@@ -74,6 +77,10 @@ and can be **reordered**, with the separator of your choice between them (space,
   Hover an rDPS value to see what the player gave to / received from buffs.
   Boss HP, projected kill time and a DPS graph (rolling and average, personal or party, compared with your best kill).
   Switch the graph to **Uptime** to see exactly when you lost GCD uptime; periods where nothing was targetable are shaded.
+  **Compact view** opens a small rounded pop-up without a title bar: only the party meter (DPS or rDPS, share,
+  deaths, ranked by the chosen metric) and the fight timer, sized to its content. Drag it by its background; click the metric header to switch
+  DPS / rDPS, "Full view" at the bottom to come back; right click for the menu (background opacity, history,
+  settings, close). Its columns (%, crit, direct hit, deaths) and background opacity are set in Display > Compact meter.
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
   Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Ultimate, Other — several at once, read from the game data)
   and by encounter, open a pull to see its breakdown and graph, tick another one to **compare** them.
@@ -149,13 +156,15 @@ tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
 | `/dpsbar config` | Settings |
 | `/dpsbar history` | Main window on the History tab |
 | `/dpsbar toggle` | Cycle DPS → pDPS → rDPS |
+| `/dpsbar compact` | Open / close the compact meter |
 | `/dpsbar reconnect` | Reconnect to ACT |
+| `/dpsbar preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
 
 ## Settings
 
 | Tab | Contents |
 |---|---|
-| **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), graphs, colors, auto-hide |
+| **Display** | Presets (renamable, switchable with `/dpsbar preset N`), compact meter columns, metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), graphs, colors, auto-hide |
 | **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
 | **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, values shown, comparison with your best kill, **preview in chat** |
 | **Pulls history** | Record only in duties, minimum pull length, history size, graph window |

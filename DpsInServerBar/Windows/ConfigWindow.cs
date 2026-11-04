@@ -24,6 +24,7 @@ public sealed class ConfigWindow : Window
     private bool editingCustomSeparator;
     private string fightFilter = string.Empty;
     private int renamingTheme = -1;
+    private int renamingPreset = -1;
     private bool focusRename;
     private string renameBuffer = string.Empty;
     private int portInput;
@@ -110,6 +111,8 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var changed = false;
 
+        DrawBarPresets(c);
+
         Theme.SectionHeader("Value");
         var metric = (int)c.Metric;
         ImGui.SetNextItemWidth(Theme.Px(240));
@@ -133,6 +136,33 @@ public sealed class ConfigWindow : Window
         changed |= DrawSeparator(c);
         ImGui.Dummy(new Vector2(0, Theme.Px(3)));
         DrawBarPreviewButton();
+
+        Theme.SectionHeader("Compact meter");
+        Theme.Hint("The small pop-up meter (/dpsbar compact): player and DPS / rDPS, then the columns ticked here.");
+        foreach (var (column, label) in new[]
+                 {
+                     (CompactColumn.Share, "% of the party"), (CompactColumn.Crit, "Crit rate"),
+                     (CompactColumn.DirectHit, "Direct hit rate"), (CompactColumn.Deaths, "Deaths"),
+                 })
+        {
+            var on = c.CompactColumns.HasFlag(column);
+            if (ImGui.Checkbox(label, ref on))
+            {
+                c.CompactColumns = on ? c.CompactColumns | column : c.CompactColumns & ~column;
+                changed = true;
+            }
+        }
+
+        var compactPercent = (int)Math.Round(c.CompactOpacity * 100);
+        ImGui.SetNextItemWidth(Theme.Px(240));
+        if (ImGui.SliderInt("Background opacity##compact", ref compactPercent, 0, 100, "%d%%"))
+        {
+            c.CompactOpacity = compactPercent / 100f;
+            changed = true;
+        }
+
+        if (Theme.GhostButton(plugin.CompactOpen ? "Close the compact meter" : "Open the compact meter"))
+            plugin.SetCompact(!plugin.CompactOpen);
 
         Theme.SectionHeader("Behavior");
         changed |= Checkbox("Show DPS graphs in the main window", c.ShowGraph, v => c.ShowGraph = v);
@@ -158,6 +188,152 @@ public sealed class ConfigWindow : Window
 
         if (changed)
             plugin.OnConfigChanged();
+    }
+
+    /// <summary>The saved server bar setups: apply, rename, delete, and the command that switches to each.</summary>
+    private void DrawBarPresets(Configuration c)
+    {
+        var changed = false;
+        var presets = c.BarPresets;
+
+        Theme.SectionHeader("Presets");
+        var current = c.CurrentBarPreset;
+        var modified = current is not null && !current.Matches(c);
+        Theme.Hint(current is null
+                       ? "Save the setup below (value, format, elements and order) to switch to it with a command or a macro."
+                       : "Selecting a preset loads its settings below. Change them, then save them into the preset.");
+
+        int? toDelete = null;
+        for (var i = 0; i < presets.Count; i++)
+        {
+            var preset = presets[i];
+            using var id = ImRaii.PushId($"preset{i}");
+
+            if (renamingPreset == i)
+            {
+                ImGui.SetNextItemWidth(Theme.Px(220));
+                if (focusRename)
+                {
+                    ImGui.SetKeyboardFocusHere();
+                    focusRename = false;
+                }
+
+                var done = ImGui.InputText("##rename", ref renameBuffer, 64, ImGuiInputTextFlags.EnterReturnsTrue);
+                if (done || ImGui.IsItemDeactivated())
+                {
+                    if (renameBuffer.Trim().Length > 0)
+                        preset.Name = renameBuffer.Trim();
+                    renamingPreset = -1;
+                    changed = true;
+                }
+            }
+            else
+            {
+                var selected = c.ActiveBarPreset == i;
+                if (ImGui.RadioButton(preset.Name, selected) && !selected)
+                    plugin.ApplyBarPreset(i);
+
+                if (ImGui.IsItemHovered())
+                {
+                    var shown = preset.Layout.Where(e => e.Enabled).Select(e => Describe(e.Element).Label).ToList();
+                    var metric = preset.Metric switch
+                    {
+                        DisplayMetric.Party => "Party DPS",
+                        DisplayMetric.Raid => "rDPS",
+                        _ => "Personal DPS",
+                    };
+                    ImGui.SetTooltip($"{metric}\n{(shown.Count > 0 ? string.Join("\n", shown) : "(nothing shown)")}");
+                }
+
+                if (selected && modified)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(Theme.Warn, "(modified)");
+                }
+
+                ImGui.SameLine();
+                if (Theme.IconButton("rename", FontAwesomeIcon.Pen, "Rename"))
+                {
+                    renamingPreset = i;
+                    renameBuffer = preset.Name;
+                    focusRename = true;
+                }
+            }
+
+            ImGui.SameLine();
+            if (Theme.IconButton("delete", FontAwesomeIcon.TrashAlt, "Delete this preset (hold Ctrl)", Theme.TextFaint)
+                && ImGui.GetIO().KeyCtrl)
+            {
+                toDelete = i;
+            }
+
+            ImGui.SameLine();
+            var command = $"/dpsbar preset {i + 1}";
+            ImGui.TextDisabled(command);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Click to copy the command, for a macro.");
+            if (ImGui.IsItemClicked())
+                ImGui.SetClipboardText(command);
+        }
+
+        if (toDelete is { } index)
+        {
+            presets.RemoveAt(index);
+            if (c.ActiveBarPreset == index)
+                c.ActiveBarPreset = -1;
+            else if (c.ActiveBarPreset > index)
+                c.ActiveBarPreset--;
+            renamingPreset = -1;
+            changed = true;
+        }
+
+        if (current is not null)
+        {
+            using (ImRaii.Disabled(!modified))
+            {
+                if (Theme.PrimaryButton($"Save changes to \"{current.Name}\""))
+                {
+                    current.CaptureFrom(c);
+                    changed = true;
+                }
+
+                ImGui.SameLine();
+                if (Theme.GhostButton("Revert"))
+                    plugin.ApplyBarPreset(c.ActiveBarPreset);
+            }
+
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Reloads the settings saved in the preset.");
+
+            ImGui.SameLine();
+        }
+
+        if (Theme.GhostButton("Save as a new preset"))
+        {
+            var preset = new BarPreset { Name = NewPresetName(c) };
+            preset.CaptureFrom(c);
+            presets.Add(preset);
+            c.ActiveBarPreset = presets.Count - 1;
+            changed = true;
+        }
+
+        if (presets.Count > 0)
+            Help("In game or in a macro: /dpsbar preset 2 (by number), /dpsbar preset Raid (by name) "
+                 + "or /dpsbar preset next (the next one).");
+
+        if (changed)
+            plugin.OnConfigChanged();
+    }
+
+    // "Preset 1", "Preset 2"... the first number not taken.
+    private static string NewPresetName(Configuration c)
+    {
+        for (var n = 1; ; n++)
+        {
+            var name = $"Preset {n}";
+            if (c.BarPresets.All(p => !p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                return name;
+        }
     }
 
     private void DrawAppearanceTab()
@@ -539,6 +715,7 @@ public sealed class ConfigWindow : Window
         BarElement.EnrageTimer => ("Enrage timer", "Enrage 3:12",
                                    "Time left before the enrage entered for this fight in the DPS check tab. "
                                    + "Red for the last 30 seconds."),
+        BarElement.Duration => ("Fight duration", "3:42", "Time since the pull. Stays on the final time once the fight is over."),
         _ => (element.ToString(), string.Empty, null),
     };
 

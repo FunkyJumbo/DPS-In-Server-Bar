@@ -332,7 +332,7 @@ public static class Theme
         count <= 0 ? 0 : (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * (count - 1)) / count;
 
     /// <summary>A pill that toggles: gold when on. Returns true when clicked.</summary>
-    public static bool Chip(string label, bool on)
+    public static bool Chip(string label, bool on, bool transparent = false)
     {
         var size = ImGui.CalcTextSize(label) + Px(new Vector2(20, 8));
         var pos = ImGui.GetCursorScreenPos();
@@ -346,6 +346,13 @@ public static class Theme
         {
             dl.AddRectFilled(pos, max, U32(Gold, hovered ? 0.24f : 0.16f), rounding);
             dl.AddRect(pos, max, U32(Gold, 0.7f), rounding);
+        }
+        else if (transparent)
+        {
+            // On a see-through window: an outline, filled only on hover.
+            if (hovered)
+                dl.AddRectFilled(pos, max, U32(SurfaceHover, 0.6f), rounding);
+            dl.AddRect(pos, max, U32(TextMuted, 0.5f), rounding);
         }
         else
         {

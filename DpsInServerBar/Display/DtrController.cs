@@ -121,6 +121,7 @@ public sealed class DtrController : IDisposable
             BarElement.Phase => new Segment("P2"),
             BarElement.PhaseDps => new Segment($"Boss {NumberFormat.Format(145_000, config.NumberStyle)} (+3.6%)", Color: good),
             BarElement.Uptime => new Segment("GCD 98.7%"),
+            BarElement.Duration => new Segment("3:42"),
             BarElement.Percentile => new Segment("~87", Color: config.UseColors ? FflogsNames.Color(87) : null),
             _ => new Segment(element.ToString()),
         };
@@ -321,6 +322,9 @@ public sealed class DtrController : IDisposable
                     seconds > 0 ? $"Enrage {NumberFormat.Duration(TimeSpan.FromSeconds(Math.Ceiling(seconds)))}" : "Enrage!",
                     Color: enrageColor);
             }
+
+            case BarElement.Duration:
+                return new Segment(NumberFormat.Duration(snapshot.Encounter.Duration));
 
             case BarElement.Percentile:
                 return plugin.EstimatePercentile(snapshot) is { } pct

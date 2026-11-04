@@ -38,6 +38,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly WindowSystem windowSystem = new("DpsInServerBar");
     private readonly MainWindow mainWindow;
     private readonly ConfigWindow configWindow;
+    private readonly CompactWindow compactWindow;
     private readonly DtrController dtr;
 
     // Read on the game thread, consumed by the WebSocket thread when matching the player's name.
@@ -67,12 +68,14 @@ public sealed class Plugin : IDalamudPlugin
 
         mainWindow = new MainWindow(this);
         configWindow = new ConfigWindow(this);
+        compactWindow = new CompactWindow(this) { IsOpen = Configuration.LiveCompact };
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(configWindow);
+        windowSystem.AddWindow(compactWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open the DPS window. Subcommands: config, toggle, reconnect, history.",
+            HelpMessage = "Open the DPS window. Subcommands: config, toggle, reconnect, history, compact, preset <number|name|next>.",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
@@ -121,6 +124,28 @@ public sealed class Plugin : IDalamudPlugin
 
     public void ToggleMainUi() => mainWindow.Toggle();
     public void ToggleConfigUi() => configWindow.Toggle();
+
+    public bool CompactOpen => compactWindow.IsOpen;
+
+    /// <summary>Opens or closes the compact meter (the full window closes when it opens).</summary>
+    public void SetCompact(bool open)
+    {
+        compactWindow.IsOpen = open;
+        if (open)
+            mainWindow.IsOpen = false;
+        Configuration.LiveCompact = open;
+        Configuration.Save();
+    }
+
+    /// <summary>From the compact meter back to the full window.</summary>
+    public void ShowFullView(bool history = false)
+    {
+        SetCompact(false);
+        if (history)
+            mainWindow.ShowHistory();
+        else
+            mainWindow.IsOpen = true;
+    }
 
     public void ToggleMetric()
     {
@@ -175,9 +200,56 @@ public sealed class Plugin : IDalamudPlugin
         dtr.Update();
     }
 
+    /// <summary>Switches the server bar to a saved preset (0-based index).</summary>
+    public void ApplyBarPreset(int index)
+    {
+        if (index < 0 || index >= Configuration.BarPresets.Count)
+            return;
+
+        Configuration.BarPresets[index].ApplyTo(Configuration);
+        Configuration.ActiveBarPreset = index;
+        OnConfigChanged();
+    }
+
+    // "/dpsbar preset 2", "/dpsbar preset Raid", "/dpsbar preset next".
+    private void OnPresetCommand(string arg)
+    {
+        var presets = Configuration.BarPresets;
+        if (presets.Count == 0)
+        {
+            ChatGui.PrintError("[DPS In Server Bar] No preset saved yet: create one in the settings, Display section.");
+            return;
+        }
+
+        int index;
+        if (arg.Length == 0 || arg.Equals("next", StringComparison.OrdinalIgnoreCase))
+            index = (Configuration.ActiveBarPreset + 1) % presets.Count;
+        else if (int.TryParse(arg, out var number))
+            index = number - 1;
+        else
+            index = presets.FindIndex(p => p.Name.Equals(arg, StringComparison.OrdinalIgnoreCase));
+
+        if (index < 0 || index >= presets.Count)
+        {
+            ChatGui.PrintError($"[DPS In Server Bar] Unknown preset \"{arg}\". Use a number from 1 to {presets.Count} or a preset name.");
+            return;
+        }
+
+        ApplyBarPreset(index);
+        ChatGui.Print($"[DPS In Server Bar] Preset {index + 1}: {presets[index].Name}");
+    }
+
     private void OnCommand(string command, string args)
     {
-        switch (args.Trim().ToLowerInvariant())
+        var trimmed = args.Trim();
+        if (trimmed.StartsWith("preset", StringComparison.OrdinalIgnoreCase)
+            && (trimmed.Length == 6 || char.IsWhiteSpace(trimmed[6])))
+        {
+            OnPresetCommand(trimmed[6..].Trim());
+            return;
+        }
+
+        switch (trimmed.ToLowerInvariant())
         {
             case "config":
             case "settings":
@@ -191,6 +263,9 @@ public sealed class Plugin : IDalamudPlugin
                 break;
             case "history":
                 mainWindow.ShowHistory();
+                break;
+            case "compact":
+                SetCompact(!compactWindow.IsOpen);
                 break;
             default:
                 ToggleMainUi();
