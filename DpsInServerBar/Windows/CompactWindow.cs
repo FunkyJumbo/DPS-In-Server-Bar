@@ -211,19 +211,30 @@ public sealed class CompactWindow : Window
 
             ImGui.TableNextColumn();
             var value = Value(c);
+
+            // The bar spans the name and the value columns: drawn in two parts, one per cell, split on the column edge.
             var start = ImGui.GetCursorScreenPos();
-            if (top > 0)
-            {
-                var end = start + new Vector2(ImGui.GetContentRegionAvail().X * (float)Math.Clamp(value / top, 0, 1), iconSize);
-                ImGui.GetWindowDrawList().AddRectFilled(start, end, Theme.U32(JobInfo.RoleColor(c.Job), c.IsYou ? 0.34f : 0.2f), Theme.Px(3));
-            }
+            var span = nameWidth + cellPadding.X * 2 + valueWidth;
+            var endX = start.X + (top > 0 ? span * (float)Math.Clamp(value / top, 0, 1) : 0);
+            var splitX = start.X + nameWidth + cellPadding.X;
+            var barColor = Theme.U32(JobInfo.RoleColor(c.Job), c.IsYou ? 0.34f : 0.2f);
+            var drawList = ImGui.GetWindowDrawList();
+            if (endX > start.X)
+                drawList.AddRectFilled(start, new Vector2(Math.Min(endX, splitX), start.Y + iconSize), barColor, Theme.Px(3),
+                                       endX > splitX ? ImDrawFlags.RoundCornersLeft : ImDrawFlags.RoundCornersAll);
 
             JobInfo.DrawIcon(c.Job, iconSize);
             ImGui.SameLine(0, Theme.Px(5));
             ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (iconSize - ImGui.GetTextLineHeight()) / 2);
             ImGui.TextColored(color, c.Name);
 
-            Cell(byRdps && !c.HasRdps ? "-" : NumberFormat.Format(value, NumberStyle.Grouped), color);
+            ImGui.TableNextColumn();
+            if (endX > splitX)
+                drawList.AddRectFilled(new Vector2(splitX, start.Y), new Vector2(endX, start.Y + iconSize), barColor, Theme.Px(3),
+                                       ImDrawFlags.RoundCornersRight);
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (iconSize - ImGui.GetTextLineHeight()) / 2);
+            ImGui.TextColored(color, byRdps && !c.HasRdps ? "-" : NumberFormat.Format(value, NumberStyle.Grouped));
+
             foreach (var extra in extras)
             {
                 var (text, textColor) = extra.Cell(c);
