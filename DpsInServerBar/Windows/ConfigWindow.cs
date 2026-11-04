@@ -40,6 +40,7 @@ public sealed class ConfigWindow : Window
     private Section[] Sections => sections ??=
     [
         new(FontAwesomeIcon.Desktop, "Display", "What the server bar shows, in which order, and how.", DrawDisplayTab),
+        new(FontAwesomeIcon.Palette, "Appearance", "Theme, colors and transparency of the plugin's windows.", DrawAppearanceTab),
         new(FontAwesomeIcon.CommentDots, "Chat summary", "The recap printed in chat after each pull and each ultimate phase.", DrawChatSummaryTab),
         new(FontAwesomeIcon.History, "Pulls history", "Which pulls are recorded and kept.", DrawPullsTab),
         new(FontAwesomeIcon.Crosshairs, "DPS check", "Boss HP and enrage of each fight: the party DPS needed to clear it.", DrawDpsCheckTab),
@@ -61,8 +62,6 @@ public sealed class ConfigWindow : Window
 
     public override void Draw()
     {
-        Theme.WindowHeader(FontAwesomeIcon.Cog, "DPS In Server Bar", $"Settings  v{Plugin.PluginInterface.Manifest.AssemblyVersion}");
-
         var sidebarWidth = Theme.Px(170);
         using (var nav = ImRaii.Child("##nav", new Vector2(sidebarWidth, -1)))
         {
@@ -73,6 +72,12 @@ public sealed class ConfigWindow : Window
                     if (Theme.NavItem($"##nav{i}", Sections[i].Icon, Sections[i].Label, i == selectedSection))
                         selectedSection = i;
                 }
+
+                // Version at the bottom of the menu.
+                var version = $"v{Plugin.PluginInterface.Manifest.AssemblyVersion}";
+                ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), ImGui.GetWindowHeight() - ImGui.GetTextLineHeightWithSpacing()));
+                ImGui.SetCursorPosX(Theme.Px(12));
+                ImGui.TextColored(Theme.TextFaint, version);
             }
         }
 
@@ -123,13 +128,11 @@ public sealed class ConfigWindow : Window
         Theme.Hint("Tick what to show and use the arrows to change the order.");
         changed |= DrawBarLayout(c);
         changed |= DrawSeparator(c);
+        ImGui.Dummy(new Vector2(0, Theme.Px(3)));
         DrawBarPreviewButton();
 
         Theme.SectionHeader("Behavior");
         changed |= Checkbox("Show DPS graphs in the main window", c.ShowGraph, v => c.ShowGraph = v);
-        changed |= Checkbox("Compute rDPS (FFLogs-style)", c.ComputeRdps, v => c.ComputeRdps = v);
-        Help("Credits the damage your buffs gave to others and removes what others' buffs gave you. "
-             + "Computed by the built-in tracker, which then also runs next to ACT. Approximation of FFLogs' rDPS.");
         changed |= Checkbox("Include Limit Break in party DPS", c.IncludeLimitBreakInParty, v => c.IncludeLimitBreakInParty = v);
         changed |= Checkbox("Hide while no data source is available", c.HideWhenDisconnected, v => c.HideWhenDisconnected = v);
 
@@ -152,6 +155,115 @@ public sealed class ConfigWindow : Window
 
         if (changed)
             plugin.OnConfigChanged();
+    }
+
+    private void DrawAppearanceTab()
+    {
+        var c = plugin.Configuration;
+        var changed = false;
+
+        Theme.SectionHeader("Theme");
+        foreach (var preset in Enum.GetValues<ThemePreset>())
+        {
+            var colors = preset == ThemePreset.Custom ? c.CustomTheme : ThemePalette.For(preset);
+            DrawSwatches(colors);
+            ImGui.SameLine();
+            if (ImGui.RadioButton(ThemePalette.Name(preset), c.ThemePreset == preset) && c.ThemePreset != preset)
+            {
+                c.ThemePreset = preset;
+                changed = true;
+            }
+        }
+
+        Theme.SectionHeader("Background");
+        var percent = (int)Math.Round(c.BackgroundOpacity * 100);
+        ImGui.SetNextItemWidth(Theme.Px(240));
+        if (ImGui.SliderInt("Background opacity", ref percent, 20, 100, "%d%%"))
+        {
+            c.BackgroundOpacity = percent / 100f;
+            changed = true;
+        }
+
+        Help("How much of the game shows through the plugin's windows. Text and fields stay opaque.");
+
+        Theme.SectionHeader("Custom colors");
+        Theme.Hint("Pick your own colors. Changing one switches to the Custom theme; hover, border and muted text shades "
+                   + "are derived from them.");
+        using (ImRaii.Disabled(c.ThemePreset == ThemePreset.Custom))
+        {
+            if (Theme.GhostButton("Start from the selected theme"))
+            {
+                c.CustomTheme = ThemePalette.For(c.ThemePreset).Copy();
+                c.ThemePreset = ThemePreset.Custom;
+                changed = true;
+            }
+        }
+
+        ImGui.SameLine();
+        if (Theme.GhostButton("Reset custom colors"))
+        {
+            c.CustomTheme = ThemePalette.For(ThemePreset.Midnight);
+            changed = true;
+        }
+
+        using (var table = ImRaii.Table("##customcolors", 2, ImGuiTableFlags.SizingStretchSame))
+        {
+            if (table)
+            {
+                foreach (var (label, get, set) in c.CustomTheme.Entries())
+                {
+                    ImGui.TableNextColumn();
+                    var color = get();
+                    if (ImGui.ColorEdit4(label, ref color, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha))
+                    {
+                        set(color);
+                        c.ThemePreset = ThemePreset.Custom;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        Theme.SectionHeader("Preview");
+        var width = Theme.CardWidth(3);
+        Theme.StatCard("Your DPS", "21,234", Theme.Gold, width, "#2 of 8");
+        ImGui.SameLine();
+        Theme.StatCard("Party DPS", "182,345", Theme.Good, width, "need 176,600 (+3.3%)", Theme.Good);
+        ImGui.SameLine();
+        Theme.StatCard("GCD uptime", "98.7%", Theme.Crystal, width, "lost 1.2s");
+        Theme.Badge("Kill", Theme.Good);
+        ImGui.SameLine();
+        Theme.Badge("Wipe", Theme.Bad);
+        ImGui.SameLine();
+        Theme.Chip("Savage 12", true);
+        ImGui.SameLine();
+        Theme.Chip("Dungeon 4", false);
+        ImGui.SameLine();
+        Theme.PrimaryButton("Main action");
+        ImGui.SameLine();
+        Theme.GhostButton("Other action");
+
+        if (changed)
+            plugin.OnConfigChanged();
+    }
+
+    /// <summary>Small squares showing a theme's background, surface and accents.</summary>
+    private static void DrawSwatches(ThemePalette colors)
+    {
+        var size = ImGui.GetFrameHeight();
+        var dl = ImGui.GetWindowDrawList();
+        var pos = ImGui.GetCursorScreenPos();
+        var square = size * 0.7f;
+        var y = pos.Y + (size - square) / 2;
+        Vector4[] shown = [colors.Background, colors.Surface, colors.Accent, colors.Secondary];
+        for (var i = 0; i < shown.Length; i++)
+        {
+            var x = pos.X + i * (square + Theme.Px(3));
+            dl.AddRectFilled(new Vector2(x, y), new Vector2(x + square, y + square), ImGui.GetColorU32(shown[i]), Theme.Px(3));
+            dl.AddRect(new Vector2(x, y), new Vector2(x + square, y + square), Theme.U32(Theme.Line), Theme.Px(3));
+        }
+
+        ImGui.Dummy(new Vector2(shown.Length * (square + Theme.Px(3)), size));
     }
 
     private static readonly (SummaryElement Element, string Label)[] SummaryLabels =
@@ -369,21 +481,62 @@ public sealed class ConfigWindow : Window
                  + "Each phase's enrage is measured from the phase start.");
         }
 
-        const ImGuiTableFlags tableFlags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
-        using var table = ImRaii.Table($"##fights{category}", 5, tableFlags);
-        if (!table)
-            return changed;
+        // Then one group per expansion, the most recent first (and open).
+        var first = true;
+        foreach (var expansion in fights.GroupBy(f => f.ExpansionId).OrderByDescending(g => g.Key))
+        {
+            var open = first || fightFilter.Length > 0;
+            first = false;
+            var nodeFlags = open ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None;
+            using var node = ImRaii.TreeNode($"{expansion.First().Expansion} ({expansion.Count()})###exp{category}{expansion.Key}", nodeFlags);
+            if (!node)
+                continue;
 
-        ImGui.TableSetupColumn("Fight", ImGuiTableColumnFlags.WidthStretch, 2f);
-        ImGui.TableSetupColumn("Boss HP", ImGuiTableColumnFlags.WidthFixed, 140);
-        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, 90);
-        ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, 90);
+            // Ultimates: one more level, each ultimate with its phases.
+            if (category == FightCategory.Ultimate)
+            {
+                foreach (var fight in expansion)
+                    changed |= DrawUltimateFight(fight, boss);
+            }
+            else
+            {
+                changed |= DrawFightTable(category, $"{category}{expansion.Key}", expansion.ToList(), boss);
+            }
+        }
+
+        return changed;
+    }
+
+    private bool DrawFightTable(FightCategory category, string id, List<FightEntry> fights, BossInfo? boss)
+    {
+        var c = plugin.Configuration;
+        var changed = false;
+        // The names are never cut: their column is as wide as the longest one, and the table scrolls when too narrow.
+        var nameWidth = NameColumnWidth("Fight", fights.Select(f => f.Name));
+        var layout = CheckTable(fights.Count + (category == FightCategory.Savage ? fights.Count / 4 : 0), nameWidth + Theme.Px(CheckColumnsWidth));
+        using var table = ImRaii.Table($"##fights{id}", 5, layout.Flags, layout.Size, layout.InnerWidth);
+        if (!table)
+            return false;
+
+        ImGui.TableSetupColumn("Fight", ImGuiTableColumnFlags.WidthFixed, nameWidth);
+        ImGui.TableSetupColumn("Boss HP", ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
+        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("##notes", ImGuiTableColumnFlags.WidthStretch, 1f);
         ImGui.TableHeadersRow();
 
-        foreach (var fight in fights)
+        // Savage raids come in tiers of four fights: a thin band between tiers (not while searching, the list is cut).
+        var tierSeparators = category == FightCategory.Savage && fightFilter.Length == 0;
+        for (var i = 0; i < fights.Count; i++)
         {
-            using var id = ImRaii.PushId((int)fight.TerritoryId);
+            var fight = fights[i];
+            if (tierSeparators && i > 0 && i % 4 == 0)
+            {
+                ImGui.TableNextRow(ImGuiTableRowFlags.None, Theme.Px(3));
+                ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, Theme.U32(Theme.Gold, 0.35f));
+            }
+
+            using var rowId = ImRaii.PushId((int)fight.TerritoryId);
             ImGui.TableNextRow();
             var here = fight.TerritoryId == plugin.CurrentTerritory;
             var check = FightCheck(fight);
@@ -419,82 +572,106 @@ public sealed class ConfigWindow : Window
             }
 
             ImGui.TableNextColumn();
-            var ultimate = category == FightCategory.Ultimate
-                               ? UltimateDefinitions.All.FirstOrDefault(u => u.TerritoryId == fight.TerritoryId)
-                               : null;
-            if (ultimate is not null)
-                ImGui.TextDisabled("phases below");
-
-            if (ultimate is not null)
-                DrawPhaseRows(ultimate);
         }
 
         return changed;
     }
 
     /// <summary>The phases of a supported ultimate, under its row: each with its own HP, enrage and required DPS.</summary>
-    private void DrawPhaseRows(UltimateFight fight)
+    /// <summary>
+    /// An ultimate as its own node: one block per phase (title, then the boss row with HP, enrage and required DPS),
+    /// and the whole-fight check last. Ultimates whose phases are not supported yet only have the whole-fight check.
+    /// </summary>
+    private bool DrawUltimateFight(FightEntry fight, BossInfo? boss)
+    {
+        var here = fight.TerritoryId == plugin.CurrentTerritory;
+        using var color = ImRaii.PushColor(ImGuiCol.Text, plugin.Configuration.AboveThresholdColor, here);
+        using var node = ImRaii.TreeNode($"{fight.Name}###ult{fight.TerritoryId}");
+        color.Dispose();
+        if (!node)
+            return false;
+
+        var definition = UltimateDefinitions.All.FirstOrDefault(u => u.TerritoryId == fight.TerritoryId);
+        if (definition is null)
+        {
+            Theme.Hint("Phases not supported yet: one check for the whole fight.");
+            return DrawFightTable(FightCategory.Ultimate, $"ult{fight.TerritoryId}", [fight], boss);
+        }
+
+        // Transitions have no boss, so nothing to check: only the boss phases are listed.
+        foreach (var phase in definition.Phases.Where(p => !p.IsTransition))
+        {
+            using var id = ImRaii.PushId(phase.Key);
+            ImGui.TextColored(Theme.Gold, PhaseTitle(phase));
+            DrawPhaseTable(phase);
+        }
+
+        ImGui.TextColored(Theme.Gold, "Whole fight");
+        Help("Optional: a check on the party DPS of the whole pull, used for the pDPS value of the server bar.");
+        return DrawFightTable(FightCategory.Ultimate, $"ultall{fight.TerritoryId}", [fight], boss);
+    }
+
+    // "P1" -> "Phase 1"; named steps ("Limit Cut") stay as they are.
+    private static string PhaseTitle(UltimatePhase phase) =>
+        phase.Label.Length > 1 && phase.Label[0] == 'P' && phase.Label[1..].All(char.IsDigit)
+            ? $"Phase {phase.Label[1..]}"
+            : phase.Label;
+
+    /// <summary>The boss row of an ultimate phase: combined HP, enrage, required DPS, timings from your pulls.</summary>
+    private void DrawPhaseTable(UltimatePhase phase)
     {
         var c = plugin.Configuration;
         var tracker = plugin.Ultimates;
 
-        foreach (var phase in fight.Phases)
+        var nameWidth = NameColumnWidth("Boss", [phase.Name]);
+        // The notes column holds the "Use last wipe" button: keep room for it too.
+        var layout = CheckTable(1, nameWidth + Theme.Px(CheckColumnsWidth + 170));
+        using var table = ImRaii.Table("##phase", 5, layout.Flags, layout.Size, layout.InnerWidth);
+        if (!table)
+            return;
+
+        ImGui.TableSetupColumn("Boss", ImGuiTableColumnFlags.WidthFixed, nameWidth);
+        ImGui.TableSetupColumn("Boss HP (all)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
+        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn("Required DPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn("##notes", ImGuiTableColumnFlags.WidthStretch, 1f);
+        ImGui.TableHeadersRow();
+        ImGui.TableNextRow();
+
+        ImGui.TableNextColumn();
+        ImGui.TextUnformatted(phase.Name);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip($"Tracked: {string.Join(", ", phase.TrackedBosses)}");
+
+        ImGui.TableNextColumn();
+        DrawPhaseHp(phase);
+
+        ImGui.TableNextColumn();
+        var enrage = c.UltimateEnrageSeconds.GetValueOrDefault(phase.Key);
+        if (DrawEnrageInput(enrage, out var newEnrage))
+            SetPhaseEnrage(phase.Key, newEnrage);
+
+        ImGui.TableNextColumn();
+        var phaseHp = c.PhaseCheckHp(phase.Key, 0);
+        if (phaseHp > 0 && enrage > 0)
+            ImGui.TextUnformatted(NumberFormat.Format(phaseHp / enrage, NumberStyle.Grouped));
+        else
+            ImGui.TextDisabled("-");
+
+        ImGui.TableNextColumn();
+        if (tracker.LastWipes.TryGetValue(phase.Key, out var wipe))
         {
-            using var id = ImRaii.PushId(phase.Key);
-            ImGui.TableNextRow();
-
-            ImGui.TableNextColumn();
-            ImGui.Indent();
-            if (phase.IsTransition)
-            {
-                // A transition has no boss, so no HP, enrage or required DPS.
-                ImGui.TextDisabled(phase.Label);
-                ImGui.Unindent();
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.TableNextColumn();
-                ImGui.TextDisabled("transition");
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("No boss: lasts until the next phase's bosses are targetable.");
-                continue;
-            }
-
-            ImGui.TextUnformatted($"{phase.Label} {phase.Name}");
-            ImGui.Unindent();
+            if (ImGui.SmallButton($"Use last wipe ({NumberFormat.Duration(wipe)})"))
+                SetPhaseEnrage(phase.Key, Math.Round(wipe.TotalSeconds));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip($"Tracked: {string.Join(", ", phase.TrackedBosses)}");
+                ImGui.SetTooltip("Phase time when your last pull ended in this phase, e.g. a wipe to the enrage.");
+        }
 
-            ImGui.TableNextColumn();
-            DrawPhaseHp(phase);
-
-            ImGui.TableNextColumn();
-            var enrage = c.UltimateEnrageSeconds.GetValueOrDefault(phase.Key);
-            if (DrawEnrageInput(enrage, out var newEnrage))
-                SetPhaseEnrage(phase.Key, newEnrage);
-
-            ImGui.TableNextColumn();
-            var phaseHp = c.PhaseCheckHp(phase.Key, 0);
-            if (phaseHp > 0 && enrage > 0)
-                ImGui.TextUnformatted(NumberFormat.Format(phaseHp / enrage, NumberStyle.Grouped));
-            else
-                ImGui.TextDisabled("-");
-
-            ImGui.TableNextColumn();
-            if (tracker.LastWipes.TryGetValue(phase.Key, out var wipe))
-            {
-                if (ImGui.SmallButton($"Use last wipe ({NumberFormat.Duration(wipe)})"))
-                    SetPhaseEnrage(phase.Key, Math.Round(wipe.TotalSeconds));
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("Phase time when your last pull ended in this phase, e.g. a wipe to the enrage.");
-            }
-
-            if (tracker.LastClears.TryGetValue(phase.Key, out var clear))
-            {
-                if (tracker.LastWipes.ContainsKey(phase.Key))
-                    ImGui.SameLine();
-                ImGui.TextDisabled($"last clear {NumberFormat.Duration(clear)}");
-            }
+        if (tracker.LastClears.TryGetValue(phase.Key, out var clear))
+        {
+            if (tracker.LastWipes.ContainsKey(phase.Key))
+                ImGui.SameLine();
+            ImGui.TextDisabled($"last clear {NumberFormat.Duration(clear)}");
         }
     }
 
@@ -543,18 +720,19 @@ public sealed class ConfigWindow : Window
             changed = true;
         }
 
-        const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
-        using var table = ImRaii.Table("##thresholds", 7, flags);
+        var customRows = c.Thresholds.Count(t => !IsFightCheck(t));
+        var layout = CheckTable(customRows, Theme.Px(60 + 2 * 160 + CheckColumnsWidth + 24));
+        using var table = ImRaii.Table("##thresholds", 7, layout.Flags, layout.Size, layout.InnerWidth);
         if (!table)
             return changed;
 
-        ImGui.TableSetupColumn("Zone ID", ImGuiTableColumnFlags.WidthFixed, 60);
+        ImGui.TableSetupColumn("Zone ID", ImGuiTableColumnFlags.WidthFixed, Theme.Px(60));
         ImGui.TableSetupColumn("Encounter (optional)", ImGuiTableColumnFlags.WidthStretch, 1f);
         ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableSetupColumn("Boss HP", ImGuiTableColumnFlags.WidthFixed, 140);
-        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, 90);
-        ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, 90);
-        ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 24);
+        ImGui.TableSetupColumn("Boss HP", ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
+        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, Theme.Px(24));
         ImGui.TableHeadersRow();
 
         for (var i = 0; i < c.Thresholds.Count; i++)
@@ -633,6 +811,33 @@ public sealed class ConfigWindow : Window
         }
 
         return changed;
+    }
+
+    // Boss HP, enrage and min / required DPS columns, with their cell padding.
+    private const float CheckColumnsWidth = 400;
+
+    /// <summary>Width of a name column: its longest entry (or header), never cut.</summary>
+    private static float NameColumnWidth(string header, IEnumerable<string> names) =>
+        names.Append(header).Max(n => ImGui.CalcTextSize(n).X) + Theme.Px(8);
+
+    /// <summary>
+    /// Layout of a DPS check table, sized to its rows. Narrower than <paramref name="minWidth"/>, it keeps that width and scrolls
+    /// sideways instead of squashing its columns (a scrolling table needs an explicit height).
+    /// </summary>
+    private static (ImGuiTableFlags Flags, Vector2 Size, float InnerWidth) CheckTable(int rows, float minWidth)
+    {
+        var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
+        var narrow = ImGui.GetContentRegionAvail().X < minWidth;
+        var height = 0f;
+        if (narrow)
+        {
+            flags |= ImGuiTableFlags.ScrollX;
+            var cell = ImGui.GetStyle().CellPadding.Y * 2;
+            height = ImGui.GetTextLineHeight() + cell + rows * (ImGui.GetFrameHeight() + cell)
+                     + ImGui.GetStyle().ScrollbarSize + Theme.Px(4);
+        }
+
+        return (flags, new Vector2(-1, height), narrow ? minWidth : 0);
     }
 
     // A listed fight's own check: its whole zone, no encounter name.
@@ -905,12 +1110,19 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
 
         Theme.SectionHeader("Source");
-        var source = (int)c.Source;
-        if (ImGui.Combo("Source", ref source, "Auto (ACT if available, else built-in)\0ACT only\0Built-in only\0"))
+        // The recommended source first.
+        CombatSourceKind[] kinds = [CombatSourceKind.Native, CombatSourceKind.Auto, CombatSourceKind.Act];
+        string[] labels = ["Built-in only (recommended)", "Auto (ACT if available, else built-in)", "ACT only"];
+        var source = Array.IndexOf(kinds, c.Source);
+        ImGui.SetNextItemWidth(Theme.Px(300));
+        if (ImGui.Combo("Source", ref source, labels, labels.Length))
         {
-            c.Source = (CombatSourceKind)source;
+            c.Source = kinds[source];
             plugin.OnConfigChanged();
         }
+
+        Help("The built-in tracker reads the damage straight from the game: no ACT needed, and it is the one that "
+             + "computes rDPS and tells what killed you. ACT is only useful if you already run it.");
 
         ImGui.TextDisabled($"In use: {plugin.Sources.Current.Name}");
         ImGui.Spacing();

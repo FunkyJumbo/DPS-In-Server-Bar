@@ -8,40 +8,57 @@ using Dalamud.Interface.Utility.Raii;
 namespace DpsInServerBar.UI;
 
 /// <summary>
-/// The plugin's look: midnight-blue glass, gold accents and warm text, with rounded frames.
+/// The plugin's look: a dark translucent background, an accent color and rounded frames (midnight blue and gold by default, other themes in the Appearance settings).
 /// Push it around a window (PreDraw / PostDraw) so the frame and title bar get it too.
 /// </summary>
 public static class Theme
 {
-    // Palette
-    public static readonly Vector4 Ink = Rgb(0x0B, 0x0F, 0x18, 0.96f);
-    public static readonly Vector4 Panel = Rgb(0x11, 0x17, 0x23);
-    public static readonly Vector4 Surface = Rgb(0x1B, 0x23, 0x33);
-    public static readonly Vector4 SurfaceHover = Rgb(0x26, 0x31, 0x45);
-    public static readonly Vector4 SurfaceActive = Rgb(0x2F, 0x3D, 0x56);
-    public static readonly Vector4 Line = Rgb(0x2C, 0x38, 0x4D);
-    public static readonly Vector4 LineSoft = Rgb(0x1F, 0x27, 0x36);
+    // Palette: the colors of the selected theme (Appearance settings), the shades derived from them.
+    private static ThemePalette palette = ThemePalette.For(ThemePreset.Midnight);
+    private static float opacity = 0.96f;
 
-    public static readonly Vector4 Gold = Rgb(0xD6, 0xB0, 0x68);
-    public static readonly Vector4 GoldBright = Rgb(0xF2, 0xD7, 0x96);
-    public static readonly Vector4 GoldDim = Rgb(0x7E, 0x66, 0x33);
-    public static readonly Vector4 Crystal = Rgb(0x6F, 0xB8, 0xE0);
+    /// <summary>Window background, at the opacity chosen in the settings.</summary>
+    public static Vector4 Ink => palette.Background with { W = opacity };
+    public static Vector4 Panel => Mix(palette.Background, palette.Surface, 0.4f);
+    public static Vector4 Surface => palette.Surface;
+    public static Vector4 SurfaceHover => Lighten(palette.Surface, 0.07f);
+    public static Vector4 SurfaceActive => Lighten(palette.Surface, 0.13f);
+    public static Vector4 Line => Lighten(palette.Surface, 0.1f);
+    public static Vector4 LineSoft => Lighten(palette.Surface, 0.03f);
 
-    public static readonly Vector4 Text = Rgb(0xE7, 0xE1, 0xD3);
-    public static readonly Vector4 TextMuted = Rgb(0x95, 0xA0, 0xB3);
-    public static readonly Vector4 TextFaint = Rgb(0x5F, 0x6A, 0x7E);
+    public static Vector4 Gold => palette.Accent;
+    public static Vector4 GoldBright => Lighten(palette.Accent, 0.4f);
+    public static Vector4 GoldDim => Mix(palette.Accent, palette.Background, 0.45f);
+    public static Vector4 Crystal => palette.Secondary;
 
-    public static readonly Vector4 Good = Rgb(0x7C, 0xD3, 0x8B);
-    public static readonly Vector4 Warn = Rgb(0xE8, 0xB8, 0x4B);
-    public static readonly Vector4 Bad = Rgb(0xE4, 0x69, 0x5F);
+    public static Vector4 Text => palette.Text;
+    public static Vector4 TextMuted => Mix(palette.Text, palette.Surface, 0.4f);
+    public static Vector4 TextFaint => Mix(palette.Text, palette.Surface, 0.62f);
+
+    public static Vector4 Good => palette.Good;
+    public static Vector4 Warn => palette.Warn;
+    public static Vector4 Bad => palette.Bad;
 
     // Roles, for the damage bars of the player tables.
-    public static readonly Vector4 Tank = Rgb(0x5B, 0x8F, 0xE0);
-    public static readonly Vector4 Healer = Rgb(0x5F, 0xC2, 0x7A);
-    public static readonly Vector4 Dps = Rgb(0xD9, 0x6A, 0x6A);
+    public static Vector4 Tank => palette.Tank;
+    public static Vector4 Healer => palette.Healer;
+    public static Vector4 Dps => palette.Dps;
 
     /// <summary>Line colors of the graphs, in order.</summary>
-    public static readonly Vector4[] Series = [Gold, Crystal, Good, Rgb(0xC0, 0x8C, 0xE8), Warn, TextMuted];
+    public static Vector4[] Series => [Gold, Crystal, Good, Mix(Crystal, Bad, 0.5f), Warn, TextMuted];
+
+    /// <summary>Applies the theme and background opacity chosen in the settings.</summary>
+    public static void Configure(Configuration config)
+    {
+        palette = config.ThemePreset == ThemePreset.Custom ? config.CustomTheme : ThemePalette.For(config.ThemePreset);
+        opacity = Math.Clamp(config.BackgroundOpacity, 0.2f, 1f);
+    }
+
+    public static Vector4 Mix(Vector4 a, Vector4 b, float t) => a + (b - a) * t;
+
+    /// <summary>Brightens a color toward white, keeping its alpha.</summary>
+    public static Vector4 Lighten(Vector4 c, float t) =>
+        new(c.X + (1 - c.X) * t, c.Y + (1 - c.Y) * t, c.Z + (1 - c.Z) * t, c.W);
 
     public const float Radius = 6f;
     public const float RadiusLarge = 9f;
@@ -55,22 +72,20 @@ public static class Theme
 
     public static uint U32(Vector4 c, float a = 1f) => ImGui.GetColorU32(Alpha(c, a));
 
-    private static Vector4 Rgb(int r, int g, int b, float a = 1f) => new(r / 255f, g / 255f, b / 255f, a);
-
     /// <summary>Pushes the colors and metrics of the theme. Dispose to restore Dalamud's style.</summary>
     public static IDisposable Push()
     {
         var clear = new Vector4(0, 0, 0, 0);
         var colors = ImRaii.PushColor(ImGuiCol.WindowBg, Ink)
             .Push(ImGuiCol.ChildBg, clear)
-            .Push(ImGuiCol.PopupBg, Rgb(0x10, 0x16, 0x22, 0.98f))
+            .Push(ImGuiCol.PopupBg, Panel with { W = 0.98f })
             .Push(ImGuiCol.Border, Line)
             .Push(ImGuiCol.BorderShadow, clear)
             .Push(ImGuiCol.Text, Text)
             .Push(ImGuiCol.TextDisabled, TextFaint)
-            .Push(ImGuiCol.TitleBg, Rgb(0x0D, 0x12, 0x1C, 0.98f))
-            .Push(ImGuiCol.TitleBgActive, Rgb(0x14, 0x1C, 0x2B, 0.98f))
-            .Push(ImGuiCol.TitleBgCollapsed, Rgb(0x0D, 0x12, 0x1C, 0.8f))
+            .Push(ImGuiCol.TitleBg, palette.Background with { W = Math.Max(opacity, 0.9f) })
+            .Push(ImGuiCol.TitleBgActive, Panel with { W = Math.Max(opacity, 0.9f) })
+            .Push(ImGuiCol.TitleBgCollapsed, palette.Background with { W = 0.8f })
             .Push(ImGuiCol.FrameBg, Surface)
             .Push(ImGuiCol.FrameBgHovered, SurfaceHover)
             .Push(ImGuiCol.FrameBgActive, SurfaceActive)
@@ -92,7 +107,7 @@ public static class Theme
             .Push(ImGuiCol.Tab, clear)
             .Push(ImGuiCol.TabHovered, Alpha(Crystal, 0.18f))
             .Push(ImGuiCol.TabActive, Alpha(Crystal, 0.14f))
-            .Push(ImGuiCol.TableHeaderBg, Rgb(0x16, 0x1E, 0x2C))
+            .Push(ImGuiCol.TableHeaderBg, Panel)
             .Push(ImGuiCol.TableBorderStrong, Line)
             .Push(ImGuiCol.TableBorderLight, LineSoft)
             .Push(ImGuiCol.TableRowBg, clear)

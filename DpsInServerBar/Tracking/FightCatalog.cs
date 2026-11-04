@@ -15,7 +15,7 @@ public enum FightCategory
 }
 
 /// <summary>A high-end fight from the game data, listed in the DPS check tab.</summary>
-public sealed record FightEntry(FightCategory Category, uint TerritoryId, string Name, uint ContentId);
+public sealed record FightEntry(FightCategory Category, uint TerritoryId, string Name, uint ContentId, uint ExpansionId, string Expansion);
 
 /// <summary>
 /// Ultimates, savage raids and extreme trials, read from the duty finder data, most recent first.
@@ -44,6 +44,7 @@ public sealed class FightCatalog
     {
         var english = dataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English);
         var local = dataManager.GetExcelSheet<ContentFinderCondition>();
+        var expansions = dataManager.GetExcelSheet<ExVersion>();
         var result = new List<FightEntry>();
         var seen = new HashSet<uint>();
 
@@ -69,7 +70,12 @@ public sealed class FightCatalog
             var shown = local.TryGetRow(row.RowId, out var localRow) && localRow.Name.ExtractText() is { Length: > 0 } localName
                             ? localName
                             : name;
-            result.Add(new FightEntry(kind, territory, Capitalize(shown), row.RowId));
+            // Expansion of the fight's zone (ExVersion: 0 = A Realm Reborn ... 5 = Dawntrail), named in the client's language.
+            var expansion = row.TerritoryType.ValueNullable?.ExVersion.RowId ?? 0;
+            var expansionName = expansions.TryGetRow(expansion, out var ex) && ex.Name.ExtractText() is { Length: > 0 } exName
+                                    ? exName
+                                    : $"Expansion {expansion}";
+            result.Add(new FightEntry(kind, territory, Capitalize(shown), row.RowId, expansion, expansionName));
         }
 
         return result;

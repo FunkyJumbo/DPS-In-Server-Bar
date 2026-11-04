@@ -3,6 +3,14 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.0.11.0
+
+- New Appearance settings: theme presets, custom colors and background opacity.
+- DPS check: fights grouped by expansion, ultimates split by phase.
+- Player tables: DPS % and rDPS % columns.
+- Built-in tracker is now the recommended data source; rDPS is always computed.
+- Various UI changes and adjustments.
+
 ## 1.0.10.0
 
 - Settings > Display: "Preview the server bar" shows placeholder values for 10 seconds, for every element ticked,

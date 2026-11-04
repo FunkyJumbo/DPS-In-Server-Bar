@@ -133,13 +133,13 @@ and places your rDPS among them. See [FFLogs setup](#fflogs-setup).
 
 | Mode | How it works |
 |---|---|
-| **Auto** (default) | ACT when it is reachable, the built-in tracker otherwise |
+| **Built-in only** (default, recommended) | The plugin reads your party's damage directly from the game — no ACT needed |
+| **Auto** | ACT when it is reachable, the built-in tracker otherwise |
 | **ACT only** | Numbers come from ACT via OverlayPlugin's WebSocket server (WSServer started, default `ws://127.0.0.1:10501/ws`) |
-| **Built-in only** | The plugin reads your party's damage directly from the game — no ACT needed |
 
 The built-in tracker merges pets into their owner and counts the Limit Break separately. It is slightly less
 exhaustive than ACT (a DoT whose owner cannot be determined is skipped). rDPS always comes from the built-in
-tracker, which also runs next to ACT when rDPS is enabled; ACT's numbers are then adjusted with it.
+tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
 
 ## Commands
 
@@ -156,11 +156,12 @@ tracker, which also runs next to ACT when rDPS is enabled; ACT's numbers are the
 | Tab | Contents |
 |---|---|
 | **Display** | Metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), graphs, colors, auto-hide |
+| **Appearance** | Theme presets, background opacity, custom colors, preview |
 | **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, values shown, comparison with your best kill, **preview in chat** |
 | **Pulls history** | Record only in duties, minimum pull length, history size, graph window |
 | **DPS check** | Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |
 | **FFLogs** | Percentile estimate, API credentials, manual encounter id |
-| **Data source** | Auto / ACT / built-in, ACT address, connection status |
+| **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
 
 ## How rDPS is computed
 

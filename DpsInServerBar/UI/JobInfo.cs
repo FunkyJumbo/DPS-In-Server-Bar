@@ -42,6 +42,16 @@ public static class JobInfo
         }
     }
 
+    /// <summary>Draws the job icon at a screen position without moving the cursor (to place it next to aligned text).</summary>
+    public static void DrawIconAt(string abbreviation, Vector2 screenPos, float size)
+    {
+        if (Find(abbreviation) is { } id
+            && Plugin.TextureProvider.GetFromGameIcon(new GameIconLookup(IconBase + id)).GetWrapOrDefault() is { } wrap)
+        {
+            ImGui.GetWindowDrawList().AddImage(wrap.Handle, screenPos, screenPos + new Vector2(size, size));
+        }
+    }
+
     private static uint? Find(string abbreviation)
     {
         jobs ??= Load();

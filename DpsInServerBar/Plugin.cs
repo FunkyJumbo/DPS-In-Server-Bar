@@ -49,6 +49,7 @@ public sealed class Plugin : IDalamudPlugin
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         if (Configuration.Migrate())
             Configuration.Save();
+        UI.Theme.Configure(Configuration);
 
         var act = new ActClient(Log, () => playerName);
         var native = new NativeCombatTracker(GameInterop, ObjectTable, PartyList, Condition, ClientState, DataManager, PlayerState, Log);
@@ -126,7 +127,7 @@ public sealed class Plugin : IDalamudPlugin
         Configuration.Metric = Configuration.Metric switch
         {
             DisplayMetric.Personal => DisplayMetric.Party,
-            DisplayMetric.Party when Configuration.ComputeRdps => DisplayMetric.Raid,
+            DisplayMetric.Party => DisplayMetric.Raid,
             _ => DisplayMetric.Personal,
         };
         OnConfigChanged();
@@ -135,6 +136,7 @@ public sealed class Plugin : IDalamudPlugin
     public void OnConfigChanged(bool reconnect = false)
     {
         Configuration.Save();
+        UI.Theme.Configure(Configuration);
         dtr.Invalidate();
 
         if (reconnect && !Uri.TryCreate(Configuration.WebSocketUrl, UriKind.Absolute, out _))

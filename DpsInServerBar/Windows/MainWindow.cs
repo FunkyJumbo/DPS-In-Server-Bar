@@ -50,8 +50,8 @@ public sealed class MainWindow : Window
 
     public override void Draw()
     {
-        DrawHeader();
         Theme.TabStrip("main", ref selectedTab, (FontAwesomeIcon.Bolt, "Live"), (FontAwesomeIcon.History, "History"));
+        DrawSourceAndSettings();
         Theme.Rule(2);
 
         if (selectedTab == 0)
@@ -60,21 +60,22 @@ public sealed class MainWindow : Window
             DrawHistory();
     }
 
-    /// <summary>Title, data source state and the settings button.</summary>
-    private void DrawHeader()
+    /// <summary>At the right of the tabs: data source state and the settings button (the title bar already names the plugin).</summary>
+    private void DrawSourceAndSettings()
     {
-        Theme.Icon(FontAwesomeIcon.ChartBar, Theme.Gold);
-        ImGui.SameLine();
-        ImGui.TextColored(Theme.GoldBright, "DPS In Server Bar");
-
         var source = plugin.Sources.Current;
         var status = $"{source.Name}: {source.StatusText}{(plugin.Configuration.Source == CombatSourceKind.Auto ? " (auto)" : "")}";
         var badgeWidth = ImGui.CalcTextSize(status).X + Theme.Px(14);
         var buttonWidth = ImGui.GetFrameHeight();
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         ImGui.SameLine(ImGui.GetWindowContentRegionMax().X - badgeWidth - buttonWidth - spacing);
+
+        // Centered on the height of the tabs.
+        var y = ImGui.GetCursorPosY();
+        ImGui.SetCursorPosY(y + Theme.Px(5));
         Theme.Badge(status, source.IsReady ? Theme.Good : Theme.Bad);
         ImGui.SameLine();
+        ImGui.SetCursorPosY(y + Theme.Px(1));
         if (Theme.IconButton("settings", FontAwesomeIcon.Cog, "Settings"))
             plugin.ToggleConfigUi();
     }
@@ -133,10 +134,10 @@ public sealed class MainWindow : Window
         {
             var rank = snapshot.YourRank();
             var party = snapshot.Combatants.Count(c => c.HasJob);
-            cards.Add(w => Theme.StatCard("Your DPS", NumberFormat.Format(you.EncDps, NumberStyle.Grouped), Theme.Gold, w,
+            cards.Add(w => Theme.StatCard("DPS", NumberFormat.Format(you.EncDps, NumberStyle.Grouped), Theme.Gold, w,
                                           party > 1 && rank > 0 ? $"#{rank} of {party}" : null));
             if (you.HasRdps)
-                cards.Add(w => Theme.StatCard("Your rDPS", NumberFormat.Format(you.RDps, NumberStyle.Grouped), Theme.Crystal, w,
+                cards.Add(w => Theme.StatCard("rDPS", NumberFormat.Format(you.RDps, NumberStyle.Grouped), Theme.Crystal, w,
                                               party > 1 ? $"#{snapshot.YourRank(byRdps: true)} of {party}" : null));
         }
 
@@ -182,10 +183,13 @@ public sealed class MainWindow : Window
         DrawCards(cards);
     }
 
-    /// <summary>Lays the cards out on one line, sharing the width.</summary>
+    // Width of a figure card; narrower only when the window cannot fit them all.
+    private const float CardWidth = 190;
+
+    /// <summary>Lays the cards out on one line, at a fixed width.</summary>
     private static void DrawCards(List<System.Action<float>> cards)
     {
-        var width = Theme.CardWidth(cards.Count);
+        var width = Math.Min(Theme.Px(CardWidth), Theme.CardWidth(cards.Count));
         for (var i = 0; i < cards.Count; i++)
         {
             if (i > 0)
@@ -396,13 +400,15 @@ public sealed class MainWindow : Window
 
     private void DrawPullTable(List<PullRecord> pulls)
     {
-        const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH
-                                      | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingStretchProp;
-        using var table = ImRaii.Table("##pulls", 11, flags);
+        // Scrolls sideways in a narrow window rather than squashing the columns.
+        const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.ScrollX
+                                      | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.PadOuterX;
+        var innerWidth = Math.Max(ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ScrollbarSize, Theme.Px(760));
+        using var table = ImRaii.Table("##pulls", 11, flags, new Vector2(-1, -1), innerWidth);
         if (!table)
             return;
 
-        ImGui.TableSetupScrollFreeze(0, 1);
+        ImGui.TableSetupScrollFreeze(1, 1); // the date and the headers stay visible while scrolling
         ImGui.TableSetupColumn("When", ImGuiTableColumnFlags.WidthStretch, 1.5f);
         ImGui.TableSetupColumn("Encounter", ImGuiTableColumnFlags.WidthStretch, 2.4f);
         ImGui.TableSetupColumn("Time", ImGuiTableColumnFlags.WidthStretch, 0.9f);
@@ -416,25 +422,36 @@ public sealed class MainWindow : Window
         ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, ImGui.GetFrameHeight());
         ImGui.TableHeadersRow();
 
+        // Rows as tall as the checkbox and the delete button, everything else centered on that height.
+        var rowHeight = ImGui.GetFrameHeight();
         var iconSize = ImGui.GetTextLineHeight();
+        var framePadding = ImGui.GetStyle().FramePadding.Y;
+        using var selectableAlign = ImRaii.PushStyle(ImGuiStyleVar.SelectableTextAlign, new Vector2(0, 0.5f));
+
+        void Text(string text, Vector4? color = null)
+        {
+            ImGui.TableNextColumn();
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextColored(color ?? Theme.Text, text);
+        }
+
         Guid? toDelete = null;
         foreach (var p in pulls)
         {
             using var id = ImRaii.PushId(p.Id.ToString());
-            ImGui.TableNextRow();
+            ImGui.TableNextRow(ImGuiTableRowFlags.None, rowHeight);
 
             ImGui.TableNextColumn();
             if (ImGui.Selectable(p.StartUtc.ToLocalTime().ToString("dd/MM HH:mm"), p.Id == selectedId,
-                                 ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+                                 ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap, new Vector2(0, rowHeight)))
             {
                 selectedId = p.Id;
             }
 
+            Text(p.Title.Length > 0 ? p.Title : p.Zone);
+            Text(NumberFormat.Duration(TimeSpan.FromSeconds(p.DurationSeconds)), Theme.TextMuted);
             ImGui.TableNextColumn();
-            ImGui.TextUnformatted(p.Title.Length > 0 ? p.Title : p.Zone);
-            ImGui.TableNextColumn();
-            ImGui.TextColored(Theme.TextMuted, NumberFormat.Duration(TimeSpan.FromSeconds(p.DurationSeconds)));
-            ImGui.TableNextColumn();
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + framePadding - Theme.Px(1));
             switch (p.Outcome)
             {
                 case PullOutcome.Kill:
@@ -444,22 +461,23 @@ public sealed class MainWindow : Window
                     Theme.Badge("Wipe", Theme.Bad);
                     break;
                 default:
-                    ImGui.TextDisabled("-");
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + Theme.Px(1));
+                    ImGui.TextColored(Theme.TextFaint, "-");
                     break;
             }
 
+            // The icon is drawn by hand next to text aligned like the other cells (the row's text baseline also
+            // applies to anything placed after an image, which pushed the text down).
             ImGui.TableNextColumn();
-            JobInfo.DrawIcon(p.Job, iconSize);
-            ImGui.SameLine(0, Theme.Px(4));
+            var cell = ImGui.GetCursorScreenPos();
+            JobInfo.DrawIconAt(p.Job, cell with { Y = cell.Y + framePadding }, iconSize);
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + iconSize + Theme.Px(4));
+            ImGui.AlignTextToFramePadding();
             ImGui.TextUnformatted(p.Job);
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(NumberFormat.Format(p.YourDps, NumberStyle.Grouped));
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(p.YourRdps is { } rd ? NumberFormat.Format(rd, NumberStyle.Grouped) : "-");
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(NumberFormat.Format(p.PartyDps, NumberStyle.Grouped));
-            ImGui.TableNextColumn();
-            ImGui.TextColored(Theme.TextMuted, p.PartySize > 1 && p.Rank > 0 ? $"{p.Rank}/{p.PartySize}" : "-");
+            Text(NumberFormat.Format(p.YourDps, NumberStyle.Grouped));
+            Text(p.YourRdps is { } rd ? NumberFormat.Format(rd, NumberStyle.Grouped) : "-");
+            Text(NumberFormat.Format(p.PartyDps, NumberStyle.Grouped));
+            Text(p.PartySize > 1 && p.Rank > 0 ? $"{p.Rank}/{p.PartySize}" : "-", Theme.TextMuted);
 
             ImGui.TableNextColumn();
             var isCompare = compareId == p.Id;
@@ -573,14 +591,14 @@ public sealed class MainWindow : Window
         var (dpsHint, dpsColor) = Gap(pull.YourDps, compare?.YourDps);
         if (dpsHint is null && pull.PartySize > 1 && pull.Rank > 0)
             dpsHint = $"#{pull.Rank} of {pull.PartySize}";
-        cards.Add(w => Theme.StatCard("Your DPS", NumberFormat.Format(pull.YourDps, NumberStyle.Grouped), Theme.Gold, w, dpsHint, dpsColor));
+        cards.Add(w => Theme.StatCard("DPS", NumberFormat.Format(pull.YourDps, NumberStyle.Grouped), Theme.Gold, w, dpsHint, dpsColor));
 
         if (pull.YourRdps is { } rdps)
         {
             var (hint, color) = Gap(rdps, compare?.YourRdps);
             if (hint is null && pull.PartySize > 1 && pull.RdpsRank > 0)
                 hint = $"#{pull.RdpsRank} of {pull.PartySize}";
-            cards.Add(w => Theme.StatCard("Your rDPS", NumberFormat.Format(rdps, NumberStyle.Grouped), Theme.Crystal, w, hint, color));
+            cards.Add(w => Theme.StatCard("rDPS", NumberFormat.Format(rdps, NumberStyle.Grouped), Theme.Crystal, w, hint, color));
         }
 
         var (partyHint, partyColor) = Gap(pull.PartyDps, compare?.PartyDps);
@@ -643,25 +661,45 @@ public sealed class MainWindow : Window
                    : rows.OrderByDescending(c => c.Dps).ToList();
         var top = rows.Count > 0 ? rows.Max(c => byRdps ? c.Rdps ?? c.Dps : c.Dps) : 0;
 
-        // Without ScrollY and with a height of 0, the table takes exactly the height of its rows.
-        const ImGuiTableFlags flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
+        // Share of the party's DPS and of its rDPS (the Limit Break counts in the DPS, like ACT's damage %).
+        var dpsTotal = rows.Sum(c => c.Dps);
+        var rdpsTotal = rows.Sum(c => c.Rdps ?? 0);
+        static string Share(double value, double total) => total > 0 ? $"{value / total:0.0%}" : "-";
 
-        using var table = ImRaii.Table("##combatants", showRdps ? 8 : 7, flags, new Vector2(-1, 0));
+        // Without scrolling and with a height of 0, the table takes exactly the height of its rows. In a narrow window it
+        // keeps a readable width and scrolls sideways instead, which needs an explicit height.
+        var iconSize = ImGui.GetTextLineHeight() + Theme.Px(4);
+        var minWidth = Theme.Px(showRdps ? 720 : 600);
+        var narrow = ImGui.GetContentRegionAvail().X < minWidth;
+        var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.PadOuterX;
+        var height = 0f;
+        if (narrow)
+        {
+            flags |= ImGuiTableFlags.ScrollX;
+            var cell = ImGui.GetStyle().CellPadding.Y * 2;
+            height = ImGui.GetTextLineHeight() + cell + rows.Count * (iconSize + Theme.Px(4) + cell)
+                     + ImGui.GetStyle().ScrollbarSize + Theme.Px(2);
+        }
+
+        using var table = ImRaii.Table("##combatants", showRdps ? 9 : 7, flags, new Vector2(-1, height), narrow ? minWidth : 0);
         if (!table)
             return;
 
         ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, Theme.Px(22));
         ImGui.TableSetupColumn("Player", ImGuiTableColumnFlags.WidthStretch, 3.4f);
-        ImGui.TableSetupColumn("DPS", ImGuiTableColumnFlags.WidthStretch, 1.4f);
+        ImGui.TableSetupColumn("DPS", ImGuiTableColumnFlags.WidthStretch, 1.3f);
+        ImGui.TableSetupColumn("DPS %", ImGuiTableColumnFlags.WidthStretch, 0.9f);
         if (showRdps)
-            ImGui.TableSetupColumn("rDPS", ImGuiTableColumnFlags.WidthStretch, 1.4f);
-        ImGui.TableSetupColumn("%", ImGuiTableColumnFlags.WidthStretch, 0.8f);
+        {
+            ImGui.TableSetupColumn("rDPS", ImGuiTableColumnFlags.WidthStretch, 1.3f);
+            ImGui.TableSetupColumn("rDPS %", ImGuiTableColumnFlags.WidthStretch, 0.9f);
+        }
+
         ImGui.TableSetupColumn("Crit", ImGuiTableColumnFlags.WidthStretch, 0.8f);
         ImGui.TableSetupColumn("DH", ImGuiTableColumnFlags.WidthStretch, 0.8f);
-        ImGui.TableSetupColumn("Deaths", ImGuiTableColumnFlags.WidthStretch, 0.9f);
+        ImGui.TableSetupColumn("Deaths", ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("Deaths").X + Theme.Px(8));
         ImGui.TableHeadersRow();
 
-        var iconSize = ImGui.GetTextLineHeight() + Theme.Px(4);
         var rank = 0;
         foreach (var c in rows)
         {
@@ -671,6 +709,7 @@ public sealed class MainWindow : Window
                 rank++;
 
             ImGui.TableNextColumn();
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (iconSize - ImGui.GetTextLineHeight()) / 2);
             ImGui.TextColored(Theme.TextFaint, hasJob ? rank.ToString() : "");
 
             // Damage bar behind the name, as wide as the share of the top player's value.
@@ -698,6 +737,7 @@ public sealed class MainWindow : Window
             }
 
             Cell(NumberFormat.Format(c.Dps, NumberStyle.Grouped));
+            Cell(Share(c.Dps, dpsTotal), Theme.TextMuted);
             if (showRdps)
             {
                 Cell(c.Rdps is { } r ? NumberFormat.Format(r, NumberStyle.Grouped) : "-");
@@ -709,9 +749,10 @@ public sealed class MainWindow : Window
                         + $"Crit rate used: {b.CritRate:0.0%}   DH rate used: {b.DirectHitRate:0.0%}\n"
                         + $"({b.Samples} hits observed; exact stats are used for you at level 100)");
                 }
+
+                Cell(c.Rdps is { } own ? Share(own, rdpsTotal) : "-", Theme.TextMuted);
             }
 
-            Cell($"{c.DamagePercent:0}%", Theme.TextMuted);
             Cell($"{c.CritPercent:0}%", Theme.TextMuted);
             Cell($"{c.DirectHitPercent:0}%", Theme.TextMuted);
             Cell(c.Deaths.ToString(), c.Deaths > 0 ? Theme.Bad : Theme.TextFaint);

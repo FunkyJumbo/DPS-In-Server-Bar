@@ -42,7 +42,7 @@ public sealed class CombatSourceManager : IDisposable
         {
             var source = Current;
             var snapshot = source.Latest;
-            if (snapshot is null || source != Act || !config.ComputeRdps)
+            if (snapshot is null || source != Act)
                 return snapshot;
 
             var native = Native.Latest;
@@ -73,10 +73,9 @@ public sealed class CombatSourceManager : IDisposable
         else if (reconnectAct || !Act.IsRunning)
             Act.Start(new Uri(config.WebSocketUrl));
 
-        // The built-in tracker also runs next to ACT when rDPS is wanted (only it sees buffs) or to tell what killed
-        // you (only it sees the hits you take).
-        Native.SetEnabled(config.Source != CombatSourceKind.Act || config.ComputeRdps
-                          || (config.ChatSummary && config.ChatSummaryElements.HasFlag(SummaryElement.KilledBy)));
+        // The built-in tracker always runs, next to ACT too: only it sees the buffs (rDPS) and the hits you take
+        // (what killed you).
+        Native.SetEnabled(true);
     }
 
     public void Tick() => Native.Tick();

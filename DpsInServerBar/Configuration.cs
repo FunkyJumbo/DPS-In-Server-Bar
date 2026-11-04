@@ -6,6 +6,7 @@ using Dalamud.Configuration;
 using Newtonsoft.Json;
 using DpsInServerBar.Combat;
 using DpsInServerBar.Tracking;
+using DpsInServerBar.UI;
 
 namespace DpsInServerBar;
 
@@ -112,7 +113,7 @@ public sealed class Configuration : IPluginConfiguration
     public List<BarElementSetting> BarLayout { get; set; } = DefaultLayout();
 
     // Data source
-    public CombatSourceKind Source { get; set; } = CombatSourceKind.Auto;
+    public CombatSourceKind Source { get; set; } = CombatSourceKind.Native;
     public string Host { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 10501;
 
@@ -132,14 +133,22 @@ public sealed class Configuration : IPluginConfiguration
     public bool SortByRdps { get; set; } = false;
     public bool IncludeLimitBreakInParty { get; set; } = true;
 
-    /// <summary>Compute rDPS with the built-in tracker (also runs next to ACT for that purpose).</summary>
-    public bool ComputeRdps { get; set; } = true;
 
     /// <summary>Hide the entry this many seconds after the encounter ends (0 = always visible).</summary>
     public int HideAfterSeconds { get; set; } = 0;
 
     /// <summary>Hide the entry while no source can provide data.</summary>
     public bool HideWhenDisconnected { get; set; } = false;
+
+    // Appearance of the plugin's windows
+    public ThemePreset ThemePreset { get; set; } = ThemePreset.Midnight;
+
+    /// <summary>Colors of the custom theme (ThemePreset.Custom).</summary>
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public ThemePalette CustomTheme { get; set; } = ThemePalette.For(ThemePreset.Midnight);
+
+    /// <summary>Opacity of the windows' background, 0.2 to 1.</summary>
+    public float BackgroundOpacity { get; set; } = 0.96f;
 
     // Colors (RGBA, 0-1)
     public bool UseColors { get; set; } = true;
