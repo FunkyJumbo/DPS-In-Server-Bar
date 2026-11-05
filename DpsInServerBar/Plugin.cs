@@ -131,16 +131,13 @@ public sealed class Plugin : IDalamudPlugin
     public void SetCompact(bool open)
     {
         compactWindow.IsOpen = open;
-        if (open)
-            mainWindow.IsOpen = false;
         Configuration.LiveCompact = open;
         Configuration.Save();
     }
 
-    /// <summary>From the compact meter back to the full window.</summary>
-    public void ShowFullView(bool history = false)
+    /// <summary>Opens the main window from the compact meter (which stays open).</summary>
+    public void ShowMainWindow(bool history = false)
     {
-        SetCompact(false);
         if (history)
             mainWindow.ShowHistory();
         else

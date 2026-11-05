@@ -208,6 +208,9 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Opacity of the compact meter's background, 0 (see-through) to 1.</summary>
     public float CompactOpacity { get; set; } = 1f;
 
+    /// <summary>Shows the compact meter's header row (Player, DPS / rDPS, columns).</summary>
+    public bool CompactShowHeader { get; set; } = true;
+
     /// <summary>Replaced by CompactOpacity: only read once.</summary>
     public bool? CompactTransparent { get; set; }
     public bool IncludeLimitBreakInParty { get; set; } = true;

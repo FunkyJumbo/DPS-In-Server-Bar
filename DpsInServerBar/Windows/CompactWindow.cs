@@ -54,37 +54,13 @@ public sealed class CompactWindow : Window
 
         // The window takes the size of its content: it cannot be resized by hand.
         var snapshot = plugin.Sources.Latest;
-        var tableWidth = 0f;
         if (snapshot is not null)
-            tableWidth = DrawTable(snapshot, config);
+            DrawTable(snapshot, config);
         else
             Theme.Hint("No combat data yet.");
-
-        if (Theme.Chip("Full view", false, transparent: config.CompactOpacity < 0.5f))
-            plugin.ShowFullView();
-
-        // Fight timer at the right, when there is room for it.
-        if (snapshot is not null)
-        {
-            var time = NumberFormat.Duration(snapshot.Encounter.Duration);
-            // Aligned on the table, not on the window, so the window can shrink to the table.
-            var x = ImGui.GetCursorStartPos().X + tableWidth - ImGui.CalcTextSize(time).X;
-            ImGui.SameLine();
-            if (x > ImGui.GetCursorPosX())
-            {
-                ImGui.SetCursorPosX(x);
-                ImGui.TextColored(snapshot.IsActive ? Theme.Crystal : Theme.TextMuted, time);
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(string.IsNullOrEmpty(snapshot.Encounter.Title) ? "Encounter" : snapshot.Encounter.Title);
-            }
-            else
-            {
-                ImGui.NewLine();
-            }
-        }
     }
 
-    /// <summary>Right click menu: metric, full window, history, settings, close.</summary>
+    /// <summary>Right click menu: metric, opacity, main window, history, settings, close.</summary>
     private void DrawMenu(Configuration config)
     {
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
@@ -106,6 +82,12 @@ public sealed class CompactWindow : Window
             config.Save();
         }
 
+        if (ImGui.MenuItem("Header", string.Empty, config.CompactShowHeader))
+        {
+            config.CompactShowHeader = !config.CompactShowHeader;
+            config.Save();
+        }
+
         var percent = (int)Math.Round(config.CompactOpacity * 100);
         ImGui.SetNextItemWidth(Theme.Px(140));
         if (ImGui.SliderInt("Opacity", ref percent, 0, 100, "%d%%"))
@@ -114,18 +96,18 @@ public sealed class CompactWindow : Window
             config.Save();
 
         ImGui.Separator();
-        if (ImGui.MenuItem("Full view"))
-            plugin.ShowFullView();
+        if (ImGui.MenuItem("Main window"))
+            plugin.ShowMainWindow();
         if (ImGui.MenuItem("History"))
-            plugin.ShowFullView(history: true);
+            plugin.ShowMainWindow(history: true);
         if (ImGui.MenuItem("Settings"))
             plugin.ToggleConfigUi();
         if (ImGui.MenuItem("Close"))
             plugin.SetCompact(false);
     }
 
-    /// <summary>Draws the meter and returns its width.</summary>
-    private static float DrawTable(CombatSnapshot snapshot, Configuration config)
+    /// <summary>Draws the meter.</summary>
+    private static void DrawTable(CombatSnapshot snapshot, Configuration config)
     {
         var byRdps = config.SortByRdps && snapshot.Combatants.Any(c => c.HasRdps);
         double Value(CombatantInfo c) => byRdps && c.HasRdps ? c.RDps : c.EncDps;
@@ -161,13 +143,14 @@ public sealed class CompactWindow : Window
         var headerHeight = ImGui.GetTextLineHeight() + cellPadding.Y * 2;
         var tableWidth = nameWidth + valueWidth + widths.Sum() + cellPadding.X * 2 * columns;
         var origin = ImGui.GetCursorScreenPos();
-        ImGui.GetWindowDrawList().AddRectFilled(origin, origin + new Vector2(tableWidth, headerHeight),
+        if (config.CompactShowHeader)
+            ImGui.GetWindowDrawList().AddRectFilled(origin, origin + new Vector2(tableWidth, headerHeight),
                                                 Theme.U32(Theme.Gold, 0.45f), Theme.Px(6), ImDrawFlags.RoundCornersTop);
 
         var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.PadOuterX;
         using var table = ImRaii.Table("##compactmeter", columns, flags, new Vector2(tableWidth, 0));
         if (!table)
-            return tableWidth;
+            return;
 
         ImGui.TableSetupColumn("Player", ImGuiTableColumnFlags.WidthFixed, nameWidth);
         ImGui.TableSetupColumn(byRdps ? "rDPS" : "DPS", ImGuiTableColumnFlags.WidthFixed, valueWidth);
@@ -176,6 +159,7 @@ public sealed class CompactWindow : Window
 
         // Headers drawn one by one so the metric header can be clicked.
         var clear = Vector4.Zero;
+        if (config.CompactShowHeader)
         using (ImRaii.PushColor(ImGuiCol.TableHeaderBg, clear).Push(ImGuiCol.HeaderHovered, clear)
                      .Push(ImGuiCol.HeaderActive, clear).Push(ImGuiCol.Text, Vector4.One))
         {
@@ -241,7 +225,5 @@ public sealed class CompactWindow : Window
                 Cell(text, textColor);
             }
         }
-
-        return tableWidth;
     }
 }

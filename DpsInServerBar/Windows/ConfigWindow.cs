@@ -153,6 +153,10 @@ public sealed class ConfigWindow : Window
             }
         }
 
+        changed |= Checkbox("Show the header", c.CompactShowHeader, v => c.CompactShowHeader = v);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Without it, switch DPS / rDPS from the right click menu.");
+
         var compactPercent = (int)Math.Round(c.CompactOpacity * 100);
         ImGui.SetNextItemWidth(Theme.Px(240));
         if (ImGui.SliderInt("Background opacity##compact", ref compactPercent, 0, 100, "%d%%"))
@@ -1277,6 +1281,9 @@ public sealed class ConfigWindow : Window
             changed = true;
         }
 
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Number of pulls saved (10 to 5000, 300 by default). Past it, the oldest pulls are removed when a new one is recorded.");
+
         var window = c.GraphWindowSeconds;
         ImGui.SetNextItemWidth(120);
         if (ImGui.SliderInt("Rolling DPS window (s)", ref window, 3, 60))
@@ -1286,7 +1293,7 @@ public sealed class ConfigWindow : Window
         }
 
         Theme.SectionHeader("History");
-        Theme.Badge($"{plugin.History.Pulls.Count} pulls", Theme.Gold);
+        Theme.Badge($"{plugin.History.Pulls.Count} / {c.MaxHistory} pulls", plugin.History.Pulls.Count >= c.MaxHistory ? Theme.Warn : Theme.Gold);
         ImGui.SameLine();
         Theme.Hint("recorded. /dpsbar history to browse them.");
 
@@ -1367,6 +1374,18 @@ public sealed class ConfigWindow : Window
         {
             percentiles.Reset();
             plugin.OnConfigChanged();
+        }
+
+        using (ImRaii.Disabled(!percentiles.HasCredentials || percentiles.Testing))
+        {
+            if (Theme.GhostButton(percentiles.Testing ? "Testing..." : "Test connection"))
+                percentiles.TestConnection();
+        }
+
+        if (percentiles.TestResult is { } result)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(result.Ok ? Theme.Good : Theme.Bad, result.Ok ? result.Message : $"Failed: {result.Message}");
         }
 
         Theme.SectionHeader("Current fight");

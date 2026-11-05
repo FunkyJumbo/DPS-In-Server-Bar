@@ -24,6 +24,9 @@ public sealed class MainWindow : Window
     private string historyFilter = string.Empty;
     private Guid? selectedId;
     private Guid? compareId;
+
+    /// <summary>Height the selected pull's details need to be fully visible (graph at its smallest), from the last frame.</summary>
+    private float detailsHeight;
     private IDisposable? themeScope;
 
     public MainWindow(Plugin plugin) : base("DPS In Server Bar###DpsInServerBarMain")
@@ -87,8 +90,8 @@ public sealed class MainWindow : Window
         var config = plugin.Configuration;
         var snapshot = plugin.Sources.Latest;
 
-        if (Theme.Chip("Compact view", false))
-            plugin.SetCompact(true);
+        if (Theme.Chip("Compact view", plugin.CompactOpen))
+            plugin.SetCompact(!plugin.CompactOpen);
 
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Only the party's DPS meter, in a small pop-up window.");
@@ -317,13 +320,27 @@ public sealed class MainWindow : Window
             .Where(p => historyFilter.Length == 0 || p.Title.Equals(historyFilter, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        using (var child = ImRaii.Child("##pulllist", new Vector2(-1, ImGui.GetContentRegionAvail().Y * 0.4f), true))
+        var selected = pulls.FirstOrDefault(p => p.Id == selectedId);
+
+        // Pull list: room for the headers and at least 3 pulls, even in a small window. Without a selected pull it
+        // takes all the room left (the details would be empty), with one it leaves most of the room to the details.
+        var style = ImGui.GetStyle();
+        var minHeight = ImGui.GetTextLineHeight() + style.CellPadding.Y * 2
+                        + 3 * (ImGui.GetFrameHeight() + style.CellPadding.Y * 2)
+                        + style.ScrollbarSize + style.WindowPadding.Y * 2 + Theme.Px(2);
+        var avail = ImGui.GetContentRegionAvail().Y;
+        var listHeight = selected is null
+            ? Math.Max(avail - ImGui.GetTextLineHeightWithSpacing() - style.ItemSpacing.Y, minHeight)
+            : Math.Max(minHeight, avail - detailsHeight - style.ItemSpacing.Y);
+        // With a pull selected, the list stays at its smallest until all the details below fit; past that, all the
+        // extra room goes to the list (the details keep their size, the graph its smallest height).
+
+        using (var child = ImRaii.Child("##pulllist", new Vector2(-1, listHeight), true))
         {
             if (child)
                 DrawPullTable(visible);
         }
 
-        var selected = pulls.FirstOrDefault(p => p.Id == selectedId);
         if (selected is null)
         {
             Theme.Hint("Select a pull to see its details. Tick \"vs\" on another one to compare.");
@@ -539,6 +556,7 @@ public sealed class MainWindow : Window
     private void DrawPullDetails(PullRecord pull, PullRecord? compare)
     {
         var config = plugin.Configuration;
+        var top = ImGui.GetCursorPosY();
 
         ImGui.TextColored(Theme.GoldBright, pull.Title.Length > 0 ? pull.Title : pull.Zone);
         ImGui.SameLine();
@@ -554,7 +572,10 @@ public sealed class MainWindow : Window
         DrawCombatantTable(pull.Combatants);
 
         if (!config.ShowGraph)
+        {
+            detailsHeight = ImGui.GetCursorPosY() - top;
             return;
+        }
 
         Theme.SectionHeader("Graph", FontAwesomeIcon.ChartLine);
         var window = config.GraphWindowSeconds;
@@ -565,6 +586,7 @@ public sealed class MainWindow : Window
             var uptimes = new List<(string, float[], float[])> { ("This pull", pull.UptimeAvailableBySecond, pull.UptimeActiveBySecond) };
             if (compare is { UptimeAvailableBySecond.Length: > 0 })
                 uptimes.Add(("Compared", compare.UptimeAvailableBySecond, compare.UptimeActiveBySecond));
+            detailsHeight = ImGui.GetCursorPosY() - top + DpsGraph.MinHeight;
             DpsGraph.DrawUptime("##historyuptime", uptimes, ImGui.GetContentRegionAvail().Y);
             return;
         }
@@ -578,6 +600,7 @@ public sealed class MainWindow : Window
         }
 
         var threshold = graph.ShowParty ? config.FindThreshold(pull.TerritoryId, pull.Title)?.EffectiveMinPartyDps : null;
+        detailsHeight = ImGui.GetCursorPosY() - top + DpsGraph.MinHeight;
         DpsGraph.Draw("##historygraph", series, ImGui.GetContentRegionAvail().Y, threshold);
     }
 

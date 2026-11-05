@@ -78,9 +78,9 @@ and can be **reordered**, with the separator of your choice between them (space,
   Boss HP, projected kill time and a DPS graph (rolling and average, personal or party, compared with your best kill).
   Switch the graph to **Uptime** to see exactly when you lost GCD uptime; periods where nothing was targetable are shaded.
   **Compact view** opens a small rounded pop-up without a title bar: only the party meter (DPS or rDPS, share,
-  deaths, ranked by the chosen metric) and the fight timer, sized to its content. Drag it by its background; click the metric header to switch
-  DPS / rDPS, "Full view" at the bottom to come back; right click for the menu (background opacity, history,
-  settings, close). Its columns (%, crit, direct hit, deaths) and background opacity are set in Display > Compact meter.
+  deaths, ranked by the chosen metric), sized to its content, next to the main window. Drag it by its background; click
+  the metric header to switch DPS / rDPS; right click for the menu (background opacity, main window, history,
+  settings, close). Its columns (%, crit, direct hit, deaths), header and background opacity are set in Display > Compact meter.
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
   Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Ultimate, Other — several at once, read from the game data)
   and by encounter, open a pull to see its breakdown and graph, tick another one to **compare** them.
@@ -169,7 +169,7 @@ tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
 | **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, values shown, comparison with your best kill, **preview in chat** |
 | **Pulls history** | Record only in duties, minimum pull length, history size, graph window |
 | **DPS check** | Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |
-| **FFLogs** | Percentile estimate, API credentials, manual encounter id |
+| **FFLogs** | Percentile estimate, API credentials with a connection test, manual encounter id |
 | **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
 
 ## How rDPS is computed

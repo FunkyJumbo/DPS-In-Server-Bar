@@ -14,7 +14,7 @@ public sealed class DpsGraph
     public readonly record struct Series(string Label, float[] Values);
 
     // Below this the graph is unreadable: the window scrolls instead.
-    private const float MinHeight = 150;
+    public const float MinHeight = 150;
 
     // Window of the uptime curve, in seconds: short enough to see when uptime was lost.
     private const int UptimeWindow = 3;

@@ -109,8 +109,50 @@ public sealed class PercentileService : IDisposable
             : string.Empty;
 
     /// <summary>Drops the cache, e.g. after changing credentials.</summary>
+    /// <summary>Result of the last "Test connection": null while none (or running), then (success, message).</summary>
+    public (bool Ok, string Message)? TestResult { get; private set; }
+
+    public bool Testing { get; private set; }
+
+    /// <summary>Checks the credentials with a tiny query (the API rate limit), in the background.</summary>
+    public void TestConnection()
+    {
+        if (Testing)
+            return;
+
+        Testing = true;
+        TestResult = null;
+        var id = config.FflogsClientId;
+        var secret = config.FflogsClientSecret;
+        Task.Run(async () =>
+        {
+            try
+            {
+                var data = await api.QueryAsync(id, secret, "{ rateLimitData { limitPerHour pointsSpentThisHour } }", cts.Token)
+                                    .ConfigureAwait(false);
+                var limit = data["rateLimitData"]?["limitPerHour"]?.ToString();
+                var spent = double.TryParse(data["rateLimitData"]?["pointsSpentThisHour"]?.ToString(),
+                                            System.Globalization.NumberStyles.Float,
+                                            System.Globalization.CultureInfo.InvariantCulture, out var s) ? s : 0;
+                TestResult = (true, $"Connected. API points used this hour: {spent:0} / {limit}.");
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception e)
+            {
+                TestResult = (false, e.Message);
+            }
+            finally
+            {
+                Testing = false;
+            }
+        });
+    }
+
     public void Reset()
     {
+        TestResult = null;
         breakpoints.Clear();
         inFlightOrFailed.Clear();
         catalog = null;
