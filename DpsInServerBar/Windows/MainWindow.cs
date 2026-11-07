@@ -32,6 +32,7 @@ public sealed class MainWindow : Window
     public MainWindow(Plugin plugin) : base("DPS In Server Bar###DpsInServerBarMain")
     {
         this.plugin = plugin;
+        AllowBackgroundBlur = false;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(560, 380) };
         Size = new Vector2(760, 640);
         SizeCondition = ImGuiCond.FirstUseEver;
@@ -95,6 +96,13 @@ public sealed class MainWindow : Window
 
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Only the party's DPS meter, in a small pop-up window.");
+
+        ImGui.SameLine();
+        if (Theme.Chip("Opener practice", plugin.OpenerOpen))
+            plugin.ToggleOpener();
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Practice your job's opener: each action used in the right order is checked off.");
 
         if (snapshot is null)
         {

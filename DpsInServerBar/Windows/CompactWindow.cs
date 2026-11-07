@@ -27,6 +27,7 @@ public sealed class CompactWindow : Window
                | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize)
     {
         this.plugin = plugin;
+        AllowBackgroundBlur = false;
         RespectCloseHotkey = false;
     }
 

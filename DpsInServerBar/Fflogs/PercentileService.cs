@@ -54,7 +54,9 @@ public sealed class PercentileService : IDisposable
         this.config = config;
         this.dataManager = dataManager;
         this.log = log;
-        cachePath = Path.Combine(configDirectory, "fflogs-cache.json");
+        cachePath = Path.Combine(configDirectory, "fflogs-cache-v2.json");
+        // The first cache only held the top 100 characters (taken for the whole ranking): never reused.
+        try { File.Delete(Path.Combine(configDirectory, "fflogs-cache.json")); } catch (IOException) { }
         LoadCache();
     }
 
@@ -108,7 +110,6 @@ public sealed class PercentileService : IDisposable
             ? row.Singular.ExtractText()
             : string.Empty;
 
-    /// <summary>Drops the cache, e.g. after changing credentials.</summary>
     /// <summary>Result of the last "Test connection": null while none (or running), then (success, message).</summary>
     public (bool Ok, string Message)? TestResult { get; private set; }
 
@@ -150,6 +151,7 @@ public sealed class PercentileService : IDisposable
         });
     }
 
+    /// <summary>Drops the cache, e.g. after changing credentials.</summary>
     public void Reset()
     {
         TestResult = null;
@@ -285,35 +287,86 @@ public sealed class PercentileService : IDisposable
         string Rankings(int page) =>
             $"characterRankings(className: \"{spec}\", specName: \"{spec}\", metric: rdps, difficulty: {difficulty}, page: {page})";
 
-        // Page 1 gives the total number of ranked characters and the top value.
-        var first = await api.QueryAsync(id, secret, $"{{ worldData {{ encounter(id: {encounterId}) {{ p1: {Rankings(1)} }} }} }}", cts.Token)
-                             .ConfigureAwait(false);
-        var page1 = RankingsNode(first, "p1");
-        var count = page1?["count"]?.GetValue<int>() ?? 0;
-        var top = Amounts(page1);
-        if (count == 0 || top.Count == 0)
-            throw new InvalidOperationException($"No {spec} rankings on FFLogs for this encounter yet.");
+        // Pages already fetched: amounts (best first) and whether more pages follow.
+        var fetched = new Dictionary<int, (List<double> Amounts, bool HasMore)>();
 
-        var perPage = top.Count;
+        async Task FetchPages(IEnumerable<int> wanted)
+        {
+            var pages = wanted.Where(p => !fetched.ContainsKey(p)).Distinct().ToList();
+            if (pages.Count == 0)
+                return;
+
+            var aliases = string.Join(" ", pages.Select(p => $"p{p}: {Rankings(p)}"));
+            var data = await api.QueryAsync(id, secret, $"{{ worldData {{ encounter(id: {encounterId}) {{ {aliases} }} }} }}", cts.Token)
+                                .ConfigureAwait(false);
+            foreach (var p in pages)
+            {
+                var node = RankingsNode(data, $"p{p}");
+                fetched[p] = (Amounts(node), node?["hasMorePages"]?.GetValue<bool>() ?? false);
+            }
+        }
+
+        async Task<(List<double> Amounts, bool HasMore)> Page(int page)
+        {
+            await FetchPages([page]).ConfigureAwait(false);
+            return fetched[page];
+        }
+
+        var first = await Page(1).ConfigureAwait(false);
+        if (first.Amounts.Count == 0)
+            throw new InvalidOperationException($"No {spec} rankings on FFLogs for this encounter yet.");
+        var perPage = first.Amounts.Count;
+
+        // The API gives no total: find the last page (doubling, then halving), each page holding perPage characters.
+        var last = 1;
+        if (first.HasMore)
+        {
+            var low = 1; // known to have more pages after it
+            var high = 2;
+            while (true)
+            {
+                var (amounts, hasMore) = await Page(high).ConfigureAwait(false);
+                if (amounts.Count == 0)
+                    break;           // past the end: the last page is between low and high
+                if (!hasMore)
+                {
+                    low = high;      // high is the last page
+                    break;
+                }
+
+                low = high;
+                high *= 2;
+                if (high > 1 << 16)
+                    break;
+            }
+
+            while (low < high && !(fetched.TryGetValue(low, out var l) && !l.HasMore))
+            {
+                var mid = (low + high + 1) / 2;
+                var (amounts, hasMore) = await Page(mid).ConfigureAwait(false);
+                if (amounts.Count == 0)
+                    high = mid - 1;
+                else if (hasMore)
+                    low = mid;
+                else
+                    low = high = mid;
+            }
+
+            last = low;
+        }
+
+        var count = (last - 1) * perPage + (await Page(last).ConfigureAwait(false)).Amounts.Count;
         var ranks = TargetPercentiles
             .Select(p => (Percentile: p, Rank: Math.Clamp((int)Math.Floor(count * (1 - p / 100)) + 1, 1, count)))
             .ToList();
 
-        // Fetch every other needed page in a single request, using aliases.
-        var pages = ranks.Select(r => (r.Rank - 1) / perPage + 1).Where(p => p > 1).Distinct().ToList();
-        JsonNode? others = null;
-        if (pages.Count > 0)
-        {
-            var aliases = string.Join(" ", pages.Select(p => $"p{p}: {Rankings(p)}"));
-            others = await api.QueryAsync(id, secret, $"{{ worldData {{ encounter(id: {encounterId}) {{ {aliases} }} }} }}", cts.Token)
-                              .ConfigureAwait(false);
-        }
+        // Every page still needed, in a single request.
+        await FetchPages(ranks.Select(r => (r.Rank - 1) / perPage + 1)).ConfigureAwait(false);
 
-        var points = new List<double[]> { new[] { top[0], 100.0 } };
+        var points = new List<double[]> { new[] { first.Amounts[0], 100.0 } };
         foreach (var (percentile, rank) in ranks)
         {
-            var page = (rank - 1) / perPage + 1;
-            var amounts = page == 1 ? top : Amounts(RankingsNode(others, $"p{page}"));
+            var amounts = fetched[(rank - 1) / perPage + 1].Amounts;
             var index = (rank - 1) % perPage;
             if (index < amounts.Count)
                 points.Add([amounts[index], percentile]);

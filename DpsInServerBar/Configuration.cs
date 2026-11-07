@@ -202,6 +202,36 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Live tab: only the party's DPS meter (value, share, deaths).</summary>
     public bool LiveCompact { get; set; } = false;
 
+    /// <summary>Opener practice: countdown before the pull when pressing Start, in seconds.</summary>
+    public int OpenerCountdown { get; set; } = 5;
+
+    /// <summary>Opener practice: Start launches the in-game /countdown (out of combat), so the pull is the game's.</summary>
+    public bool OpenerGameCountdown { get; set; } = true;
+
+    /// <summary>Opener practice: the compact pop-up is shown instead of the full window.</summary>
+    public bool OpenerCompact { get; set; }
+
+    /// <summary>Opener practice: opacity of the windows' background only, 0 (see-through) to 1.</summary>
+    public float OpenerOpacity { get; set; } = 1f;
+
+    /// <summary>Opener practice: size of the compact pop-up (icons, text and buttons), 0.5 to 1.5.</summary>
+    public float OpenerCompactScale { get; set; } = 1f;
+
+    /// <summary>Opener practice: close the window once the opener is done, or this long after its first action.</summary>
+    public bool OpenerAutoClose { get; set; }
+
+    /// <summary>Opener practice: seconds after the first action before the window closes by itself.</summary>
+    public int OpenerAutoCloseSeconds { get; set; } = 40;
+
+    /// <summary>Opener practice: include the pre-pull actions.</summary>
+    public bool OpenerPrepull { get; set; } = true;
+
+    /// <summary>Opener practice: include the tincture.</summary>
+    public bool OpenerPotion { get; set; } = true;
+
+    /// <summary>Opener practice: opener chosen for each job (job abbreviation to opener id).</summary>
+    public Dictionary<string, string> OpenerSelected { get; set; } = new();
+
     /// <summary>Columns of the compact meter shown after the player and the DPS / rDPS.</summary>
     public CompactColumn CompactColumns { get; set; } = CompactColumn.Share | CompactColumn.Deaths;
 

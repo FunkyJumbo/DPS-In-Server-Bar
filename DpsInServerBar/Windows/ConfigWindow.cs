@@ -32,6 +32,7 @@ public sealed class ConfigWindow : Window
     public ConfigWindow(Plugin plugin) : base("DPS In Server Bar - Settings###DpsInServerBarConfig")
     {
         this.plugin = plugin;
+        AllowBackgroundBlur = false;
         hostInput = plugin.Configuration.Host;
         portInput = plugin.Configuration.Port;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(680, 420) };

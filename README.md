@@ -131,6 +131,15 @@ An approximation of [FFLogs' rDPS](https://www.fflogs.com/help/rdps): damage gai
 is taken from the player who dealt it and credited to the player who gave the buff.
 See [How rDPS is computed](#how-rdps-is-computed).
 
+### Opener practice
+
+Pick an opener of your current job: every job has The Balance's level 100 openers (several for some jobs, e.g. 6 for
+Monk, 3 for Bard and Red Mage), with the guide's notes, press **Start** for a countdown, start an
+in-game `/countdown` (the run follows it, a cancelled countdown resets it) or just use its first action, then play it: each action used in the right order is greyed out and checked. GCDs are the big
+boxes on the track, oGCDs the small ones above; the oGCDs of a weave window can come in any order. A wrong action
+flashes the expected box in red, a GCD used before its oGCDs marks them missed. Each GCD shows the time it was used,
+and the run ends with the total time, mistakes and missed actions. The pre-pull actions and the tincture can each be left out. **Auto close** (option) closes the window 3 s after the opener is done, or a chosen time (40 s by default) after its first action. Stretch the window sideways to fit a long opener on fewer rows. **Compact** switches to a small pop-up (no title bar, sized to its content) with only the icons, Start / Reset and **Full view**; right click it for the background opacity. The background opacity slider only fades the background, never the icons. Before the pull, a line tells whether you are ready (out of combat, full MP, the opener's cooldowns and tincture back up) or what is still on cooldown. **Start** launches the in-game `/countdown` (option), or a countdown in the window when in combat, where the game refuses it. `/dpsbar opener` or the Live tab.
+
 ### FFLogs percentile (optional)
 
 With your own FFLogs API credentials, the plugin downloads the rDPS rankings of your job for the current fight
@@ -157,6 +166,9 @@ tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
 | `/dpsbar history` | Main window on the History tab |
 | `/dpsbar toggle` | Cycle DPS → pDPS → rDPS |
 | `/dpsbar compact` | Open / close the compact meter |
+| `/dpsbar opener` | Open / close the opener practice (in the view used last) |
+| `/dpsbar opener compact` | Open / close the opener practice in its compact view |
+| `/dpsbar opener full` | Open / close the opener practice in its full window |
 | `/dpsbar reconnect` | Reconnect to ACT |
 | `/dpsbar preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
 

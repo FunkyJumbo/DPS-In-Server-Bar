@@ -9,6 +9,7 @@ using DpsInServerBar.Combat;
 using DpsInServerBar.Display;
 using DpsInServerBar.Fflogs;
 using DpsInServerBar.Native;
+using DpsInServerBar.Opener;
 using DpsInServerBar.Tracking;
 using DpsInServerBar.Ultimates;
 using DpsInServerBar.Windows;
@@ -39,6 +40,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly MainWindow mainWindow;
     private readonly ConfigWindow configWindow;
     private readonly CompactWindow compactWindow;
+    private readonly OpenerWindow openerWindow;
+    private readonly OpenerCompactWindow openerCompactWindow;
     private readonly DtrController dtr;
 
     // Read on the game thread, consumed by the WebSocket thread when matching the player's name.
@@ -64,6 +67,7 @@ public sealed class Plugin : IDalamudPlugin
         Fights = new FightCatalog(DataManager);
         Uptime = new UptimeTracker(ObjectTable, Condition, () => Ultimates.Current is { Started: true } p ? p.Number : null);
         Percentiles = new PercentileService(Configuration, DataManager, PluginInterface.GetPluginConfigDirectory(), Log);
+        OpenerTracker = new OpenerTracker(GameInterop, ObjectTable, Log);
         dtr = new DtrController(this, DtrBar);
 
         mainWindow = new MainWindow(this);
@@ -71,11 +75,15 @@ public sealed class Plugin : IDalamudPlugin
         compactWindow = new CompactWindow(this) { IsOpen = Configuration.LiveCompact };
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(configWindow);
+        openerWindow = new OpenerWindow(this);
+        openerCompactWindow = new OpenerCompactWindow(this, openerWindow);
         windowSystem.AddWindow(compactWindow);
+        windowSystem.AddWindow(openerWindow);
+        windowSystem.AddWindow(openerCompactWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open the DPS window. Subcommands: config, toggle, reconnect, history, compact, preset <number|name|next>.",
+            HelpMessage = "Open the DPS window. Subcommands: config, toggle, reconnect, history, compact, opener [compact|full], preset <number|name|next>.",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
@@ -97,6 +105,7 @@ public sealed class Plugin : IDalamudPlugin
     public ContentCategories ContentCategories { get; }
     public FightCatalog Fights { get; }
     public PercentileService Percentiles { get; }
+    public OpenerTracker OpenerTracker { get; }
     public ActClient Act => Sources.Act;
     public uint CurrentTerritory => ClientState.TerritoryType;
 
@@ -113,6 +122,7 @@ public sealed class Plugin : IDalamudPlugin
         Ultimates.PhaseEnded -= OnPhaseEnded;
         Pulls.Dispose();
         Percentiles.Dispose();
+        OpenerTracker.Dispose();
         Sources.Dispose();
     }
 
@@ -126,6 +136,52 @@ public sealed class Plugin : IDalamudPlugin
     public void ToggleConfigUi() => configWindow.Toggle();
 
     public bool CompactOpen => compactWindow.IsOpen;
+
+    public bool OpenerOpen => openerWindow.IsOpen || openerCompactWindow.IsOpen;
+
+    /// <summary>Opens the opener practice (in the view last used) or closes it.</summary>
+    public void ToggleOpener()
+    {
+        if (OpenerOpen)
+            CloseOpener();
+        else if (Configuration.OpenerCompact)
+            openerCompactWindow.IsOpen = true;
+        else
+            openerWindow.IsOpen = true;
+    }
+
+    /// <summary>Opens the opener practice in the given view (or closes it when that view is already open).</summary>
+    public void ToggleOpenerView(bool compact)
+    {
+        if (compact ? openerCompactWindow.IsOpen : openerWindow.IsOpen)
+            CloseOpener();
+        else
+            SetOpenerCompact(compact);
+    }
+
+    public void CloseOpener()
+    {
+        openerWindow.IsOpen = false;
+        openerCompactWindow.IsOpen = false;
+    }
+
+    /// <summary>Switches the opener practice between its full window and its compact pop-up, keeping the try.</summary>
+    public void SetOpenerCompact(bool compact)
+    {
+        Configuration.OpenerCompact = compact;
+        Configuration.Save();
+        openerCompactWindow.IsOpen = compact;
+        openerWindow.IsOpen = !compact;
+    }
+
+    /// <summary>Your actions are only watched while one of the opener practice views is open.</summary>
+    public void UpdateOpenerTracking()
+    {
+        var open = openerWindow.IsOpen || openerCompactWindow.IsOpen;
+        OpenerTracker.Enabled = open;
+        if (!open)
+            openerWindow.ResetRun();
+    }
 
     /// <summary>Opens or closes the compact meter (the full window closes when it opens).</summary>
     public void SetCompact(bool open)
@@ -263,6 +319,15 @@ public sealed class Plugin : IDalamudPlugin
                 break;
             case "compact":
                 SetCompact(!compactWindow.IsOpen);
+                break;
+            case "opener":
+                ToggleOpener();
+                break;
+            case "opener compact":
+                ToggleOpenerView(compact: true);
+                break;
+            case "opener full":
+                ToggleOpenerView(compact: false);
                 break;
             default:
                 ToggleMainUi();
