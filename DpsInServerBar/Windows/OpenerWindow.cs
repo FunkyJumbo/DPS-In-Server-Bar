@@ -166,6 +166,28 @@ public sealed class OpenerWindow : Window
         ImGui.SameLine();
         if (Theme.Chip("Full view", false, transparent))
             plugin.SetOpenerCompact(false);
+
+        // Size: a small pop-up with the usual steps.
+        var config = plugin.Configuration;
+        ImGui.SameLine();
+        if (Theme.Chip($"{Math.Round(config.OpenerCompactScale * 100)}%", false, transparent))
+            ImGui.OpenPopup("##openercompactsize");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Size of this window");
+
+        using var popup = ImRaii.Popup("##openercompactsize");
+        if (!popup)
+            return;
+
+        ImGui.SetWindowFontScale(1f);
+        foreach (var percent in new[] { 50, 75, 100, 125, 150 })
+        {
+            if (ImGui.Selectable($"{percent}%", Math.Abs(config.OpenerCompactScale * 100 - percent) < 0.5f))
+            {
+                config.OpenerCompactScale = percent / 100f;
+                config.Save();
+            }
+        }
     }
 
     /// <summary>Start: the in-game /countdown when the game allows it, else a countdown in the window.</summary>

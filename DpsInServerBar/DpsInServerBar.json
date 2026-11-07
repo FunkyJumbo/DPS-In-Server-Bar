@@ -2,7 +2,7 @@
   "Author": "FunkyJumbo",
   "Name": "DPS In Server Bar",
   "Punchline": "Your live DPS, rDPS and party DPS, right in the server info bar.",
-  "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, graphs, pull history with comparisons, party DPS checks and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.",
+  "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, a compact party meter, graphs, pull history with comparisons, party DPS checks, an opener practice for every job and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.\n\nCommands:\n/dpsbar - open / close the main window\n/dpsbar config - settings\n/dpsbar history - main window on the History tab\n/dpsbar toggle - cycle DPS, pDPS, rDPS\n/dpsbar compact - open / close the compact meter\n/dpsbar opener - open / close the opener practice\n/dpsbar opener compact - opener practice in its compact view\n/dpsbar opener full - opener practice in its full window\n/dpsbar preset <number|name|next> - switch the server bar preset\n/dpsbar reconnect - reconnect to ACT",
   "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
   "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
   "ApplicableVersion": "any",
