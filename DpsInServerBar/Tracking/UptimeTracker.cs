@@ -21,7 +21,8 @@ public sealed record UptimeState(
     double ActiveSeconds,
     IReadOnlyList<PhaseUptime> Phases,
     float[] AvailableBySecond,
-    float[] ActiveBySecond)
+    float[] ActiveBySecond,
+    GcdAnalysis Gcd)
 {
     public double Uptime => AvailableSeconds > 0 ? ActiveSeconds / AvailableSeconds : 1;
     public double LostSeconds => AvailableSeconds - ActiveSeconds;
@@ -31,11 +32,22 @@ public sealed record UptimeState(
 /// Measures your GCD uptime: the share of the time an enemy could be attacked during which your GCD was rolling
 /// or you were casting. Time when no enemy is targetable (jumps, transitions, cutscenes) is excluded; time spent
 /// dead counts as lost. Also kept per second (for the graph) and per ultimate phase. Game thread only.
+/// <para>
+/// The lost time is also split by cause (<see cref="GcdAnalysis"/>): each stretch where the GCD sat ready is
+/// clipping while an animation lock held you, late otherwise, or "no GCD" once it lasted a whole GCD or more.
+/// </para>
 /// </summary>
 public sealed unsafe class UptimeTracker
 {
     // Recast group of the global cooldown.
     private const int GcdRecastGroup = 57;
+
+    // The short lock after a cast ends is the caster's own, not an oGCD weave: counted as late, not clipping.
+    private const double CastLockSeconds = 0.3;
+
+    // Gaps shorter than this are latency between GCDs: counted, not listed.
+    private const double ListedGapSeconds = 0.3;
+    private const int MaxListedGaps = 300;
 
     // Enemy targetability is read a few times per second; GCD state every frame.
     private static readonly TimeSpan ScanInterval = TimeSpan.FromMilliseconds(100);
@@ -58,6 +70,25 @@ public sealed unsafe class UptimeTracker
     private int revision;
     private int publishedRevision = -1;
 
+    // GCD analysis.
+    private readonly List<GcdGap> gaps = [];
+    private int gcdCount;
+    private double recastSum;
+    private double clipSeconds;
+    private int clipCount;
+    private double lateSeconds;
+    private double noGcdSeconds;
+    private int noGcdCount;
+    private double deadSeconds;
+    private bool gcdWasActive;
+    private float lastElapsed;
+    private bool wasCasting;
+    private DateTime castEndedUtc;
+    private bool inGap;
+    private double gapStart;
+    private double gapLocked;
+    private double gapFree;
+
     public UptimeTracker(IObjectTable objectTable, ICondition condition, Func<int?> currentPhase)
     {
         this.objectTable = objectTable;
@@ -76,6 +107,8 @@ public sealed unsafe class UptimeTracker
 
         if (inCombat && !wasInCombat)
             Reset(now);
+        else if (!inCombat && wasInCombat)
+            CloseGap();
         wasInCombat = inCombat;
 
         if (!inCombat)
@@ -92,13 +125,51 @@ public sealed unsafe class UptimeTracker
             enemyTargetable = AnyEnemyTargetable();
         }
 
+        var actionManager = ActionManager.Instance();
+        var player = objectTable.LocalPlayer;
+        var alive = player is not null && !player.IsDead;
+        var casting = alive && player!.IsCasting;
+        if (wasCasting && !casting)
+            castEndedUtc = now;
+        wasCasting = casting;
+
+        var gcdRolling = CountGcds(actionManager);
+
         if (!enemyTargetable)
         {
+            CloseGap();
             Record(now, dt, available: false, active: false);
             return;
         }
 
-        Record(now, dt, available: true, active: IsGcdActive());
+        var busy = alive && (casting || gcdRolling);
+        if (!alive)
+        {
+            CloseGap();
+            deadSeconds += dt; // time spent dead is lost uptime
+        }
+        else if (busy)
+        {
+            CloseGap();
+        }
+        else
+        {
+            if (!inGap)
+            {
+                inGap = true;
+                gapStart = (now - combatStartUtc).TotalSeconds;
+                gapLocked = gapFree = 0;
+            }
+
+            var locked = actionManager != null && actionManager->AnimationLock > 0
+                         && (now - castEndedUtc).TotalSeconds > CastLockSeconds;
+            if (locked)
+                gapLocked += dt;
+            else
+                gapFree += dt;
+        }
+
+        Record(now, dt, available: true, active: busy);
     }
 
     /// <summary>Snapshot for display; rebuilt only when something changed.</summary>
@@ -108,10 +179,13 @@ public sealed unsafe class UptimeTracker
             return Current;
 
         publishedRevision = revision;
+        var gcd = new GcdAnalysis(
+            gcdCount, gcdCount > 0 ? recastSum / gcdCount : 0,
+            clipSeconds, clipCount, lateSeconds, noGcdSeconds, noGcdCount, deadSeconds, gaps.ToList());
         Current = new UptimeState(
             available, active,
             byPhase.OrderBy(p => p.Key).Select(p => new PhaseUptime(p.Key, p.Value.Available, p.Value.Active)).ToList(),
-            availableBySecond.ToArray(), activeBySecond.ToArray());
+            availableBySecond.ToArray(), activeBySecond.ToArray(), gcd);
         return Current;
     }
 
@@ -124,6 +198,70 @@ public sealed unsafe class UptimeTracker
         availableBySecond.Clear();
         activeBySecond.Clear();
         byPhase.Clear();
+
+        gaps.Clear();
+        gcdCount = 0;
+        recastSum = clipSeconds = lateSeconds = noGcdSeconds = deadSeconds = 0;
+        clipCount = noGcdCount = 0;
+        gcdWasActive = false;
+        lastElapsed = 0;
+        inGap = false;
+        revision++;
+    }
+
+    /// <summary>Counts each new GCD (its recast restarting); returns whether the GCD is rolling.</summary>
+    private bool CountGcds(ActionManager* actionManager)
+    {
+        if (actionManager == null)
+            return false;
+
+        var gcd = actionManager->GetRecastGroupDetail(GcdRecastGroup);
+        if (gcd == null)
+            return false;
+
+        var isActive = gcd->IsActive;
+        if (isActive && (!gcdWasActive || gcd->Elapsed < lastElapsed - 0.01f))
+        {
+            gcdCount++;
+            recastSum += gcd->Total;
+        }
+
+        gcdWasActive = isActive;
+        lastElapsed = gcd->Elapsed;
+        return isActive && gcd->Elapsed < gcd->Total;
+    }
+
+    /// <summary>Ends the current stretch with the GCD ready and puts its time under its cause.</summary>
+    private void CloseGap()
+    {
+        if (!inGap)
+            return;
+        inGap = false;
+
+        var seconds = gapLocked + gapFree;
+        if (seconds <= 0)
+            return;
+
+        // A whole GCD or more without one is not a weave or a late press any more.
+        var averageRecast = gcdCount > 0 ? recastSum / gcdCount : 2.5;
+        GcdGapKind kind;
+        if (seconds >= Math.Max(2.0, averageRecast))
+        {
+            kind = GcdGapKind.NoGcd;
+            noGcdSeconds += seconds;
+            noGcdCount++;
+        }
+        else
+        {
+            kind = gapLocked >= gapFree ? GcdGapKind.Clipping : GcdGapKind.Late;
+            clipSeconds += gapLocked;
+            lateSeconds += gapFree;
+            if (gapLocked >= 0.1)
+                clipCount++;
+        }
+
+        if (seconds >= ListedGapSeconds && gaps.Count < MaxListedGaps)
+            gaps.Add(new GcdGap(gapStart, seconds, kind));
         revision++;
     }
 
@@ -171,23 +309,8 @@ public sealed unsafe class UptimeTracker
             }
         }
 
-        return false;
-    }
-
-    private bool IsGcdActive()
-    {
-        var player = objectTable.LocalPlayer;
-        if (player is null || player.IsDead)
-            return false; // time spent dead is lost uptime
-
-        if (player.IsCasting)
-            return true;
-
-        var actionManager = ActionManager.Instance();
-        if (actionManager == null)
-            return false;
-
-        var gcd = actionManager->GetRecastGroupDetail(GcdRecastGroup);
-        return gcd != null && gcd->IsActive && gcd->Elapsed < gcd->Total;
+        // Striking dummies are neither hostile nor flagged in combat: the battle NPC you are hitting counts too.
+        return objectTable.LocalPlayer?.TargetObject is IBattleNpc target
+               && target.IsTargetable && !target.IsDead && target.MaxHp > 0;
     }
 }

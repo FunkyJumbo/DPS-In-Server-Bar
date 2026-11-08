@@ -61,7 +61,7 @@ jobs:
     - name: Publish the release
       uses: softprops/action-gh-release@v2
       with:
-        name: DPS In Server Bar ${{ github.ref_name }}
+        name: Raid Companion ${{ github.ref_name }}
         body_path: release-notes.md
         files: DpsInServerBar/bin/Release/DpsInServerBar/latest.zip
         fail_on_unmatched_files: true

@@ -29,7 +29,7 @@ public sealed class ConfigWindow : Window
     private string renameBuffer = string.Empty;
     private int portInput;
 
-    public ConfigWindow(Plugin plugin) : base("DPS In Server Bar - Settings###DpsInServerBarConfig")
+    public ConfigWindow(Plugin plugin) : base("Raid Companion - Settings###DpsInServerBarConfig")
     {
         this.plugin = plugin;
         AllowBackgroundBlur = false;
@@ -573,6 +573,7 @@ public sealed class ConfigWindow : Window
         (SummaryElement.PartyDps, "pDPS"),
         (SummaryElement.Deaths, "Deaths"),
         (SummaryElement.KilledBy, "Killed by"),
+        (SummaryElement.Mistakes, "Mechanics"),
     ];
 
     private static readonly (string Label, string Value)[] SeparatorPresets =
@@ -1292,6 +1293,14 @@ public sealed class ConfigWindow : Window
             c.GraphWindowSeconds = window;
             changed = true;
         }
+
+        Theme.SectionHeader("Failed mechanics");
+        changed |= Checkbox("Ignore tankbuster vulnerabilities on tanks", c.MistakesIgnoreTankbusters,
+                            v => c.MistakesIgnoreTankbusters = v);
+        Theme.HelpMarker(
+            "A failed mechanic is an enemy action putting a penalty debuff on a party member: Vulnerability Up "
+            + "(physical, magic), Damage Down, Down for the Count.\nTankbusters often put a vulnerability on the tanks on "
+            + "purpose: with this on, a vulnerability on a tank from an action hitting at most two players is not counted.");
 
         Theme.SectionHeader("History");
         Theme.Badge($"{plugin.History.Pulls.Count} / {c.MaxHistory} pulls", plugin.History.Pulls.Count >= c.MaxHistory ? Theme.Warn : Theme.Gold);

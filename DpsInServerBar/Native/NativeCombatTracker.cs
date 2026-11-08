@@ -38,6 +38,8 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
     private readonly IPluginLog log;
     private readonly RdpsEngine rdps;
     private readonly DeathRecorder deaths;
+    private readonly MistakeRecorder mistakes;
+    private readonly PartyDeathLog partyDeaths;
 
     private readonly Hook<ActionEffectHandler.Delegates.Receive>? effectHook;
     private readonly Hook<PacketDispatcher.Delegates.HandleActorControlPacket>? actorControlHook;
@@ -65,6 +67,8 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         this.log = log;
         rdps = new RdpsEngine(objectTable, playerState, ResolvePartyOwner);
         deaths = new DeathRecorder(dataManager, log);
+        mistakes = new MistakeRecorder(dataManager);
+        partyDeaths = new PartyDeathLog(dataManager, log, objectTable, deaths);
 
         limitBreakActions = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>()
             .Where(a => a.ActionCategory.RowId == 9)
@@ -93,6 +97,17 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
 
     /// <summary>What killed you last (needs the built-in tracker to be running).</summary>
     public DeathRecorder Deaths => deaths;
+
+    public MistakeRecorder Mistakes => mistakes;
+
+    /// <summary>Deaths of the whole party in the current or last fight, with their cause.</summary>
+    public PartyDeathLog PartyDeaths => partyDeaths;
+
+    /// <summary>One of your own actions landed (action id), raised from the game thread.</summary>
+    public event Action<uint>? LocalActionUsed;
+
+    /// <summary>One of your own actions damaged an enemy: action id, potency bonus in percent (combo, positional), target.</summary>
+    public event Action<uint, byte, uint>? LocalDamage;
 
     public string StatusText => HookError is not null
         ? $"unavailable ({HookError})"
@@ -127,7 +142,9 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
             return;
 
         RefreshParty();
-        deaths.Observe(objectTable.LocalPlayer, NameOf);
+        partyDeaths.Tick(party.Select(p => (p.Key, p.Value.Name, p.Value.Job.ToUpperInvariant(), p.Value.IsLocalPlayer)),
+                         condition[ConditionFlag.InCombat], NameOf);
+        mistakes.Tick(condition[ConditionFlag.InCombat]);
 
         if (!active)
             return;
@@ -156,7 +173,13 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
 
         try
         {
-            RecordHitsOnYou(casterEntityId, header, effects, targetEntityIds);
+            RecordHitsOnParty(casterEntityId, header, effects, targetEntityIds);
+            RecordPenalties(casterEntityId, header, effects, targetEntityIds);
+            if (header->ActionType == 1 && casterEntityId == (objectTable.LocalPlayer?.EntityId ?? 0))
+            {
+                LocalActionUsed?.Invoke(header->ActionId);
+                RaiseLocalDamage(header, effects, targetEntityIds);
+            }
 
             var owner = ResolvePartyOwner(casterEntityId);
             if (owner == 0)
@@ -209,7 +232,7 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
 
         try
         {
-            RecordDamageOrDeathOfYou(entityId, category, arg1, arg2, arg3, arg4);
+            RecordDamageOrDeathOfParty(entityId, category, arg1, arg2, arg3, arg4);
 
             switch (category)
             {
@@ -232,18 +255,56 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         }
     }
 
-    /// <summary>Remembers the hits you take, to tell what killed you.</summary>
-    private void RecordHitsOnYou(
+    // The first damage your action did, with its potency bonus: tells whether a positional landed.
+    private void RaiseLocalDamage(
+        ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects, GameObjectId* targetEntityIds)
+    {
+        if (LocalDamage is null || header->NumTargets == 0)
+            return;
+
+        foreach (ref readonly var effect in effects[0].Effects)
+        {
+            if (effect.Type is 3 or 5 or 6)
+            {
+                LocalDamage(header->ActionId, effect.Param2, targetEntityIds[0].ObjectId);
+                return;
+            }
+        }
+    }
+
+    /// <summary>An enemy action putting a penalty debuff on party members: a failed mechanic.</summary>
+    private void RecordPenalties(
         uint casterEntityId, ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects,
         GameObjectId* targetEntityIds)
     {
-        var you = objectTable.LocalPlayer?.EntityId ?? 0;
-        if (you == 0)
-            return;
+        if (party.ContainsKey(ResolvePartyOwner(casterEntityId)))
+            return; // a party member's own action
 
         for (var t = 0; t < header->NumTargets; t++)
         {
-            if (targetEntityIds[t].ObjectId != you)
+            if (!party.TryGetValue(targetEntityIds[t].ObjectId, out var member))
+                continue;
+
+            foreach (ref readonly var effect in effects[t].Effects)
+            {
+                // 14 = status applied to the target; its id is the value.
+                if (effect.Type == 14 && mistakes.IsPenalty(effect.Value))
+                {
+                    mistakes.OnPenalty(member.Name, member.Job.ToUpperInvariant(), member.IsLocalPlayer, effect.Value,
+                                       header->ActionType, header->ActionId, NameOf(casterEntityId), header->NumTargets);
+                }
+            }
+        }
+    }
+
+    /// <summary>Remembers the hits party members take, to tell what killed them.</summary>
+    private void RecordHitsOnParty(
+        uint casterEntityId, ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects,
+        GameObjectId* targetEntityIds)
+    {
+        for (var t = 0; t < header->NumTargets; t++)
+        {
+            if (partyDeaths.For(targetEntityIds[t].ObjectId) is not { } recorder)
                 continue;
 
             long amount = 0;
@@ -257,20 +318,19 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
             }
 
             if (amount > 0)
-                deaths.OnHitTaken(header->ActionType, header->ActionId, NameOf(casterEntityId), amount);
+                recorder.OnHitTaken(header->ActionType, header->ActionId, NameOf(casterEntityId), amount);
         }
     }
 
-    private void RecordDamageOrDeathOfYou(uint entityId, uint category, uint arg1, uint arg2, uint arg3, uint arg4)
+    private void RecordDamageOrDeathOfParty(uint entityId, uint category, uint arg1, uint arg2, uint arg3, uint arg4)
     {
-        var you = objectTable.LocalPlayer?.EntityId ?? 0;
-        if (you == 0 || entityId != you)
+        if (partyDeaths.For(entityId) is not { } recorder)
             return;
 
         if (category == ActorControlDeath)
-            deaths.OnDeath();
+            recorder.OnDeath();
         else if (category == ActorControlDotHot && arg2 == DotHotTypeDamage && arg3 > 0)
-            deaths.OnDotTaken(arg1, arg4 is 0 or InvalidId ? string.Empty : NameOf(arg4), arg3);
+            recorder.OnDotTaken(arg1, arg4 is 0 or InvalidId ? string.Empty : NameOf(arg4), arg3);
     }
 
     private string NameOf(uint entityId) => objectTable.SearchByEntityId(entityId)?.Name.TextValue ?? string.Empty;

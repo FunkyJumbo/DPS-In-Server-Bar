@@ -35,6 +35,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
+    [PluginService] internal static IJobGauges JobGauges { get; private set; } = null!;
 
     private readonly WindowSystem windowSystem = new("DpsInServerBar");
     private readonly MainWindow mainWindow;
@@ -57,15 +58,20 @@ public sealed class Plugin : IDalamudPlugin
 
         var act = new ActClient(Log, () => playerName);
         var native = new NativeCombatTracker(GameInterop, ObjectTable, PartyList, Condition, ClientState, DataManager, PlayerState, Log);
+        native.Mistakes.IgnoreTankbusters = Configuration.MistakesIgnoreTankbusters;
         Sources = new CombatSourceManager(Configuration, act, native);
         History = new PullHistory(PluginInterface.GetPluginConfigDirectory(), Log);
         Pulls = new PullTracker(this, DutyState, Condition, ChatGui);
-        Boss = new BossTracker(ObjectTable, Condition);
+        Boss = new BossTracker(ObjectTable, Condition, DataManager);
         Ultimates = new UltimateTracker(Configuration, ObjectTable, Condition, ClientState, DataManager);
         Ultimates.PhaseEnded += OnPhaseEnded;
         ContentCategories = new ContentCategories(DataManager);
         Fights = new FightCatalog(DataManager);
         Uptime = new UptimeTracker(ObjectTable, Condition, () => Ultimates.Current is { Started: true } p ? p.Number : null);
+        Gauges = new GaugeTracker(JobGauges, ObjectTable, Condition, DataManager);
+        native.LocalActionUsed += Gauges.OnActionUsed;
+        Positionals = new PositionalTracker(ObjectTable, Condition, DataManager, Log);
+        native.LocalDamage += Positionals.OnHit;
         Percentiles = new PercentileService(Configuration, DataManager, PluginInterface.GetPluginConfigDirectory(), Log);
         OpenerTracker = new OpenerTracker(GameInterop, ObjectTable, Log);
         dtr = new DtrController(this, DtrBar);
@@ -102,6 +108,9 @@ public sealed class Plugin : IDalamudPlugin
     public BossTracker Boss { get; }
     public UltimateTracker Ultimates { get; }
     public UptimeTracker Uptime { get; }
+
+    public GaugeTracker Gauges { get; }
+    public PositionalTracker Positionals { get; }
     public ContentCategories ContentCategories { get; }
     public FightCatalog Fights { get; }
     public PercentileService Percentiles { get; }
@@ -216,10 +225,11 @@ public sealed class Plugin : IDalamudPlugin
         Configuration.Save();
         UI.Theme.Configure(Configuration);
         dtr.Invalidate();
+        Sources.Native.Mistakes.IgnoreTankbusters = Configuration.MistakesIgnoreTankbusters;
 
         if (reconnect && !Uri.TryCreate(Configuration.WebSocketUrl, UriKind.Absolute, out _))
         {
-            ChatGui.PrintError($"[DPS In Server Bar] Invalid address: {Configuration.WebSocketUrl}");
+            ChatGui.PrintError($"[Raid Companion] Invalid address: {Configuration.WebSocketUrl}");
             return;
         }
 
@@ -236,6 +246,8 @@ public sealed class Plugin : IDalamudPlugin
     {
         Sources.Tick();
         Uptime.Update();
+        Gauges.Update();
+        Positionals.Update();
 
         // The bar only needs a few refreshes per second; sources publish roughly once per second.
         var now = DateTime.UtcNow;
@@ -270,7 +282,7 @@ public sealed class Plugin : IDalamudPlugin
         var presets = Configuration.BarPresets;
         if (presets.Count == 0)
         {
-            ChatGui.PrintError("[DPS In Server Bar] No preset saved yet: create one in the settings, Display section.");
+            ChatGui.PrintError("[Raid Companion] No preset saved yet: create one in the settings, Display section.");
             return;
         }
 
@@ -284,12 +296,12 @@ public sealed class Plugin : IDalamudPlugin
 
         if (index < 0 || index >= presets.Count)
         {
-            ChatGui.PrintError($"[DPS In Server Bar] Unknown preset \"{arg}\". Use a number from 1 to {presets.Count} or a preset name.");
+            ChatGui.PrintError($"[Raid Companion] Unknown preset \"{arg}\". Use a number from 1 to {presets.Count} or a preset name.");
             return;
         }
 
         ApplyBarPreset(index);
-        ChatGui.Print($"[DPS In Server Bar] Preset {index + 1}: {presets[index].Name}");
+        ChatGui.Print($"[Raid Companion] Preset {index + 1}: {presets[index].Name}");
     }
 
     private void OnCommand(string command, string args)

@@ -138,9 +138,17 @@ public sealed class PullTracker : IDisposable
             Percentile = plugin.EstimatePercentile(final),
             Uptime = uptime?.Uptime,
             UptimeLostSeconds = uptime?.LostSeconds ?? 0,
+            Gcd = uptime?.Gcd,
+            Mistakes = plugin.Sources.Native.Mistakes.Current.ToList(),
+            PartyDeaths = plugin.Sources.Native.PartyDeaths.Since(pull.StartUtc).ToList(),
+            GaugeWaste = plugin.Gauges.Current.ToList(),
+            Positionals = plugin.Positionals.Current.ToList(),
             PhaseUptimes = uptime?.Phases.ToList() ?? [],
             UptimeAvailableBySecond = uptime?.AvailableBySecond ?? [],
             UptimeActiveBySecond = uptime?.ActiveBySecond ?? [],
+            BossHpLeft = plugin.Boss.Current?.HpFraction,
+            BossName = plugin.Boss.Current?.Name ?? string.Empty,
+            LastBossCast = plugin.Boss.LastCast,
             PartyDps = final.PartyDps(config.IncludeLimitBreakInParty),
             Rank = final.YourRank(),
             RdpsRank = you is { HasRdps: true } ? final.YourRank(byRdps: true) : 0,
@@ -219,6 +227,14 @@ public sealed class PullTracker : IDisposable
             plugin.History.Changed();
         }
 
+        // Same for the party: a death closing the fight, or a cause refined since.
+        var deaths = plugin.Sources.Native.PartyDeaths.Since(pull.StartUtc);
+        if (deaths.Count >= pull.PartyDeaths.Count && DeathKey(deaths) != DeathKey(pull.PartyDeaths))
+        {
+            pull.PartyDeaths = deaths.ToList();
+            plugin.History.Changed();
+        }
+
         PrintSummary(pull);
     }
 
@@ -244,6 +260,12 @@ public sealed class PullTracker : IDisposable
             PartySize = 8,
             Deaths = 1,
             KilledBy = "Auto-attack (Preview Boss, 45,210)",
+            Mistakes =
+            [
+                new MechanicMistake(64, "You", job, true, "Vulnerability Up", "Preview Cleave", "Preview Boss"),
+                new MechanicMistake(131, "You", job, true, "Vulnerability Up", "Preview Cleave", "Preview Boss"),
+                new MechanicMistake(131, "Party member", "WHM", false, "Damage Down", "Preview Tower", "Preview Boss"),
+            ],
         }, preview: true);
 
         // The ultimate phase summaries too, when they are on: a cleared phase and a wipe.
@@ -339,6 +361,23 @@ public sealed class PullTracker : IDisposable
         if (shown.HasFlag(SummaryElement.KilledBy) && pull.KilledBy.Length > 0)
             parts.Add(() => sb.Append("Killed by ").PushColorRgba(Bad).Append(pull.KilledBy).PopColor());
 
+        // Your failed mechanics by debuff, then the party's total: "Mechanics: Vulnerability Up x2 (party 5)".
+        if (shown.HasFlag(SummaryElement.Mistakes) && pull.Mistakes.Count > 0)
+        {
+            var yours = pull.Mistakes.Where(m => m.IsYou).GroupBy(m => m.Status)
+                            .Select(g => g.Count() > 1 ? $"{g.Key} x{g.Count()}" : g.Key).ToList();
+            parts.Add(() =>
+            {
+                sb.Append("Mechanics: ");
+                if (yours.Count > 0)
+                    sb.PushColorRgba(Bad).Append(string.Join(", ", yours)).PopColor();
+                else
+                    sb.PushColorRgba(Good).Append("none").PopColor();
+                if (pull.PartySize > 1)
+                    sb.PushColorRgba(Muted).Append($" (party {pull.Mistakes.Count})").PopColor();
+            });
+        }
+
         foreach (var part in parts)
         {
             sb.PushColorRgba(Muted).Append(" | ").PopColor();
@@ -415,6 +454,9 @@ public sealed class PullTracker : IDisposable
     }
 
     /// <summary>"Hydrothermal Missile (Living Liquid, 98,432)".</summary>
+    private static string DeathKey(IEnumerable<PartyDeath> deaths) =>
+        string.Join("|", deaths.Select(d => $"{d.Player} {d.AtSeconds:0} {d.Cause} {d.Damage}"));
+
     private static string Describe(DeathInfo death)
     {
         var details = new List<string>();

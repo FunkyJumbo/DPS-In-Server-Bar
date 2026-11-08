@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="DpsInServerBar/icon.png" width="96" alt="DPS In Server Bar icon">
+  <img src="DpsInServerBar/icon.png" width="96" alt="Raid Companion icon">
 </p>
 
-<h1 align="center">DPS In Server Bar</h1>
+<h1 align="center">Raid Companion</h1>
 
 <p align="center">
   Your live DPS, rDPS and party DPS — right in FFXIV's server info bar.<br>
@@ -12,7 +12,7 @@
 ---
 
 <p align="center">
-  <img src="docs/images/bar.png" alt="DPS In Server Bar entry showing 46,209 rDPS in the server info bar"><br>
+  <img src="docs/images/bar.png" alt="Raid Companion entry showing 46,209 rDPS in the server info bar"><br>
   <sub>Your rDPS, right next to the clock.</sub>
 </p>
 
@@ -23,7 +23,7 @@
 The aim of this project is a clean DPS meter, built into the game's UI, that shows the essentials at a glance.
 
 Full overlays are great, but sometimes you want to keep your UI clean and still see what matters where your
-eyes already are. DPS In Server Bar puts your DPS in the server info bar, at the top right of the screen.
+eyes already are. Raid Companion puts your DPS in the server info bar, at the top right of the screen.
 At a glance you also see your place in the party, the gap to the top player (or to the second one when you
 are first), and whether the party's DPS is on track for the boss' enrage.
 
@@ -39,7 +39,7 @@ This plugin doesn't reinvent the DPS meter: it brings it into the game's UI in a
    ```
    https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/pluginmaster.json
    ```
-3. Save, then install **DPS In Server Bar** from `/xlplugins`.
+3. Save, then install **Raid Companion** from `/xlplugins`.
 
 ## Features
 
@@ -77,20 +77,47 @@ and can be **reordered**, with the separator of your choice between them (space,
   Hover an rDPS value to see what the player gave to / received from buffs.
   Boss HP, projected kill time and a DPS graph (rolling and average, personal or party, compared with your best kill).
   Switch the graph to **Uptime** to see exactly when you lost GCD uptime; periods where nothing was targetable are shaded.
+  **GCD analysis**: under the figures, the lost GCD time split by cause: clipping (an oGCD's animation lock held you
+  with the GCD ready), late (free to act, the GCD came late), no GCD (a whole GCD or more without one: movement,
+  mechanics) and dead, plus the number of GCDs it represents. Hover the ? for details.
+  The gaps are also marked at the bottom of the **Uptime** graph (red: no GCD, orange: clipping, grey: late; hover one for
+  its time and length).
+  **Gauge overcap**: the job gauge lost because it was too full when an action filled it (Blood, Beast Gauge, Cartridges,
+  Kenki, Ninki, Soul, Shroud, Heat, Battery, mana, Palette...), with the actions that overcapped it on hover. The gain of
+  each action is learned from your own uses, so its first uses are not counted. Lilies, Addersgall and Polyglot: time
+  spent full, in stacks lost. Gauges filled by crits or by chance (Chakra, Esprit, Soul Voice...) are not tracked.
+  **Positionals** (melee jobs): how many of your positionals landed, read from the bonus the game gave each hit (True
+  North and bosses without positionals count), with the actions you missed and when on hover.
+  **Failed mechanics**: each penalty debuff an enemy action puts on a party member (Vulnerability Up, Damage Down,
+  Down for the Count), counted per player with the debuffs taken. Tankbuster vulnerabilities on tanks are ignored by
+  default (Settings > Pulls history).
+  **Deaths**: every death of the party with its cause (the hit that took the last HP, a debuff running out, a fall
+  from the arena); hover a death for the last hits taken before it. Deaths are also marked on the graph.
   **Compact view** opens a small rounded pop-up without a title bar: only the party meter (DPS or rDPS, share,
   deaths, ranked by the chosen metric), sized to its content, next to the main window. Drag it by its background; click
   the metric header to switch DPS / rDPS; right click for the menu (background opacity, main window, history,
   settings, close). Its columns (%, crit, direct hit, deaths), header and background opacity are set in Display > Compact meter.
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
   Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Ultimate, Other — several at once, read from the game data)
-  and by encounter, open a pull to see its breakdown and graph, tick another one to **compare** them.
+  and by encounter (type in the list to search a fight), open a pull to see its breakdown and graph, tick another one to **compare** them.
   A pull can also set the fight's enrage time from its duration (handy after a wipe to the enrage).
-  Each pull also keeps its GCD uptime (overall and per ultimate phase) and its uptime graph.
+  **Progression**: pick an encounter and tick Progression to see how far each pull got (boss HP taken, or phase and
+  HP in an ultimate) pull after pull, with the best so far, the best pull, wipes per phase and what wiped the party
+  most (the main cause of death at the end of each wipe), and the furthest mechanic seen (the last enemy cast of the
+  furthest wipe). The graph is per pull or per time spent in the instance; in an
+  ultimate each phase has its band, and pulls are listed under the ultimate's name. Click a pull on the graph to open it.
+  Choose a **group** (found from the players of each pull, searchable by name or player) to follow only your static;
+  **Save group** gives it a name (renamed or forgotten later), and saved groups come first in the list. Untick pulls in **Pulls**
+  to leave some out (a night with another group, a test pull); Shift+click ticks or unticks a whole range.
+  Each pull also keeps its GCD uptime (overall and per ultimate phase), its uptime graph, its GCD analysis (with the
+  time of its longest gaps), its gauge overcap, its positionals, the deaths of the party with their cause, and its failed mechanics with who took what and from which
+  attack. A **timeline** bar places the deaths and failed mechanics along the pull (hover for details), and deaths are
+  marked on the graphs.
 
 ### After each pull
 
 An optional chat summary, with the values of your choice (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths,
-and on a wipe the ability that killed you):
+the ability that killed you, and the mechanics you failed with the party's count):
 
 ```
 [Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST (+0.8%)

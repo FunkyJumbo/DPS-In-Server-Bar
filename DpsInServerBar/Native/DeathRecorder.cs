@@ -1,18 +1,26 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
+using DpsInServerBar.Tracking;
 using Lumina.Excel.Sheets;
 
 namespace DpsInServerBar.Native;
 
-/// <summary>What killed you: the hit that took your last HP, or a guess when there was none.</summary>
-public sealed record DeathInfo(DateTime TimeUtc, string Ability, string Source, long Damage);
+/// <summary>What killed someone: the hit that took their last HP, or a guess when there was none.</summary>
+public sealed record DeathInfo(DateTime TimeUtc, string Ability, string Source, long Damage)
+{
+    /// <summary>HP left just before the death.</summary>
+    public uint HpBefore { get; init; }
+
+    /// <summary>The last hits taken before the death, oldest first.</summary>
+    public IReadOnlyList<DeathHit> Recap { get; init; } = [];
+}
 
 /// <summary>
-/// Remembers the damage you took, your HP, height and debuffs, and turns them into a <see cref="DeathInfo"/> when you
-/// die. Fed by the built-in tracker's hooks and framework update, on the game thread.
+/// Remembers the damage a party member took, their HP, height and debuffs, and turns them into a <see cref="DeathInfo"/>
+/// when they die (one recorder per member). Fed by the built-in tracker's hooks and framework update, on the game thread.
 /// </summary>
 public sealed class DeathRecorder
 {
@@ -39,6 +47,9 @@ public sealed class DeathRecorder
     // Status.StatusCategory 2 = detrimental.
     private const byte DetrimentalCategory = 2;
 
+    // Hits kept in a death recap.
+    private const int RecapHits = 6;
+
     private const string Fall = "falling off the arena";
     private const string Instant = "instant death (arena edge?)";
 
@@ -50,13 +61,16 @@ public sealed class DeathRecorder
     private uint lastAliveHp;
     private Func<uint, string> nameOf = _ => string.Empty;
     private bool wasDead;
+    private bool observed;
+    private readonly bool logDetails;
 
     // After a death without a lethal hit: watch whether your body keeps falling.
     private float deathHeight;
     private DateTime fallCheckUntilUtc;
 
-    public DeathRecorder(IDataManager dataManager, IPluginLog log)
+    public DeathRecorder(IDataManager dataManager, IPluginLog log, bool logDetails = true)
     {
+        this.logDetails = logDetails;
         this.dataManager = dataManager;
         this.log = log;
     }
@@ -79,11 +93,14 @@ public sealed class DeathRecorder
     /// Called every frame: records your HP, height and debuffs while alive, catches a death whose packet was missed and
     /// watches a body falling after death.
     /// </summary>
-    public void Observe(IPlayerCharacter? player, Func<uint, string> resolveName)
+    public void Observe(IBattleChara? player, Func<uint, string> resolveName)
     {
         nameOf = resolveName;
         if (player is null)
+        {
+            observed = false; // out of range: coming back already dead is not a new death
             return;
+        }
 
         var now = DateTime.UtcNow;
         var isDead = player.IsDead || (player.CurrentHp == 0 && player.MaxHp > 0);
@@ -104,12 +121,14 @@ public sealed class DeathRecorder
         {
             LastDeath = death with { Ability = Fall };
             fallCheckUntilUtc = DateTime.MinValue;
-            log.Information($"[DeathRecorder] body fell from {deathHeight:0.0} to {player.Position.Y:0.0} after death: {Fall}");
+            if (logDetails)
+                log.Information($"[DeathRecorder] body fell from {deathHeight:0.0} to {player.Position.Y:0.0} after death: {Fall}");
         }
 
-        if (isDead && !wasDead)
+        if (isDead && !wasDead && observed)
             OnDeath();
         wasDead = isDead;
+        observed = true;
     }
 
     public void OnDeath()
@@ -139,11 +158,22 @@ public sealed class DeathRecorder
         else
             LastDeath = new DeathInfo(now, Instant, string.Empty, 0);
 
-        log.Information(
-            $"[DeathRecorder] death: {LastDeath.Ability} | HP before {lastAliveHp:N0} | hits (last 10 s): "
-            + (hits.Count == 0 ? "none" : string.Join(", ", hits.Select(h => $"{h.Ability} {h.Damage:N0} {(now - h.TimeUtc).TotalSeconds:0.0}s ago")))
-            + $" | height {(heights.Count > 0 ? $"{heights.Max(s => s.Height):0.0} -> {heights.Last().Height:0.0}" : "?")}"
-            + $" | debuffs: {(lastDebuffs.Length == 0 ? "none" : string.Join(", ", lastDebuffs.Select(d => $"{StatusName(d.StatusId)} {d.Remaining:0.0}s")))}");
+        LastDeath = LastDeath with
+        {
+            HpBefore = lastAliveHp,
+            Recap = hits.TakeLast(RecapHits)
+                        .Select(h => new DeathHit(Math.Round((now - h.TimeUtc).TotalSeconds, 1), h.Ability, h.Source, h.Damage))
+                        .ToList(),
+        };
+
+        if (logDetails)
+        {
+            log.Information(
+                $"[DeathRecorder] death: {LastDeath.Ability} | HP before {lastAliveHp:N0} | hits (last 10 s): "
+                + (hits.Count == 0 ? "none" : string.Join(", ", hits.Select(h => $"{h.Ability} {h.Damage:N0} {(now - h.TimeUtc).TotalSeconds:0.0}s ago")))
+                + $" | height {(heights.Count > 0 ? $"{heights.Max(s => s.Height):0.0} -> {heights.Last().Height:0.0}" : "?")}"
+                + $" | debuffs: {(lastDebuffs.Length == 0 ? "none" : string.Join(", ", lastDebuffs.Select(d => $"{StatusName(d.StatusId)} {d.Remaining:0.0}s")))}");
+        }
 
         deathHeight = heights.Count > 0 ? heights.Last().Height : 0;
         fallCheckUntilUtc = heights.Count > 0 && LastDeath.Ability == Instant ? now + FallAfterDeathWindow : DateTime.MinValue;

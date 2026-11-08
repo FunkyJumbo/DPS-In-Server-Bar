@@ -3,6 +3,18 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.1.0.0
+
+- Renamed to Raid Companion, with a new icon (same commands and settings).
+- New: GCD analysis (Live and History): lost GCD time split into clipping, late, no GCD and dead, also marked on the Uptime graph.
+- New: failed mechanics (Live, History, chat summary): penalty debuffs taken by each party member and from which attack.
+- New: gauge overcap (Live and History): job gauge lost by overcapping, and the actions that caused it.
+- New: positionals (Live and History): positionals hit and missed on melee jobs, and when.
+- New: party deaths (Live and History): every death with its cause and the last hits taken, marked on the graphs, plus a timeline of deaths and failed mechanics in History.
+- New: progression (History > Progression): how far each pull of an encounter got (boss HP, phase in ultimates), best pull and what wiped the party, per group (groups can be saved under a name) or for the pulls you pick.
+- Fix: GCD uptime (and the analyses based on it) did not work on striking dummies.
+- Various UI changes and adjustments.
+
 ## 1.0.15.1
 
 - Various UI changes and adjustments.

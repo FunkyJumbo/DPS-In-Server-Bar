@@ -17,7 +17,7 @@ namespace DpsInServerBar.Display;
 /// <summary>Owns the server info bar entry and renders the current state into it. Game thread only.</summary>
 public sealed class DtrController : IDisposable
 {
-    private const string EntryName = "DPS In Server Bar";
+    private const string EntryName = "Raid Companion";
 
     private readonly Plugin plugin;
     private readonly IDtrBarEntry entry;

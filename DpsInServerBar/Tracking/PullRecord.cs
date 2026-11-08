@@ -37,6 +37,21 @@ public sealed class PullRecord
 
     public double UptimeLostSeconds { get; set; }
 
+    /// <summary>Where the lost GCD time went (clipping, late, no GCD, dead); null for older pulls.</summary>
+    public GcdAnalysis? Gcd { get; set; }
+
+    /// <summary>Mechanics failed by the party (penalty debuffs), oldest first.</summary>
+    public List<MechanicMistake> Mistakes { get; set; } = [];
+
+    /// <summary>Deaths of the whole party and their cause, oldest first.</summary>
+    public List<PartyDeath> PartyDeaths { get; set; } = [];
+
+    /// <summary>Job gauge lost to overcapping, per gauge that overcapped.</summary>
+    public List<GaugeWaste> GaugeWaste { get; set; } = [];
+
+    /// <summary>Your positional actions and whether each positional landed, oldest first.</summary>
+    public List<PositionalUse> Positionals { get; set; } = [];
+
     /// <summary>Uptime of each ultimate phase reached in this pull.</summary>
     public List<PhaseUptime> PhaseUptimes { get; set; } = [];
 
@@ -44,6 +59,17 @@ public sealed class PullRecord
     public float[] UptimeAvailableBySecond { get; set; } = [];
 
     public float[] UptimeActiveBySecond { get; set; } = [];
+
+    /// <summary>Boss HP left (0-1) when the pull ended, null for older pulls or when no boss was seen.</summary>
+    public double? BossHpLeft { get; set; }
+
+    /// <summary>Left out of the progression view (another group, a test pull...), by the player.</summary>
+    public bool ExcludedFromProgression { get; set; }
+
+    public string BossName { get; set; } = string.Empty;
+
+    /// <summary>The last cast an enemy started before the pull ended: how far into the fight it went.</summary>
+    public string LastBossCast { get; set; } = string.Empty;
 
     public double PartyDps { get; set; }
     public int Rank { get; set; }

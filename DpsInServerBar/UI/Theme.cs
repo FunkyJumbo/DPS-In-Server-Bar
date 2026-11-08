@@ -311,6 +311,13 @@ public static class Theme
         var valueSize = ImGui.GetFontSize() * 1.45f;
         var height = pad.Y * 2 + line + valueSize + Px(2) + (hint is null ? 0 : line);
 
+        // Wider than asked when the caption, value or hint would not fit.
+        var content = Math.Max(ImGui.CalcTextSize(caption.ToUpperInvariant()).X,
+                               ImGui.CalcTextSize(value).X * valueSize / ImGui.GetFontSize());
+        if (hint is not null)
+            content = Math.Max(content, ImGui.CalcTextSize(hint).X);
+        width = Math.Max(width, content + pad.X * 2);
+
         var max = pos + new Vector2(width, height);
         dl.AddRectFilled(pos, max, U32(Surface, 0.8f), Px(Radius));
         dl.AddRect(pos, max, U32(Line, 0.8f), Px(Radius));

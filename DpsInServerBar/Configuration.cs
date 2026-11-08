@@ -96,7 +96,10 @@ public enum SummaryElement
 
     /// <summary>On a wipe, the ability that killed you.</summary>
     KilledBy = 128,
-    All = Job | Dps | Rdps | Percentile | Uptime | PartyDps | Deaths | KilledBy,
+
+    /// <summary>Mechanics you failed (penalty debuffs), and the party's count.</summary>
+    Mistakes = 256,
+    All = Job | Dps | Rdps | Percentile | Uptime | PartyDps | Deaths | KilledBy | Mistakes,
 }
 
 /// <summary>Optional columns of the compact meter.</summary>
@@ -115,6 +118,17 @@ public sealed class BarElementSetting
 {
     public BarElement Element { get; set; }
     public bool Enabled { get; set; } = true;
+}
+
+/// <summary>A group saved under a name for the progression view: its pulls are those sharing half of their players with it.</summary>
+[Serializable]
+public sealed class SavedGroup
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public List<string> Players { get; set; } = [];
 }
 
 /// <summary>A named server bar setup (value, format and elements), switchable with /dpsbar preset N.</summary>
@@ -162,7 +176,7 @@ public sealed class BarPreset
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 7;
+    public int Version { get; set; } = 8;
 
     /// <summary>Order and visibility of the elements of the server bar text.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -259,6 +273,13 @@ public sealed class Configuration : IPluginConfiguration
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public ThemePalette CustomTheme { get; set; } = ThemePalette.For(ThemePreset.Midnight);
 
+    /// <summary>Groups saved under a name (History > Progression).</summary>
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public List<SavedGroup> SavedGroups { get; set; } = [];
+
+    /// <summary>Group shown in History > Progression ("saved:<id>", an automatic group's key, or empty for all pulls).</summary>
+    public string ProgressionGroup { get; set; } = string.Empty;
+
     /// <summary>Custom themes saved under a name (Appearance settings).</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public List<SavedTheme> SavedThemes { get; set; } = [];
@@ -295,6 +316,9 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>After DPS, rDPS, GCD and pDPS: "NEW BEST" or the gap to your best kill of the fight.</summary>
     public bool ChatSummaryCompareBest { get; set; } = true;
     public bool RecordOnlyInDuties { get; set; } = true;
+
+    /// <summary>Failed mechanics: ignore a vulnerability put on a tank by a tankbuster.</summary>
+    public bool MistakesIgnoreTankbusters { get; set; } = true;
     public int MinPullSeconds { get; set; } = 20;
     public int MaxHistory { get; set; } = 300;
     public int GraphWindowSeconds { get; set; } = 10;
@@ -417,6 +441,14 @@ public sealed class Configuration : IPluginConfiguration
             // The end-of-fight marker and the projected kill time were removed from the bar.
             BarLayout.RemoveAll(e => RemovedElements.Contains(e.Element));
             Version = 7;
+            changed = true;
+        }
+
+        if (Version < 8)
+        {
+            // Failed mechanics were added to the chat summary: on for everyone.
+            ChatSummaryElements |= SummaryElement.Mistakes;
+            Version = 8;
             changed = true;
         }
 
