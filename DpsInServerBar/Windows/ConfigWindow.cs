@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using DpsInServerBar.Combat;
@@ -35,7 +36,6 @@ public sealed class ConfigWindow : Window
         AllowBackgroundBlur = false;
         hostInput = plugin.Configuration.Host;
         portInput = plugin.Configuration.Port;
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(680, 420) };
         Size = new Vector2(860, 600);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
@@ -57,7 +57,37 @@ public sealed class ConfigWindow : Window
     private int selectedSection;
     private IDisposable? themeScope;
 
-    public override void PreDraw() => themeScope = Theme.Push();
+    // Height the window needs to show the whole page, from the last frame (pixels); null for a page that fills the window.
+    private float? fitHeight;
+
+    // Height of each page when it was last shown, to give it back when coming back.
+    private readonly Dictionary<int, float> pageHeights = new();
+    private int lastPage;
+    private Vector2 windowSize;
+    private float? restoreHeight;
+
+    public override void PreDraw()
+    {
+        themeScope = Theme.Push();
+
+        // Back to a page: the height it had when it was left.
+        if (restoreHeight is { } restore)
+        {
+            Size = new Vector2(windowSize.X, restore) / ImGuiHelpers.GlobalScale;
+            SizeCondition = ImGuiCond.Always;
+            restoreHeight = null;
+            fitHeight = null; // the limit of the page left does not apply
+        }
+        else if (SizeCondition == ImGuiCond.Always)
+        {
+            Size = null;
+            SizeCondition = ImGuiCond.FirstUseEver;
+        }
+
+        // No taller than the page: no empty space at the bottom.
+        var maxHeight = fitHeight is { } fit ? Math.Max(420, fit / ImGuiHelpers.GlobalScale) : float.MaxValue;
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(680, 420), MaximumSize = new Vector2(float.MaxValue, maxHeight) };
+    }
 
     public override void PostDraw()
     {
@@ -68,6 +98,9 @@ public sealed class ConfigWindow : Window
     public override void Draw()
     {
         var sidebarWidth = Theme.Px(170);
+        windowSize = ImGui.GetWindowSize();
+        var contentTop = ImGui.GetCursorPosY();
+        var navHeight = 0f;
         using (var nav = ImRaii.Child("##nav", new Vector2(sidebarWidth, -1)))
         {
             if (nav)
@@ -77,6 +110,8 @@ public sealed class ConfigWindow : Window
                     if (Theme.NavItem($"##nav{i}", Sections[i].Icon, Sections[i].Label, i == selectedSection))
                         selectedSection = i;
                 }
+
+                navHeight = ImGui.GetCursorPosY() + ImGui.GetTextLineHeight();
 
                 // Version at the bottom of the menu.
                 var version = $"v{Plugin.PluginInterface.Manifest.AssemblyVersion}";
@@ -105,6 +140,20 @@ public sealed class ConfigWindow : Window
         Theme.Hint(section.Description);
         Theme.Rule();
         section.Draw();
+
+        // The DPS check page lists its fights in a box filling the window: no limit there.
+        fitHeight = section.Draw == (System.Action)DrawDpsCheckTab
+                        ? null
+                        : contentTop + Math.Max(navHeight, ImGui.GetCursorPosY() - ImGui.GetStyle().ItemSpacing.Y) + ImGui.GetStyle().WindowPadding.Y;
+
+        // Another page now: remember this one's height, and give the new one its own.
+        if (selectedSection != lastPage)
+        {
+            pageHeights[lastPage] = windowSize.Y;
+            if (pageHeights.TryGetValue(selectedSection, out var savedHeight))
+                restoreHeight = savedHeight;
+            lastPage = selectedSection;
+        }
     }
 
     private void DrawDisplayTab()
@@ -839,6 +888,9 @@ public sealed class ConfigWindow : Window
             ImGui.TableNextRow();
             var here = fight.TerritoryId == plugin.CurrentTerritory;
             var check = FightCheck(fight);
+            // Without a check of the player, the built-in one is shown (greyed), and typing a value overrides it.
+            var builtIn = check is null ? FightDefaults.Threshold(fight.TerritoryId, string.Empty) : null;
+            var shown = check ?? builtIn;
 
             ImGui.TableNextColumn();
             if (here)
@@ -848,19 +900,25 @@ public sealed class ConfigWindow : Window
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(here ? $"You are here (zone {fight.TerritoryId})." : $"Zone {fight.TerritoryId}");
 
-            ImGui.TableNextColumn();
-            if (DrawHpInput(check?.BossHp ?? 0, here ? boss : null, out var hp))
-                changed |= EditFightCheck(fight, t => t.BossHp = hp);
+            using (ImRaii.PushColor(ImGuiCol.Text, Theme.TextFaint, builtIn is not null))
+            {
+                ImGui.TableNextColumn();
+                if (DrawHpInput(shown?.BossHp ?? 0, here ? boss : null, out var hp))
+                    changed |= EditFightCheck(fight, t => t.BossHp = hp);
+
+                ImGui.TableNextColumn();
+                if (DrawEnrageInput(shown?.EnrageSeconds ?? 0, out var enrage))
+                    changed |= EditFightCheck(fight, t => t.EnrageSeconds = enrage);
+            }
 
             ImGui.TableNextColumn();
-            if (DrawEnrageInput(check?.EnrageSeconds ?? 0, out var enrage))
-                changed |= EditFightCheck(fight, t => t.EnrageSeconds = enrage);
-
-            ImGui.TableNextColumn();
-            if (check is { UsesBossHp: true })
+            if (shown is { UsesBossHp: true })
             {
                 // Computed from HP and enrage: shown, not editable.
-                ImGui.TextUnformatted(check.EffectiveMinPartyDps.ToString("N0"));
+                if (builtIn is not null)
+                    ImGui.TextColored(Theme.TextFaint, shown.EffectiveMinPartyDps.ToString("N0"));
+                else
+                    ImGui.TextUnformatted(shown.EffectiveMinPartyDps.ToString("N0"));
             }
             else
             {
@@ -871,6 +929,8 @@ public sealed class ConfigWindow : Window
             }
 
             ImGui.TableNextColumn();
+            if (builtIn is not null)
+                DrawBuiltInNote(fight.TerritoryId);
         }
 
         return changed;
@@ -1139,6 +1199,20 @@ public sealed class ConfigWindow : Window
         return (flags, new Vector2(-1, height), narrow ? minWidth : 0);
     }
 
+    /// <summary>"built-in" with the values of each fight of the zone on hover.</summary>
+    private static void DrawBuiltInNote(uint territory)
+    {
+        ImGui.TextDisabled("built-in");
+        if (!ImGui.IsItemHovered())
+            return;
+
+        var lines = FightDefaults.In(territory).Select(d =>
+            $"{FightDefaults.LocalName(d.Boss)}: {NumberFormat.Format(d.BossHp, NumberStyle.Grouped)} HP, enrage "
+            + (d.EnrageSeconds > 0 ? NumberFormat.Duration(TimeSpan.FromSeconds(d.EnrageSeconds)) : "unknown"));
+        ImGui.SetTooltip("Read from FFLogs: boss HP from recent logs, enrage from the wipes to the enrage after release.\n"
+                         + string.Join("\n", lines) + "\nType a value to use your own instead.");
+    }
+
     // A listed fight's own check: its whole zone, no encounter name.
     private bool IsFightCheck(PartyDpsThreshold t) => t.EncounterName.Length == 0 && plugin.Fights.Contains(t.TerritoryId);
 
@@ -1153,6 +1227,13 @@ public sealed class ConfigWindow : Window
         if (check is null)
         {
             check = new PartyDpsThreshold { TerritoryId = fight.TerritoryId, Label = fight.Name };
+            // Start from the built-in values when the zone has a single fight (they would not fit both fights of a zone).
+            if (FightDefaults.In(fight.TerritoryId).ToList() is [var single])
+            {
+                check.BossHp = single.BossHp;
+                check.EnrageSeconds = single.EnrageSeconds;
+            }
+
             thresholds.Add(check);
         }
 

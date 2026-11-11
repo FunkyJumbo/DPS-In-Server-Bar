@@ -89,6 +89,9 @@ public sealed unsafe class UptimeTracker
     private double gapLocked;
     private double gapFree;
 
+    // Your last actions (from the action effect hook), to tell which oGCD caused a clip.
+    private readonly List<(uint ActionId, DateTime TimeUtc)> recentActions = [];
+
     public UptimeTracker(IObjectTable objectTable, ICondition condition, Func<int?> currentPhase)
     {
         this.objectTable = objectTable;
@@ -98,6 +101,9 @@ public sealed unsafe class UptimeTracker
 
     /// <summary>Uptime of the fight in progress, or of the last one. Null before the first fight.</summary>
     public UptimeState? Current { get; private set; }
+
+    /// <summary>Whether an enemy can be attacked right now (read a few times per second, in combat).</summary>
+    public bool EnemyTargetable => wasInCombat && enemyTargetable;
 
     /// <summary>Called every frame.</summary>
     public void Update()
@@ -170,6 +176,14 @@ public sealed unsafe class UptimeTracker
         }
 
         Record(now, dt, available: true, active: busy);
+    }
+
+    /// <summary>One of your actions landed (from the action effect hook).</summary>
+    public void OnActionUsed(uint actionId)
+    {
+        recentActions.Add((actionId, DateTime.UtcNow));
+        if (recentActions.Count > 8)
+            recentActions.RemoveAt(0);
     }
 
     /// <summary>Snapshot for display; rebuilt only when something changed.</summary>
@@ -260,8 +274,19 @@ public sealed unsafe class UptimeTracker
                 clipCount++;
         }
 
-        if (seconds >= ListedGapSeconds && gaps.Count < MaxListedGaps)
-            gaps.Add(new GcdGap(gapStart, seconds, kind));
+        // Clips are listed however short, with the oGCD that landed around them.
+        var clip = kind != GcdGapKind.NoGcd && gapLocked >= 0.1;
+        if ((seconds >= ListedGapSeconds || clip) && gaps.Count < MaxListedGaps)
+        {
+            uint action = 0;
+            if (clip)
+            {
+                var from = combatStartUtc.AddSeconds(gapStart - 1.5);
+                action = recentActions.LastOrDefault(a => a.TimeUtc >= from).ActionId;
+            }
+
+            gaps.Add(new GcdGap(gapStart, seconds, kind, gapLocked, action));
+        }
         revision++;
     }
 

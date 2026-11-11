@@ -199,9 +199,13 @@ public static class Theme
     }
 
     /// <summary>Section title: a short gold rule, then the label in gold capitals.</summary>
-    public static void SectionHeader(string label, FontAwesomeIcon? icon = null)
+    /// <param name="help">Shown on hover of a ? right after the title.</param>
+    /// <summary>Extra room above section titles (pixels), set by a view that wants its sections further apart.</summary>
+    public static float SectionSpacing { get; set; }
+
+    public static void SectionHeader(string label, FontAwesomeIcon? icon = null, string? help = null)
     {
-        ImGui.Dummy(new Vector2(0, Px(4)));
+        ImGui.Dummy(new Vector2(0, Px(4) + SectionSpacing));
         var dl = ImGui.GetWindowDrawList();
         var pos = ImGui.GetCursorScreenPos();
         var lineY = pos.Y + ImGui.GetTextLineHeight() / 2;
@@ -214,6 +218,8 @@ public static class Theme
         }
 
         ImGui.TextColored(Gold, label.ToUpperInvariant());
+        if (help is not null)
+            HelpMarker(help);
         ImGui.Dummy(new Vector2(0, Px(1)));
     }
 
@@ -300,8 +306,9 @@ public static class Theme
     /// <summary>
     /// A figure on a card: small caption, big value, optional hint line. The accent colors the top edge and the value.
     /// </summary>
+    /// <param name="fullHeight">Keeps the hint line's room even without a hint, so that cards side by side match.</param>
     public static void StatCard(string caption, string value, Vector4 accent, float width, string? hint = null,
-                                Vector4? hintColor = null, Vector4? valueColor = null)
+                                Vector4? hintColor = null, Vector4? valueColor = null, bool fullHeight = false)
     {
         var dl = ImGui.GetWindowDrawList();
         var pos = ImGui.GetCursorScreenPos();
@@ -309,14 +316,10 @@ public static class Theme
         var line = ImGui.GetTextLineHeight();
         var font = ImGui.GetFont();
         var valueSize = ImGui.GetFontSize() * 1.45f;
-        var height = pad.Y * 2 + line + valueSize + Px(2) + (hint is null ? 0 : line);
+        var height = pad.Y * 2 + line + valueSize + Px(2) + (hint is null && !fullHeight ? 0 : line);
 
         // Wider than asked when the caption, value or hint would not fit.
-        var content = Math.Max(ImGui.CalcTextSize(caption.ToUpperInvariant()).X,
-                               ImGui.CalcTextSize(value).X * valueSize / ImGui.GetFontSize());
-        if (hint is not null)
-            content = Math.Max(content, ImGui.CalcTextSize(hint).X);
-        width = Math.Max(width, content + pad.X * 2);
+        width = Math.Max(width, StatCardWidth(caption, value, hint));
 
         var max = pos + new Vector2(width, height);
         dl.AddRectFilled(pos, max, U32(Surface, 0.8f), Px(Radius));
@@ -334,13 +337,27 @@ public static class Theme
         ImGui.Dummy(new Vector2(width, height));
     }
 
+    /// <summary>The narrowest a card can be with this caption, value and hint.</summary>
+    public static float StatCardWidth(string caption, string value, string? hint)
+    {
+        var valueSize = ImGui.GetFontSize() * 1.45f;
+        var content = Math.Max(ImGui.CalcTextSize(caption.ToUpperInvariant()).X,
+                               ImGui.CalcTextSize(value).X * valueSize / ImGui.GetFontSize());
+        if (hint is not null)
+            content = Math.Max(content, ImGui.CalcTextSize(hint).X);
+        return content + Px(10) * 2;
+    }
+
     /// <summary>Width of each of <paramref name="count"/> cards filling the line.</summary>
     public static float CardWidth(int count) =>
         count <= 0 ? 0 : (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * (count - 1)) / count;
 
     /// <summary>A pill that toggles: gold when on. Returns true when clicked.</summary>
-    public static bool Chip(string label, bool on, bool transparent = false)
+    /// <param name="accent">Draws the chip as on, in this color (a button standing out rather than a toggle).</param>
+    public static bool Chip(string label, bool on, bool transparent = false, Vector4? accent = null)
     {
+        var color = accent ?? Gold;
+        on |= accent is not null;
         var size = ImGui.CalcTextSize(label) + Px(new Vector2(20, 8));
         var pos = ImGui.GetCursorScreenPos();
         var clicked = ImGui.InvisibleButton($"##chip{label}", size);
@@ -351,8 +368,8 @@ public static class Theme
         var rounding = size.Y / 2;
         if (on)
         {
-            dl.AddRectFilled(pos, max, U32(Gold, hovered ? 0.24f : 0.16f), rounding);
-            dl.AddRect(pos, max, U32(Gold, 0.7f), rounding);
+            dl.AddRectFilled(pos, max, U32(color, hovered ? 0.24f : 0.16f), rounding);
+            dl.AddRect(pos, max, U32(color, 0.7f), rounding);
         }
         else if (transparent)
         {
@@ -366,7 +383,7 @@ public static class Theme
             dl.AddRectFilled(pos, max, U32(hovered ? SurfaceHover : Surface), rounding);
         }
 
-        dl.AddText(pos + Px(new Vector2(10, 4)), U32(on ? GoldBright : TextMuted), label);
+        dl.AddText(pos + Px(new Vector2(10, 4)), U32(on ? Lighten(color, 0.4f) : TextMuted), label);
         return clicked;
     }
 

@@ -29,6 +29,7 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
     private const uint ActorControlDeath = 6;
     private const uint ActorControlDotHot = 23;
     private const uint DotHotTypeDamage = 3;
+    private const uint DotHotTypeHeal = 4;
 
     private readonly IObjectTable objectTable;
     private readonly IPartyList partyList;
@@ -40,6 +41,9 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
     private readonly DeathRecorder deaths;
     private readonly MistakeRecorder mistakes;
     private readonly PartyDeathLog partyDeaths;
+    private readonly HealLog heals = new();
+    private readonly MitigationLog mitigations = new();
+    private readonly TankSwapLog tankSwaps;
 
     private readonly Hook<ActionEffectHandler.Delegates.Receive>? effectHook;
     private readonly Hook<PacketDispatcher.Delegates.HandleActorControlPacket>? actorControlHook;
@@ -69,6 +73,7 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         deaths = new DeathRecorder(dataManager, log);
         mistakes = new MistakeRecorder(dataManager);
         partyDeaths = new PartyDeathLog(dataManager, log, objectTable, deaths);
+        tankSwaps = new TankSwapLog(objectTable);
 
         limitBreakActions = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>()
             .Where(a => a.ActionCategory.RowId == 9)
@@ -102,6 +107,15 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
 
     /// <summary>Deaths of the whole party in the current or last fight, with their cause.</summary>
     public PartyDeathLog PartyDeaths => partyDeaths;
+
+    /// <summary>Healing and overheal of the party in the current or last fight.</summary>
+    public HealLog Heals => heals;
+
+    /// <summary>Mitigations and defensive buffs used by the party.</summary>
+    public MitigationLog Mitigations => mitigations;
+
+    /// <summary>Tank swaps on the boss in the current or last fight.</summary>
+    public TankSwapLog TankSwaps => tankSwaps;
 
     /// <summary>One of your own actions landed (action id), raised from the game thread.</summary>
     public event Action<uint>? LocalActionUsed;
@@ -145,6 +159,9 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         partyDeaths.Tick(party.Select(p => (p.Key, p.Value.Name, p.Value.Job.ToUpperInvariant(), p.Value.IsLocalPlayer)),
                          condition[ConditionFlag.InCombat], NameOf);
         mistakes.Tick(condition[ConditionFlag.InCombat]);
+        heals.Tick(condition[ConditionFlag.InCombat]);
+        mitigations.Tick(condition[ConditionFlag.InCombat]);
+        tankSwaps.Tick(party.Select(p => (p.Key, p.Value.Name, p.Value.Job)), condition[ConditionFlag.InCombat]);
 
         if (!active)
             return;
@@ -175,6 +192,12 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         {
             RecordHitsOnParty(casterEntityId, header, effects, targetEntityIds);
             RecordPenalties(casterEntityId, header, effects, targetEntityIds);
+            RecordHeals(casterEntityId, header, effects, targetEntityIds);
+            if (header->ActionType == 1 && party.TryGetValue(casterEntityId, out var caster))
+            {
+                tankSwaps.OnAction(casterEntityId, header->ActionId);
+                mitigations.OnAction(caster.Name, caster.Job, caster.IsLocalPlayer, header->ActionId);
+            }
             if (header->ActionType == 1 && casterEntityId == (objectTable.LocalPlayer?.EntityId ?? 0))
             {
                 LocalActionUsed?.Invoke(header->ActionId);
@@ -233,6 +256,8 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
         try
         {
             RecordDamageOrDeathOfParty(entityId, category, arg1, arg2, arg3, arg4);
+            if (category == ActorControlDotHot && arg2 == DotHotTypeHeal && arg3 > 0)
+                RecordHeal(arg4 is 0 or InvalidId ? FindDotSource(entityId, arg1) : arg4, entityId, arg3, arg1, isHot: true);
 
             switch (category)
             {
@@ -295,6 +320,38 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
                 }
             }
         }
+    }
+
+    /// <summary>Heals from party members (and their pets) on anyone, with their overheal.</summary>
+    private void RecordHeals(
+        uint casterEntityId, ActionEffectHandler.Header* header, ActionEffectHandler.TargetEffects* effects,
+        GameObjectId* targetEntityIds)
+    {
+        for (var t = 0; t < header->NumTargets; t++)
+        {
+            long amount = 0;
+            foreach (ref readonly var effect in effects[t].Effects)
+            {
+                // 4 = heal
+                if (effect.Type != 4)
+                    continue;
+                amount += effect.Value;
+                if ((effect.Param4 & 0x40) != 0)
+                    amount += (long)effect.Param3 << 16;
+            }
+
+            if (amount > 0)
+                RecordHeal(casterEntityId, targetEntityIds[t].ObjectId, amount, header->ActionType == 1 ? header->ActionId : 0);
+        }
+    }
+
+    private void RecordHeal(uint casterId, uint targetId, long amount, uint sourceId = 0, bool isHot = false)
+    {
+        var owner = casterId == 0 ? 0 : ResolvePartyOwner(casterId);
+        if (!party.TryGetValue(owner, out var member) || objectTable.SearchByEntityId(targetId) is not IBattleChara target)
+            return;
+
+        heals.OnHeal(owner, member.Name, member.Job, member.IsLocalPlayer, targetId, amount, (long)target.MaxHp - target.CurrentHp, sourceId, isHot);
     }
 
     /// <summary>Remembers the hits party members take, to tell what killed them.</summary>

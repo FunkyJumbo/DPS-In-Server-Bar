@@ -51,6 +51,10 @@ public sealed class PartyDpsThreshold
     /// <summary>Time from pull to enrage, in seconds (0 = not set). Not available in game data.</summary>
     public double EnrageSeconds { get; set; }
 
+    /// <summary>A built-in check (<see cref="FightDefaults"/>), not one the player saved.</summary>
+    [JsonIgnore]
+    public bool IsBuiltIn { get; init; }
+
     public bool UsesBossHp => BossHp > 0 && EnrageSeconds > 0;
 
     /// <summary>The minimum party DPS: HP / enrage time when both are known, the manual value otherwise.</summary>
@@ -176,7 +180,7 @@ public sealed class BarPreset
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 8;
+    public int Version { get; set; } = 9;
 
     /// <summary>Order and visibility of the elements of the server bar text.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -207,8 +211,20 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Show the DPS graphs in the main window.</summary>
     public bool ShowGraph { get; set; } = true;
 
+    /// <summary>What the History timeline shows: deaths, tank swaps, failed mechanics, mitigation (one lane per player).</summary>
+    public bool TimelineDeaths { get; set; } = true;
+
+    public bool TimelineTankSwaps { get; set; } = true;
+
+    public bool TimelineMistakes { get; set; } = true;
+
+    public bool TimelineMitigation { get; set; } = true;
+
     /// <summary>Kinds of content shown in the History tab (several can be selected).</summary>
     public ContentCategory HistoryCategories { get; set; } = ContentCategory.All;
+
+    /// <summary>Kinds of content shown in the Progression tab (among extremes, savage, criterion and ultimates).</summary>
+    public ContentCategory ProgressionCategories { get; set; } = ContentCategory.Progression;
 
     /// <summary>Order the player tables of the main window by rDPS instead of DPS.</summary>
     public bool SortByRdps { get; set; } = false;
@@ -452,6 +468,15 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
+        if (Version < 9)
+        {
+            // Criterion dungeons were counted as dungeons: they keep showing with them.
+            if ((HistoryCategories & ContentCategory.Dungeon) != 0)
+                HistoryCategories |= ContentCategory.Criterion;
+            Version = 9;
+            changed = true;
+        }
+
         // Elements added in later versions show up, hidden, at the end.
         foreach (var element in Enum.GetValues<BarElement>().Except(RemovedElements))
         {
@@ -492,8 +517,10 @@ public sealed class Configuration : IPluginConfiguration
 
     /// <summary>
     /// The most specific check for this zone and encounter: an entry naming the encounter wins over a zone-wide one.
+    /// Without one, the built-in check of the fight (boss HP and enrage), if known.
     /// </summary>
-    public PartyDpsThreshold? FindThreshold(uint territory, string encounterTitle)
+    /// <param name="bossBaseId">BNpcBase id of the boss being fought, when known: picks between the two built-in fights of a zone.</param>
+    public PartyDpsThreshold? FindThreshold(uint territory, string encounterTitle, uint bossBaseId = 0)
     {
         var candidates = Thresholds
             .Where(t => t.TerritoryId == 0 || t.TerritoryId == territory)
@@ -504,7 +531,8 @@ public sealed class Configuration : IPluginConfiguration
         return candidates
             .OrderByDescending(t => t.EncounterName.Length > 0)
             .ThenByDescending(t => t.TerritoryId != 0)
-            .FirstOrDefault();
+            .FirstOrDefault()
+            ?? FightDefaults.Threshold(territory, encounterTitle, bossBaseId);
     }
 
     /// <summary>
@@ -515,11 +543,13 @@ public sealed class Configuration : IPluginConfiguration
     public PartyDpsThreshold SetEnrage(uint territory, string encounterTitle, double seconds, string? fightName = null)
     {
         var threshold = FindThreshold(territory, encounterTitle);
-        if (threshold is null)
+        if (threshold is null || threshold.IsBuiltIn)
         {
+            // A built-in check becomes the player's own, keeping its boss HP.
+            var hp = threshold?.BossHp ?? 0;
             threshold = fightName is not null
-                            ? new PartyDpsThreshold { TerritoryId = territory, Label = fightName }
-                            : new PartyDpsThreshold { TerritoryId = territory, EncounterName = encounterTitle, Label = encounterTitle };
+                            ? new PartyDpsThreshold { TerritoryId = territory, Label = fightName, BossHp = hp }
+                            : new PartyDpsThreshold { TerritoryId = territory, EncounterName = encounterTitle, Label = encounterTitle, BossHp = hp };
             Thresholds.Add(threshold);
         }
 

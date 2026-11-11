@@ -3,6 +3,17 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.2.0.0
+
+- New: built-in DPS checks (boss HP and enrage) for the Stormblood to Dawntrail extremes and savage raids.
+- New: combo errors, DoT uptime, overheal for healers and tank swaps for tanks.
+- New: mitigation and defensive buffs used by each party member, with their timings (History).
+- New: Personal section gathering your own play (Live), foldable with every detail in History.
+- New: Progression in its own tab, for extremes, savage, criterion and ultimates.
+- Live: party DPS gap and boss kill time against the enrage on the cards.
+- History: the timeline shows what you tick (deaths, tank swaps, failed mechanics, mitigation).
+- Various UI changes and adjustments.
+
 ## 1.1.0.0
 
 - Renamed to Raid Companion, with a new icon (same commands and settings).

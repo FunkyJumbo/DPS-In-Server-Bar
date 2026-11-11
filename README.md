@@ -75,21 +75,34 @@ and can be **reordered**, with the separator of your choice between them (space,
 
 - **Live** — every player's DPS, rDPS, damage %, crit, direct hit and deaths, sortable by DPS or rDPS.
   Hover an rDPS value to see what the player gave to / received from buffs.
-  Boss HP, projected kill time and a DPS graph (rolling and average, personal or party, compared with your best kill).
+  At the top, cards of the same size: your DPS and rDPS with your rank, the party DPS with its gap to the enrage (when
+  the fight has one: the DPS still needed for the boss HP left in the time left), the boss HP with how long before (or
+  after) the enrage the boss would die at this pace, and the pace against your best pull. Then a DPS graph (rolling and
+  average, personal or party, compared with your best kill).
   Switch the graph to **Uptime** to see exactly when you lost GCD uptime; periods where nothing was targetable are shaded.
-  **GCD analysis**: under the figures, the lost GCD time split by cause: clipping (an oGCD's animation lock held you
+  A **Personal** section, between the cards and the party, gathers your own play (only what your job has):
+  **GCD uptime** (hover for the time lost); the full GCD analysis is in History.
+  **GCD analysis** (History): the lost GCD time split by cause: clipping (an oGCD's animation lock held you
   with the GCD ready), late (free to act, the GCD came late), no GCD (a whole GCD or more without one: movement,
   mechanics) and dead, plus the number of GCDs it represents. Hover the ? for details.
   The gaps are also marked at the bottom of the **Uptime** graph (red: no GCD, orange: clipping, grey: late; hover one for
   its time and length).
   **Gauge overcap**: the job gauge lost because it was too full when an action filled it (Blood, Beast Gauge, Cartridges,
-  Kenki, Ninki, Soul, Shroud, Heat, Battery, mana, Palette...), with the actions that overcapped it on hover. The gain of
+  Kenki, Ninki, Soul, Shroud, Heat, Battery, mana, Palette...), each with the icon of the action that spends it, and the actions that overcapped it on hover. The gain of
   each action is learned from your own uses, so its first uses are not counted. Lilies, Addersgall and Polyglot: time
   spent full, in stacks lost. Gauges filled by crits or by chance (Chakra, Esprit, Soul Voice...) are not tracked.
   **Positionals** (melee jobs): how many of your positionals landed, read from the bonus the game gave each hit (True
-  North and bosses without positionals count), with the actions you missed and when on hover.
+  North and bosses without positionals count), with the icon of each action you missed and when on hover.
+  **Combo errors**: combo steps used without the step before them (wrong button), combos restarted before they were
+  finished, and combos whose timer ran out before the next step (not counted while dead), by the icon of the action used.
+  **DoT uptime** (jobs with a DoT): how long each of your DoTs stayed on the boss while it could be attacked (a dummy is
+  not a boss: test it on a real fight).
+  **Overheal** (healers): the share of each healer's healing that went over full HP, for information (in Live, a foldable
+  line with yours, the other healers inside).
+  **Tank swaps** (tanks): a foldable list of the boss going from one tank to another, with why: death, Provoke,
+  Shirk or enmity from damage.
   **Failed mechanics**: each penalty debuff an enemy action puts on a party member (Vulnerability Up, Damage Down,
-  Down for the Count), counted per player with the debuffs taken. Tankbuster vulnerabilities on tanks are ignored by
+  Down for the Count), counted per player with the debuffs taken (hover a row for each one: when, which debuff, from which action). Tankbuster vulnerabilities on tanks are ignored by
   default (Settings > Pulls history).
   **Deaths**: every death of the party with its cause (the hit that took the last HP, a debuff running out, a fall
   from the arena); hover a death for the last hits taken before it. Deaths are also marked on the graph.
@@ -98,10 +111,11 @@ and can be **reordered**, with the separator of your choice between them (space,
   the metric header to switch DPS / rDPS; right click for the menu (background opacity, main window, history,
   settings, close). Its columns (%, crit, direct hit, deaths), header and background opacity are set in Display > Compact meter.
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
-  Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Ultimate, Other — several at once, read from the game data)
-  and by encounter (type in the list to search a fight), open a pull to see its breakdown and graph, tick another one to **compare** them.
-  A pull can also set the fight's enrage time from its duration (handy after a wipe to the enrage).
-  **Progression**: pick an encounter and tick Progression to see how far each pull got (boss HP taken, or phase and
+  Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Criterion, Ultimate, Other — several at once, read from the game data)
+  and by encounter (type in the list to search a fight). The pull list can be made taller by dragging the grip under it
+  (double-click to reset). Open a pull to see its breakdown and graph, tick another one to **compare** them.
+  **Progression** (its own tab, next to Live and History; its filters keep to Extreme, Savage, Criterion and Ultimate): pick an instance (by its name, with the
+  fight's name when it has two) to see how far each pull got (boss HP taken, or phase and
   HP in an ultimate) pull after pull, with the best so far, the best pull, wipes per phase and what wiped the party
   most (the main cause of death at the end of each wipe), and the furthest mechanic seen (the last enemy cast of the
   furthest wipe). The graph is per pull or per time spent in the instance; in an
@@ -109,10 +123,17 @@ and can be **reordered**, with the separator of your choice between them (space,
   Choose a **group** (found from the players of each pull, searchable by name or player) to follow only your static;
   **Save group** gives it a name (renamed or forgotten later), and saved groups come first in the list. Untick pulls in **Pulls**
   to leave some out (a night with another group, a test pull); Shift+click ticks or unticks a whole range.
-  Each pull also keeps its GCD uptime (overall and per ultimate phase), its uptime graph, its GCD analysis (with the
-  time of its longest gaps), its gauge overcap, its positionals, the deaths of the party with their cause, and its failed mechanics with who took what and from which
-  attack. A **timeline** bar places the deaths and failed mechanics along the pull (hover for details), and deaths are
-  marked on the graphs.
+  Each pull has the same **Personal** section as Live, each line foldable for its detail: GCD uptime (with the number of
+  GCDs; inside, the uptime per ultimate phase, the GCD analysis and the clipping timeline showing the
+  oGCD behind each clip by its icon), gauge overcap (inside: each gauge with the actions that overcapped it), positionals
+  and combo errors (inside: a list of each miss with its time and action), DoT uptime (inside: each time a DoT stayed off
+  the boss a second or more, and for how long), overheal (inside: every healer, and your overheal per heal action and HoT)
+  and tank swaps, and your mitigation (inside: how many times you used each mitigation and defensive buff). Under the
+  deaths, a **Mitigation** section lists, for each party member (one foldable line each), every mitigation and defensive buff used with the time
+  of each use (GCD shields left out). It also keeps its uptime graph, the deaths of the party with their cause, and its failed mechanics with who took what and from which
+  attack. A **timeline** places along the pull what you tick above it, one lane each: deaths, tank swaps,
+  failed mechanics and mitigation (one lane per player, by the icon of each action; it grows with what is shown). Hover a
+  mark for its detail. Deaths are marked on the graphs.
 
 ### After each pull
 
@@ -136,8 +157,13 @@ The summary can be turned off in dungeons.
 The **DPS check** tab lists every **ultimate, savage raid and extreme trial** from the game data, most recent first,
 one row each (a search box finds a fight quickly). For each fight you can enter the **boss HP** (one click reads it from the game) and the **enrage time**:
 the minimum party DPS is then `HP / enrage`. The enrage time also drives the enrage timer in the bar.
-After a wipe to the enrage, open the pull in History and click **Set as enrage time** to store its exact duration. A manual minimum can be used instead. Any other zone or a single
+A manual minimum can be used instead. Any other zone or a single
 encounter can be added under **Other / custom**.
+
+The Stormblood to Dawntrail **extremes and savage raids come filled in**: boss HP and enrage time read from FFLogs (the
+HP from recent logs, the enrage from the wipes that ended together at the enrage after release), shown greyed with
+"built-in". They apply until you enter your own values. Some enrages are unknown (too few wipes to the enrage), and a
+fight with several bosses only counts one of them.
 
 ### Ultimates
 
@@ -165,7 +191,7 @@ Monk, 3 for Bard and Red Mage), with the guide's notes, press **Start** for a co
 in-game `/countdown` (the run follows it, a cancelled countdown resets it) or just use its first action, then play it: each action used in the right order is greyed out and checked. GCDs are the big
 boxes on the track, oGCDs the small ones above; the oGCDs of a weave window can come in any order. A wrong action
 flashes the expected box in red, a GCD used before its oGCDs marks them missed. Each GCD shows the time it was used,
-and the run ends with the total time, mistakes and missed actions. The pre-pull actions and the tincture can each be left out. **Auto close** (option) closes the window 3 s after the opener is done, or a chosen time (40 s by default) after its first action. Stretch the window sideways to fit a long opener on fewer rows. **Compact** switches to a small pop-up (no title bar, sized to its content) with only the icons, Start / Reset and **Full view**; right click it for the background opacity. The background opacity slider only fades the background, never the icons. Before the pull, a line tells whether you are ready (out of combat, full MP, the opener's cooldowns and tincture back up) or what is still on cooldown. **Start** launches the in-game `/countdown` (option), or a countdown in the window when in combat, where the game refuses it. `/dpsbar opener` or the Live tab.
+and the run ends with the total time, mistakes and missed actions. The pre-pull actions and the tincture can each be left out. **Auto close** (option) closes the window 3 s after the opener is done, or a chosen time (40 s by default) after its first action. Stretch the window sideways to fit a long opener on fewer rows. **Compact** switches to a small pop-up (no title bar, sized to its content) with only the icons, Start / Reset, **Full view** and **Close**; right click it for the background opacity. The background opacity slider only fades the background, never the icons. Before the pull, a line tells whether you are ready (out of combat, full MP, the opener's cooldowns and tincture back up) or what is still on cooldown. **Start** launches the in-game `/countdown` (option), or a countdown in the window when in combat, where the game refuses it. `/dpsbar opener` or the Live tab.
 
 ### FFLogs percentile (optional)
 
@@ -253,7 +279,7 @@ in the current partition — close to FFLogs' *rank %*. During a fight it is onl
 
 - rDPS is an estimate (see [Accuracy](#how-rdps-is-computed)); raid buff values need updating when a patch changes them.
 - Only the guaranteed crit/DH effects listed in `RaidBuffs.cs` are recognised.
-- Enrage times are not in the game data and must be entered by hand (DPS check tab).
+- Enrage times are not in the game data: the built-in ones come from FFLogs, the others must be entered by hand (DPS check tab).
 - GCD uptime: an enemy that stays targetable while invulnerable still counts as available time. Only your own uptime is measured (the game does not expose other players' GCD).
 - Ultimate mode only covers the phases listed in [Ultimates](#ultimates); later phases show as "not supported yet".
 - For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for the DPS check.

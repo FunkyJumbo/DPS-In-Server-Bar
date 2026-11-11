@@ -18,7 +18,11 @@ public enum ContentCategory
     Savage = 16,
     Ultimate = 32,
     Other = 64,
-    All = Dungeon | Trial | Extreme | Raid | Savage | Ultimate | Other,
+    Criterion = 128,
+    All = Dungeon | Trial | Extreme | Raid | Savage | Ultimate | Other | Criterion,
+
+    /// <summary>The content with a real progression: shown in the Progression tab.</summary>
+    Progression = Extreme | Savage | Ultimate | Criterion,
 }
 
 /// <summary>
@@ -42,6 +46,7 @@ public sealed class ContentCategories
         (ContentCategory.Extreme, "Extreme"),
         (ContentCategory.Raid, "Raids"),
         (ContentCategory.Savage, "Savage"),
+        (ContentCategory.Criterion, "Criterion"),
         (ContentCategory.Ultimate, "Ultimate"),
         (ContentCategory.Other, "Other"),
     ];
@@ -73,6 +78,8 @@ public sealed class ContentCategories
         var name = duty.Name.ExtractText();
         return duty.ContentType.RowId switch
         {
+            // Criterion dungeons ("Another ..."), normal and savage, apart from the variant ones.
+            VariantAndCriterionDungeons when name.StartsWith("Another ", StringComparison.OrdinalIgnoreCase) => ContentCategory.Criterion,
             Dungeons or VariantAndCriterionDungeons => ContentCategory.Dungeon,
             Trials when name.Contains("(Extreme)", StringComparison.OrdinalIgnoreCase)
                         || name.Contains("(Unreal)", StringComparison.OrdinalIgnoreCase) => ContentCategory.Extreme,

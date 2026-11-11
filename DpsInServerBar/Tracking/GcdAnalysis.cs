@@ -16,7 +16,12 @@ public enum GcdGapKind
 }
 
 /// <summary>One stretch where the GCD was ready and unused. <see cref="AtSeconds"/> counts from the pull start.</summary>
-public sealed record GcdGap(double AtSeconds, double Seconds, GcdGapKind Kind);
+public sealed record GcdGap(double AtSeconds, double Seconds, GcdGapKind Kind, double LockedSeconds = 0, uint ActionId = 0)
+{
+    /// <summary>Counted as a clip: held at least 0.1 s by an animation lock (<see cref="ActionId"/>: the oGCD used then, 0 if unknown).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsClip => Kind != GcdGapKind.NoGcd && (LockedSeconds >= 0.1 || (LockedSeconds == 0 && Kind == GcdGapKind.Clipping));
+}
 
 /// <summary>
 /// Where the GCD uptime went: the time lost, split by cause. Only time with an enemy targetable counts, so the

@@ -8,7 +8,7 @@ using Dalamud.Plugin.Services;
 namespace DpsInServerBar.Tracking;
 
 /// <summary>The enemy with the most HP in the current fight, as read from the game.</summary>
-public sealed record BossInfo(string Name, uint NameId, uint CurrentHp, uint MaxHp)
+public sealed record BossInfo(string Name, uint NameId, uint CurrentHp, uint MaxHp, uint EntityId = 0, uint BaseId = 0)
 {
     public double HpFraction => MaxHp > 0 ? (double)CurrentHp / MaxHp : 0;
 }
@@ -76,7 +76,7 @@ public sealed class BossTracker
         }
 
         if (best is not null)
-            Current = new BossInfo(best.Name.TextValue, best.NameId, best.CurrentHp, best.MaxHp);
+            Current = new BossInfo(best.Name.TextValue, best.NameId, best.CurrentHp, best.MaxHp, best.EntityId, best.BaseId);
     }
 
     // A cast just started by an enemy becomes the last one.

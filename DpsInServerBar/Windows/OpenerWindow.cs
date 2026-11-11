@@ -175,6 +175,14 @@ public sealed class OpenerWindow : Window
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Size of this window");
 
+        // Close, at the bottom right.
+        ImGui.SameLine();
+        var closeX = ImGui.GetContentRegionMax().X - (ImGui.CalcTextSize("Close").X + Theme.Px(20));
+        if (closeX > ImGui.GetCursorPosX())
+            ImGui.SetCursorPosX(closeX);
+        if (Theme.Chip("Close", false, transparent))
+            plugin.CloseOpener();
+
         using var popup = ImRaii.Popup("##openercompactsize");
         if (!popup)
             return;

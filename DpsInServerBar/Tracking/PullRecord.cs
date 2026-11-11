@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using DpsInServerBar.Combat;
+using DpsInServerBar.Native;
 
 namespace DpsInServerBar.Tracking;
 
@@ -51,6 +52,21 @@ public sealed class PullRecord
 
     /// <summary>Your positional actions and whether each positional landed, oldest first.</summary>
     public List<PositionalUse> Positionals { get; set; } = [];
+
+    /// <summary>Your combo errors, oldest first.</summary>
+    public List<ComboMistake> ComboMistakes { get; set; } = [];
+
+    /// <summary>Uptime of each of your DoTs on the boss.</summary>
+    public List<DotUptime> DotUptimes { get; set; } = [];
+
+    /// <summary>The boss moving from one tank to another, oldest first.</summary>
+    public List<TankSwap> TankSwaps { get; set; } = [];
+
+    /// <summary>Healing and overheal of each party member who healed.</summary>
+    public List<HealerOverheal> Overheal { get; set; } = [];
+
+    /// <summary>Mitigations and defensive buffs used by the party.</summary>
+    public List<MitigationUse> Mitigations { get; set; } = [];
 
     /// <summary>Uptime of each ultimate phase reached in this pull.</summary>
     public List<PhaseUptime> PhaseUptimes { get; set; } = [];

@@ -176,7 +176,7 @@ public sealed class DtrController : IDisposable
             _ => snapshot.You?.EncDps ?? 0,
         };
 
-        var threshold = config.FindThreshold(plugin.CurrentTerritory, snapshot.Encounter.Title);
+        var threshold = config.FindThreshold(plugin.CurrentTerritory, snapshot.Encounter.Title, plugin.Boss.Current?.BaseId ?? 0);
         var boss = plugin.Boss.Current;
 
         if (snapshot.StartUtc != lastSegmentsFight)
@@ -447,7 +447,7 @@ public sealed class DtrController : IDisposable
 
             var partyDps = snapshot.PartyDps(config.IncludeLimitBreakInParty);
             sb.Append($"\nParty: {NumberFormat.Format(partyDps, config.NumberStyle)} DPS");
-            var check = config.FindThreshold(plugin.CurrentTerritory, enc.Title);
+            var check = config.FindThreshold(plugin.CurrentTerritory, enc.Title, plugin.Boss.Current?.BaseId ?? 0);
             if (check is not null)
                 sb.Append($"  (check {NumberFormat.Format(check.EffectiveMinPartyDps, config.NumberStyle)})");
 

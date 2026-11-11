@@ -3,10 +3,10 @@
     "Author": "FunkyJumbo",
     "Name": "Raid Companion",
     "Punchline": "Your live DPS, rDPS and party DPS, right in the server info bar.",
-    "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, a compact party meter, graphs, pull history with comparisons, GCD analysis, gauge overcap, positionals, party deaths with their cause, failed mechanics, progression tracking, party DPS checks, an opener practice for every job and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.\n\nCommands:\n/dpsbar - open / close the main window\n/dpsbar config - settings\n/dpsbar history - main window on the History tab\n/dpsbar toggle - cycle DPS, pDPS, rDPS\n/dpsbar compact - open / close the compact meter\n/dpsbar opener - open / close the opener practice\n/dpsbar opener compact - opener practice in its compact view\n/dpsbar opener full - opener practice in its full window\n/dpsbar preset <number|name|next> - switch the server bar preset\n/dpsbar reconnect - reconnect to ACT",
+    "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, a compact party meter, graphs, pull history with comparisons, GCD analysis, gauge overcap, positionals, combo errors, DoT uptime, overheal, tank swaps, party mitigation, party deaths with their cause, failed mechanics, progression tracking, party DPS checks (built in for extremes and savage raids), an opener practice for every job and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.\n\nCommands:\n/dpsbar - open / close the main window\n/dpsbar config - settings\n/dpsbar history - main window on the History tab\n/dpsbar toggle - cycle DPS, pDPS, rDPS\n/dpsbar compact - open / close the compact meter\n/dpsbar opener - open / close the opener practice\n/dpsbar opener compact - opener practice in its compact view\n/dpsbar opener full - opener practice in its full window\n/dpsbar preset <number|name|next> - switch the server bar preset\n/dpsbar reconnect - reconnect to ACT",
     "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
     "InternalName": "DpsInServerBar",
-    "AssemblyVersion": "1.1.0.0",
+    "AssemblyVersion": "1.2.0.0",
     "DalamudApiLevel": 15,
     "ApplicableVersion": "any",
     "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"],
@@ -16,9 +16,9 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
     "ImageUrls": [],
-    "Changelog": "- Renamed to Raid Companion, with a new icon (same commands and settings).\n- New: GCD analysis (Live and History): lost GCD time split into clipping, late, no GCD and dead, also marked on the Uptime graph.\n- New: failed mechanics (Live, History, chat summary): penalty debuffs taken by each party member and from which attack.\n- New: gauge overcap (Live and History): job gauge lost by overcapping, and the actions that caused it.\n- New: positionals (Live and History): positionals hit and missed on melee jobs, and when.\n- New: party deaths (Live and History): every death with its cause and the last hits taken, marked on the graphs, plus a timeline of deaths and failed mechanics in History.\n- New: progression (History > Progression): how far each pull of an encounter got (boss HP, phase in ultimates), best pull and what wiped the party, per group (groups can be saved under a name) or for the pulls you pick.\n- Fix: GCD uptime (and the analyses based on it) did not work on striking dummies.\n- Various UI changes and adjustments.",
-    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.1.0.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.1.0.0/latest.zip",
+    "Changelog": "- New: built-in DPS checks (boss HP and enrage) for the Stormblood to Dawntrail extremes and savage raids.\n- New: combo errors, DoT uptime, overheal for healers and tank swaps for tanks.\n- New: mitigation and defensive buffs used by each party member, with their timings (History).\n- New: Personal section gathering your own play (Live), foldable with every detail in History.\n- New: Progression in its own tab, for extremes, savage, criterion and ultimates.\n- Live: party DPS gap and boss kill time against the enrage on the cards.\n- History: the timeline shows what you tick (deaths, tank swaps, failed mechanics, mitigation).\n- Various UI changes and adjustments.",
+    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.2.0.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.2.0.0/latest.zip",
     "DownloadLinkTesting": ""
   }
 ]

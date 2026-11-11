@@ -70,8 +70,13 @@ public sealed class Plugin : IDalamudPlugin
         Uptime = new UptimeTracker(ObjectTable, Condition, () => Ultimates.Current is { Started: true } p ? p.Number : null);
         Gauges = new GaugeTracker(JobGauges, ObjectTable, Condition, DataManager);
         native.LocalActionUsed += Gauges.OnActionUsed;
+        native.LocalActionUsed += Uptime.OnActionUsed;
+        Combos = new ComboTracker(ObjectTable, Condition, DataManager);
+        native.LocalActionUsed += Combos.OnActionUsed;
         Positionals = new PositionalTracker(ObjectTable, Condition, DataManager, Log);
         native.LocalDamage += Positionals.OnHit;
+        Dots = new DotTracker(ObjectTable, Condition, DataManager, () => Uptime.EnemyTargetable, () => Boss.Current?.EntityId ?? 0);
+        native.TankSwaps.BossId = () => Boss.Current?.EntityId ?? 0;
         Percentiles = new PercentileService(Configuration, DataManager, PluginInterface.GetPluginConfigDirectory(), Log);
         OpenerTracker = new OpenerTracker(GameInterop, ObjectTable, Log);
         dtr = new DtrController(this, DtrBar);
@@ -111,6 +116,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public GaugeTracker Gauges { get; }
     public PositionalTracker Positionals { get; }
+    public DotTracker Dots { get; }
+    public ComboTracker Combos { get; }
     public ContentCategories ContentCategories { get; }
     public FightCatalog Fights { get; }
     public PercentileService Percentiles { get; }
@@ -248,6 +255,8 @@ public sealed class Plugin : IDalamudPlugin
         Uptime.Update();
         Gauges.Update();
         Positionals.Update();
+        Dots.Update();
+        Combos.Update();
 
         // The bar only needs a few refreshes per second; sources publish roughly once per second.
         var now = DateTime.UtcNow;
