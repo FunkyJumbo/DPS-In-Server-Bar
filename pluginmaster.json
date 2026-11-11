@@ -6,7 +6,7 @@
     "Description": "Shows your real-time DPS, party DPS or FFLogs-style rDPS in the server info bar, with your rank, role comparison, boss HP and projected kill time. Includes a live breakdown window, a compact party meter, graphs, pull history with comparisons, GCD analysis, gauge overcap, positionals, combo errors, DoT uptime, overheal, tank swaps, party mitigation, party deaths with their cause, failed mechanics, progression tracking, party DPS checks (built in for extremes and savage raids), an opener practice for every job and an optional FFLogs percentile estimate. Works with ACT (OverlayPlugin WebSocket) or on its own with the built-in tracker.\n\nCommands:\n/dpsbar - open / close the main window\n/dpsbar config - settings\n/dpsbar history - main window on the History tab\n/dpsbar toggle - cycle DPS, pDPS, rDPS\n/dpsbar compact - open / close the compact meter\n/dpsbar opener - open / close the opener practice\n/dpsbar opener compact - opener practice in its compact view\n/dpsbar opener full - opener practice in its full window\n/dpsbar preset <number|name|next> - switch the server bar preset\n/dpsbar reconnect - reconnect to ACT",
     "RepoUrl": "https://github.com/FunkyJumbo/DPS-In-Server-Bar",
     "InternalName": "DpsInServerBar",
-    "AssemblyVersion": "1.2.1.0",
+    "AssemblyVersion": "1.2.2.0",
     "DalamudApiLevel": 15,
     "ApplicableVersion": "any",
     "Tags": ["dps", "rdps", "combat", "act", "overlayplugin", "dtr", "fflogs", "parse"],
@@ -16,9 +16,9 @@
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/FunkyJumbo/DPS-In-Server-Bar/master/DpsInServerBar/icon.png",
     "ImageUrls": [],
-    "Changelog": "- Settings: the server bar settings have their own page (DPS in server bar), the pages are reordered and DPS check is marked as a work in progress.\n- Various UI changes and adjustments.",
-    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.2.1.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.2.1.0/latest.zip",
+    "Changelog": "- Progression: the furthest mechanic shows \"Kill\" once the encounter is cleared.\n- Progression: the graph is marked in whole pulls, or in hours and minutes in the instance.",
+    "DownloadLinkInstall": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.2.2.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/FunkyJumbo/DPS-In-Server-Bar/releases/download/1.2.2.0/latest.zip",
     "DownloadLinkTesting": ""
   }
 ]

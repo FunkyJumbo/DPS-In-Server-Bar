@@ -117,7 +117,7 @@ and can be **reordered**, with the separator of your choice between them (space,
   **Progression** (its own tab, next to Live and History; its filters keep to Extreme, Savage, Criterion and Ultimate): pick an instance (by its name, with the
   fight's name when it has two) to see how far each pull got (boss HP taken, or phase and
   HP in an ultimate) pull after pull, with the best so far, the best pull, wipes per phase and what wiped the party
-  most (the main cause of death at the end of each wipe), and the furthest mechanic seen (the last enemy cast of the
+  most (the main cause of death at the end of each wipe), and the furthest mechanic seen ("Kill" once cleared, else the last enemy cast of the
   furthest wipe). The graph is per pull or per time spent in the instance; in an
   ultimate each phase has its band, and pulls are listed under the ultimate's name. Click a pull on the graph to open it.
   Choose a **group** (found from the players of each pull, searchable by name or player) to follow only your static;

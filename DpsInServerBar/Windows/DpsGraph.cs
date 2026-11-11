@@ -177,6 +177,39 @@ public sealed class DpsGraph
     /// How far each pull got (one point per pull, kills in green) and the best so far, against the pull number or the
     /// time spent in the instance; in an ultimate, one band per phase with its name. Returns the pull clicked, if any.
     /// </summary>
+    // At most this many ticks along the X axis.
+    private const int MaxTicks = 12;
+
+    /// <summary>Ticks on whole pulls: every pull, or every 2, 5, 10... when there are many.</summary>
+    private static (double[] Values, string[] Labels) PullTicks(double max)
+    {
+        var step = NiceStep(max / MaxTicks, [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000]);
+        var values = new List<double>();
+        for (var v = 0.0; v <= max + 1e-9; v += step)
+            values.Add(v);
+        return (values.ToArray(), values.Select(v => ((int)v).ToString()).ToArray());
+    }
+
+    /// <summary>Ticks on round times in the instance (5 min, 15 min, 1 h...), labelled "45m", "1h", "1h30".</summary>
+    private static (double[] Values, string[] Labels) HourTicks(double maxHours)
+    {
+        var stepMinutes = NiceStep(maxHours * 60 / MaxTicks, [1, 2, 5, 10, 15, 30, 60, 120, 180, 240, 360, 480, 720, 1440]);
+        var values = new List<double>();
+        for (var m = 0.0; m <= maxHours * 60 + 1e-9; m += stepMinutes)
+            values.Add(m / 60);
+        return (values.ToArray(), values.Select(h => HoursLabel(h * 60)).ToArray());
+    }
+
+    private static string HoursLabel(double minutes)
+    {
+        var total = (int)Math.Round(minutes);
+        var (h, m) = (total / 60, total % 60);
+        return h == 0 ? $"{m}m" : m == 0 ? $"{h}h" : $"{h}h{m:00}";
+    }
+
+    // The smallest step from the list at least as large as wanted (the largest one past the end).
+    private static double NiceStep(double wanted, double[] steps) => steps.FirstOrDefault(s => s >= wanted, steps[^1]);
+
     public static int? DrawProgression(
         string id, IReadOnlyList<double> xs, string xLabel, IReadOnlyList<double?> scores, IReadOnlyList<bool> kills,
         double max, IReadOnlyList<string>? phases, float height, Func<int, string> describe)
@@ -196,6 +229,10 @@ public sealed class DpsGraph
         var margin = (xMax - xMin) * 0.02 + (xLabel == "Pull" ? 0.3 : 0);
         ImPlot.SetupAxisLimits(ImAxis.X1, xMin, xMax + margin, ImPlotCond.Always);
         ImPlot.SetupAxisLimits(ImAxis.Y1, 0, max * 1.05, ImPlotCond.Always);
+
+        // Readable ticks: whole pulls, or hours and minutes (not fractions of an hour).
+        var (tickValues, tickLabels) = xLabel == "Pull" ? PullTicks(xMax) : HourTicks(xMax);
+        ImPlot.SetupAxisTicks(ImAxis.X1, ref tickValues[0], tickValues.Length, tickLabels);
 
         // Ultimate: a line between phases, each phase named in its band.
         if (ultimate)

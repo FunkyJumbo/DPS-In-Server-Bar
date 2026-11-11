@@ -3,6 +3,11 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.2.2.0
+
+- Progression: the furthest mechanic shows "Kill" once the encounter is cleared.
+- Progression: the graph is marked in whole pulls, or in hours and minutes in the instance.
+
 ## 1.2.1.0
 
 - Settings: the server bar settings have their own page (DPS in server bar), the pages are reordered and DPS check is marked as a work in progress.

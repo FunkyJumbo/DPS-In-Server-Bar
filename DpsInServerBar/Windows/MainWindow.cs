@@ -622,8 +622,15 @@ public sealed class MainWindow : Window
         var played = TimeSpan.FromSeconds(prog.Sum(p => p.DurationSeconds));
         cards.Add(new Card("Time in fight", NumberFormat.Duration(played), Theme.Gold,
                                       $"{NumberFormat.Duration(TimeSpan.FromHours(instanceHours[^1]))} in the instance since {prog[0].StartUtc.ToLocalTime():dd/MM}"));
-        if (prog.Where(p => p.Outcome != PullOutcome.Kill && p.LastBossCast.Length > 0)
-                .MaxBy(p => (Progression.Phase(p), p.DurationSeconds)) is { } furthest)
+        // A kill is as far as it goes: the first one, else the last enemy cast of the furthest wipe.
+        if (prog.FirstOrDefault(p => p.Outcome == PullOutcome.Kill) is { } kill)
+        {
+            var number = prog.IndexOf(kill) + 1;
+            cards.Add(new Card("Furthest mechanic", "Kill", Theme.Good,
+                               $"pull {number}, {kill.StartUtc.ToLocalTime():dd/MM HH:mm}", ValueColor: Theme.Good));
+        }
+        else if (prog.Where(p => p.LastBossCast.Length > 0)
+                     .MaxBy(p => (Progression.Phase(p), p.DurationSeconds)) is { } furthest)
         {
             var number = prog.IndexOf(furthest) + 1;
             cards.Add(new Card("Furthest mechanic", furthest.LastBossCast, Theme.Crystal,
@@ -693,7 +700,7 @@ public sealed class MainWindow : Window
 
         var xs = progressionByTime ? instanceHours.ToList() : Enumerable.Range(1, prog.Count).Select(i => (double)i).ToList();
         var clicked = DpsGraph.DrawProgression(
-            "##progression", xs, progressionByTime ? "Hours in the instance" : "Pull", scores,
+            "##progression", xs, progressionByTime ? "Time in the instance" : "Pull", scores,
             prog.Select(p => p.Outcome == PullOutcome.Kill).ToList(), Progression.Max(territory),
             ultimate ? Progression.PhaseNames(territory) : null, ImGui.GetContentRegionAvail().Y,
             i => $"Pull {i + 1}  {NumberFormat.Duration(TimeSpan.FromHours(instanceHours[i]))} in the instance\n{prog[i].StartUtc.ToLocalTime():dd/MM HH:mm}  {NumberFormat.Duration(TimeSpan.FromSeconds(prog[i].DurationSeconds))}\n"
