@@ -40,17 +40,19 @@ public sealed class ConfigWindow : Window
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
-    private sealed record Section(FontAwesomeIcon Icon, string Label, string Description, System.Action Draw);
+    /// <param name="Wip">Still being worked on: marked in the menu, with a warning on the page.</param>
+    private sealed record Section(FontAwesomeIcon Icon, string Label, string Description, System.Action Draw, bool Wip = false);
 
     private Section[] Sections => sections ??=
     [
-        new(FontAwesomeIcon.Desktop, "Display", "What the server bar shows, in which order, and how.", DrawDisplayTab),
-        new(FontAwesomeIcon.Palette, "Appearance", "Theme, colors and transparency of the plugin's windows.", DrawAppearanceTab),
+        new(FontAwesomeIcon.Server, "DPS in server bar", "What the server bar shows, in which order, and how.", DrawServerBarTab),
         new(FontAwesomeIcon.CommentDots, "Chat summary", "The recap printed in chat after each pull and each ultimate phase.", DrawChatSummaryTab),
+        new(FontAwesomeIcon.Desktop, "Display", "The compact meter and the main window.", DrawDisplayTab),
         new(FontAwesomeIcon.History, "Pulls history", "Which pulls are recorded and kept.", DrawPullsTab),
-        new(FontAwesomeIcon.Crosshairs, "DPS check", "Boss HP and enrage of each fight: the party DPS needed to clear it.", DrawDpsCheckTab),
-        new(FontAwesomeIcon.ChartLine, "FFLogs", "Estimate of your FFLogs percentile, from the FFLogs API.", DrawFflogsTab),
+        new(FontAwesomeIcon.Palette, "Appearance", "Theme, colors and transparency of the plugin's windows.", DrawAppearanceTab),
+        new(FontAwesomeIcon.Crosshairs, "DPS check", "Boss HP and enrage of each fight: the party DPS needed to clear it.", DrawDpsCheckTab, Wip: true),
         new(FontAwesomeIcon.Plug, "Data source", "Where the damage numbers come from: ACT or the built-in tracker.", DrawSourceTab),
+        new(FontAwesomeIcon.ChartLine, "FFLogs", "Estimate of your FFLogs percentile, from the FFLogs API.", DrawFflogsTab),
     ];
 
     private Section[]? sections;
@@ -107,7 +109,7 @@ public sealed class ConfigWindow : Window
             {
                 for (var i = 0; i < Sections.Length; i++)
                 {
-                    if (Theme.NavItem($"##nav{i}", Sections[i].Icon, Sections[i].Label, i == selectedSection))
+                    if (Theme.NavItem($"##nav{i}", Sections[i].Icon, Sections[i].Wip ? $"{Sections[i].Label} (WIP)" : Sections[i].Label, i == selectedSection))
                         selectedSection = i;
                 }
 
@@ -137,9 +139,38 @@ public sealed class ConfigWindow : Window
         Theme.Icon(section.Icon, Theme.Gold);
         ImGui.SameLine();
         ImGui.TextColored(Theme.GoldBright, section.Label);
+        if (section.Wip)
+        {
+            ImGui.SameLine();
+            Theme.Badge("WIP", Theme.Warn);
+        }
+
         Theme.Hint(section.Description);
+        if (section.Wip)
+        {
+            ImGui.Spacing();
+            Theme.Icon(FontAwesomeIcon.ExclamationTriangle, Theme.Warn);
+            ImGui.SameLine();
+            using (ImRaii.PushColor(ImGuiCol.Text, Theme.Warn))
+                ImGui.TextWrapped("This section is still a work in progress: the current values may be incomplete, or even wrong, for the time being.");
+        }
+
         Theme.Rule();
-        section.Draw();
+
+        // A little room at the end of each group of settings (before the next title, and after the last one).
+        Theme.SectionSpacing = Theme.Px(12);
+        Theme.SectionTitleGap = Theme.Px(8);
+        try
+        {
+            section.Draw();
+        }
+        finally
+        {
+            Theme.SectionSpacing = 0;
+            Theme.SectionTitleGap = null;
+        }
+
+        ImGui.Dummy(new Vector2(0, Theme.Px(12)));
 
         // The DPS check page lists its fights in a box filling the window: no limit there.
         fitHeight = section.Draw == (System.Action)DrawDpsCheckTab
@@ -156,7 +187,7 @@ public sealed class ConfigWindow : Window
         }
     }
 
-    private void DrawDisplayTab()
+    private void DrawServerBarTab()
     {
         var c = plugin.Configuration;
         var changed = false;
@@ -186,6 +217,35 @@ public sealed class ConfigWindow : Window
         changed |= DrawSeparator(c);
         ImGui.Dummy(new Vector2(0, Theme.Px(3)));
         DrawBarPreviewButton();
+
+        Theme.SectionHeader("Behavior");
+        changed |= Checkbox("Hide while no data source is available", c.HideWhenDisconnected, v => c.HideWhenDisconnected = v);
+
+        var hide = c.HideAfterSeconds;
+        ImGui.SetNextItemWidth(120);
+        if (ImGui.InputInt("Hide N seconds after combat (0 = never)", ref hide))
+        {
+            c.HideAfterSeconds = Math.Clamp(hide, 0, 3600);
+            changed = true;
+        }
+
+        Theme.SectionHeader("Colors");
+        changed |= Checkbox("Use colors", c.UseColors, v => c.UseColors = v);
+        using (ImRaii.Disabled(!c.UseColors))
+        {
+            changed |= ColorEdit("Final value", c.FinalColor, v => c.FinalColor = v);
+            changed |= ColorEdit("pDPS below check", c.BelowThresholdColor, v => c.BelowThresholdColor = v);
+            changed |= ColorEdit("pDPS above check", c.AboveThresholdColor, v => c.AboveThresholdColor = v);
+        }
+
+        if (changed)
+            plugin.OnConfigChanged();
+    }
+
+    private void DrawDisplayTab()
+    {
+        var c = plugin.Configuration;
+        var changed = false;
 
         Theme.SectionHeader("Compact meter");
         Theme.Hint("The small pop-up meter (/dpsbar compact): player and DPS / rDPS, then the columns ticked here.");
@@ -218,27 +278,9 @@ public sealed class ConfigWindow : Window
         if (Theme.GhostButton(plugin.CompactOpen ? "Close the compact meter" : "Open the compact meter"))
             plugin.SetCompact(!plugin.CompactOpen);
 
-        Theme.SectionHeader("Behavior");
+        Theme.SectionHeader("Main window");
         changed |= Checkbox("Show DPS graphs in the main window", c.ShowGraph, v => c.ShowGraph = v);
         changed |= Checkbox("Include Limit Break in party DPS", c.IncludeLimitBreakInParty, v => c.IncludeLimitBreakInParty = v);
-        changed |= Checkbox("Hide while no data source is available", c.HideWhenDisconnected, v => c.HideWhenDisconnected = v);
-
-        var hide = c.HideAfterSeconds;
-        ImGui.SetNextItemWidth(120);
-        if (ImGui.InputInt("Hide N seconds after combat (0 = never)", ref hide))
-        {
-            c.HideAfterSeconds = Math.Clamp(hide, 0, 3600);
-            changed = true;
-        }
-
-        Theme.SectionHeader("Colors");
-        changed |= Checkbox("Use colors", c.UseColors, v => c.UseColors = v);
-        using (ImRaii.Disabled(!c.UseColors))
-        {
-            changed |= ColorEdit("Final value", c.FinalColor, v => c.FinalColor = v);
-            changed |= ColorEdit("pDPS below check", c.BelowThresholdColor, v => c.BelowThresholdColor = v);
-            changed |= ColorEdit("pDPS above check", c.AboveThresholdColor, v => c.AboveThresholdColor = v);
-        }
 
         if (changed)
             plugin.OnConfigChanged();

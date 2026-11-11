@@ -203,6 +203,9 @@ public static class Theme
     /// <summary>Extra room above section titles (pixels), set by a view that wants its sections further apart.</summary>
     public static float SectionSpacing { get; set; }
 
+    /// <summary>Room between a section title and what follows (pixels), when a view wants it other than the usual.</summary>
+    public static float? SectionTitleGap { get; set; }
+
     public static void SectionHeader(string label, FontAwesomeIcon? icon = null, string? help = null)
     {
         ImGui.Dummy(new Vector2(0, Px(4) + SectionSpacing));
@@ -220,7 +223,10 @@ public static class Theme
         ImGui.TextColored(Gold, label.ToUpperInvariant());
         if (help is not null)
             HelpMarker(help);
-        ImGui.Dummy(new Vector2(0, Px(1)));
+        if (SectionTitleGap is { } gap)
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() - ImGui.GetStyle().ItemSpacing.Y + gap); // from the title to what follows
+        else
+            ImGui.Dummy(new Vector2(0, Px(1)));
     }
 
     /// <summary>Muted explanation text, wrapped to the available width.</summary>

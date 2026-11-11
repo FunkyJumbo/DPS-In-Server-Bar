@@ -109,7 +109,7 @@ and can be **reordered**, with the separator of your choice between them (space,
   **Compact view** opens a small rounded pop-up without a title bar: only the party meter (DPS or rDPS, share,
   deaths, ranked by the chosen metric), sized to its content, next to the main window. Drag it by its background; click
   the metric header to switch DPS / rDPS; right click for the menu (background opacity, main window, history,
-  settings, close). Its columns (%, crit, direct hit, deaths), header and background opacity are set in Display > Compact meter.
+  settings, close). Its columns (%, crit, direct hit, deaths), header and background opacity are set in Settings > Display.
 - **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
   Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Criterion, Ultimate, Other — several at once, read from the game data)
   and by encounter (type in the list to search a fight). The pull list can be made taller by dragging the grip under it
@@ -229,13 +229,14 @@ tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
 
 | Tab | Contents |
 |---|---|
-| **Display** | Presets (renamable, switchable with `/dpsbar preset N`), compact meter columns, metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), graphs, colors, auto-hide |
-| **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
+| **DPS in server bar** | Presets (renamable, switchable with `/dpsbar preset N`), metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), auto-hide, colors |
 | **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, values shown, comparison with your best kill, **preview in chat** |
+| **Display** | Compact meter (columns, header, background opacity), DPS graphs in the main window, Limit Break in party DPS |
 | **Pulls history** | Record only in duties, minimum pull length, history size, graph window |
-| **DPS check** | Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |
-| **FFLogs** | Percentile estimate, API credentials with a connection test, manual encounter id |
+| **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
+| **DPS check** (WIP) | Still a work in progress: the values may be incomplete or wrong for now. Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |
 | **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
+| **FFLogs** | Percentile estimate, API credentials with a connection test, manual encounter id |
 
 ## How rDPS is computed
 
@@ -263,7 +264,7 @@ In tests against FFLogs' own meter, most players were within ±0.3%; a player re
    (any name, redirect URL `http://localhost`).
 2. In the plugin settings, **FFLogs** tab, paste the **Client ID** and **Client Secret**.
    (The old "V1 Client Key" does not work: the plugin uses API v2.)
-3. Enable the **FFLogs percentile** element in Display → Server bar elements.
+3. Enable the **FFLogs percentile** element in DPS in server bar → Server bar elements.
 
 The fight is matched to FFLogs by the boss' English name; if that fails, enter the FFLogs encounter id for the zone.
 Rankings are cached for 24 hours. The percentile compares your rDPS with each character's best parse for your job
