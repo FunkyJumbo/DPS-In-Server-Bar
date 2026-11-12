@@ -99,6 +99,11 @@ During the fight, two minimalist displays keep your UI clean:
 A single compact entry, for example `#1 (+8%) 21,234 rDPS ~92`. Every piece is optional
 and can be **reordered**, with the separator of your choice between them (space, `|`, `/`, `-` or custom):
 
+<p align="center">
+  <img src="docs/images/settings-bar.png" width="480" alt="The DPS in server bar settings: presets, metric and number format, the bar elements to tick and reorder, separator, behavior and colors"><br>
+  <sub>Settings > DPS in server bar: presets, value, elements and their order, behavior and colors.</sub>
+</p>
+
 | Element | Example | What it shows |
 |---|---|---|
 | Rank | `#2` | Your rank in the party |
@@ -120,11 +125,6 @@ and can be **reordered**, with the separator of your choice between them (space,
 - **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, GCD uptime (per phase in an ultimate), DoT uptime, best kill, percentile.
 - Colors: with a DPS check for the fight, only the pDPS value turns green/red, with its gap to the required DPS
   (`182,345 pDPS (+3.2%)`); everything turns grey once the fight is over.
-
-<p align="center">
-  <img src="docs/images/settings-bar.png" width="480" alt="The DPS in server bar settings: presets, metric and number format, the bar elements to tick and reorder, separator, behavior and colors"><br>
-  <sub>Settings > DPS in server bar: presets, value, elements and their order, behavior and colors.</sub>
-</p>
 
 </details>
 
