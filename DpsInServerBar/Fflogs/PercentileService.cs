@@ -95,14 +95,14 @@ public sealed class PercentileService : IDisposable
     public string Describe(uint territory, uint bossNameId)
     {
         if (!HasCredentials)
-            return "No FFLogs credentials.";
+            return Loc.T("No FFLogs credentials.");
         if (catalog is null)
-            return "Loading the FFLogs encounter list...";
+            return Loc.T("Loading the FFLogs encounter list...");
 
         var encounter = ResolveEncounter(territory, bossNameId);
         return encounter is { } e
             ? $"{e.Name} (id {e.Id}, {(e.Difficulty == 101 ? "Savage" : "Normal/Extreme/Ultimate")})"
-            : $"No FFLogs encounter matches \"{EnglishBossName(bossNameId)}\". Set the id by hand.";
+            : Loc.F("No FFLogs encounter matches \"{0}\". Set the id by hand.", EnglishBossName(bossNameId));
     }
 
     public string EnglishBossName(uint bossNameId) =>
@@ -135,7 +135,7 @@ public sealed class PercentileService : IDisposable
                 var spent = double.TryParse(data["rateLimitData"]?["pointsSpentThisHour"]?.ToString(),
                                             System.Globalization.NumberStyles.Float,
                                             System.Globalization.CultureInfo.InvariantCulture, out var s) ? s : 0;
-                TestResult = (true, $"Connected. API points used this hour: {spent:0} / {limit}.");
+                TestResult = (true, Loc.F("Connected. API points used this hour: {0:0} / {1}.", spent, limit));
             }
             catch (OperationCanceledException)
             {

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.DutyState;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using DpsInServerBar.Combat;
@@ -23,6 +24,10 @@ public sealed class PullTracker : IDisposable
     private static readonly Vector4 Good = new(0.45f, 0.9f, 0.45f, 1f);
     private static readonly Vector4 Bad = new(1f, 0.4f, 0.4f, 1f);
     private static readonly Vector4 Muted = new(0.7f, 0.7f, 0.7f, 1f);
+    private static readonly Vector4 Link = new(0.4f, 0.75f, 1f, 1f);
+
+    // Chat link ids: one per printed summary, each opening its own pull.
+    private uint nextLinkId = 1;
 
     // ContentType sheet row for dungeons.
     private const uint DungeonContentType = 2;
@@ -59,11 +64,13 @@ public sealed class PullTracker : IDisposable
     {
         dutyState.DutyCompleted -= OnDutyCompleted;
         dutyState.DutyWiped -= OnDutyWiped;
+        chat.RemoveChatLinkHandler();
     }
 
     public void Update(CombatSnapshot? snapshot, string sourceName)
     {
         FlushSummary(force: false);
+        AnnounceDeaths();
 
         if (snapshot is null || ReferenceEquals(snapshot, lastSeen))
             return;
@@ -130,6 +137,7 @@ public sealed class PullTracker : IDisposable
             Zone = final.Encounter.Zone,
             TerritoryId = pull.TerritoryId,
             Source = pull.SourceName,
+            InstanceRun = plugin.InstanceRun,
             DurationSeconds = duration,
             Outcome = outcome,
             Job = you?.Job ?? string.Empty,
@@ -148,10 +156,15 @@ public sealed class PullTracker : IDisposable
             TankSwaps = plugin.Sources.Native.TankSwaps.Current.ToList(),
             Overheal = plugin.Sources.Native.Heals.Current.ToList(),
             Mitigations = plugin.Sources.Native.Mitigations.Current.ToList(),
+            BossCasts = plugin.FightLog.CastsSince(pull.StartUtc),
+            Debuffs = plugin.FightLog.DebuffsSince(pull.StartUtc),
             PhaseUptimes = uptime?.Phases.ToList() ?? [],
             UptimeAvailableBySecond = uptime?.AvailableBySecond ?? [],
             UptimeActiveBySecond = uptime?.ActiveBySecond ?? [],
-            BossHpLeft = plugin.Boss.Current?.HpFraction,
+            BossHpLeft = UltimateHpLeft(pull.TerritoryId) ?? plugin.Boss.Current?.HpFraction,
+            PhaseSeconds = UltimateTracker.FightFor(pull.TerritoryId) is not null && plugin.Ultimates.Current is { Started: true } reached
+                               ? reached.Elapsed.TotalSeconds
+                               : null,
             BossName = plugin.Boss.Current?.Name ?? string.Empty,
             LastBossCast = plugin.Boss.LastCast,
             PartyDps = final.PartyDps(config.IncludeLimitBreakInParty),
@@ -179,7 +192,8 @@ public sealed class PullTracker : IDisposable
             PartyDamageTimeline = Timeline.Resample(pull.PartyPoints, duration),
         };
 
-        plugin.History.Add(record, config.MaxHistory);
+        if ((config.RecordedCategories & plugin.ContentCategories.Of(record.TerritoryId)) != 0)
+            plugin.History.Add(record, config.MaxHistory);
         lastFinished = record;
         lastFinishedUtc = DateTime.UtcNow;
 
@@ -243,6 +257,42 @@ public sealed class PullTracker : IDisposable
         PrintSummary(pull);
     }
 
+    /// <summary>Prints each party death in chat as it happens, when the option is on.</summary>
+    private void AnnounceDeaths()
+    {
+        // Taken even with the option off, so turning it on does not print the deaths of the fight so far.
+        // Waits 2 s: long enough for a death to get its final cause, and to see whether the party is wiping.
+        var deaths = plugin.Sources.Native.PartyDeaths.TakeNew(TimeSpan.FromSeconds(2));
+        if (!plugin.Configuration.ChatDeaths || deaths.Count == 0)
+            return;
+
+        // Once the party wiped (everyone dead, or the duty says so) or the pull is over, the deaths stop: the recap tells
+        // the rest, rather than a line for each player killed by the wipe.
+        if (current is null || pendingOutcome == PullOutcome.Wipe || UltimateTracker.PartyWiped())
+            return;
+
+        foreach (var (player, job, isYou, info) in deaths)
+            PrintDeath(player, job, isYou, info, info.TimeUtc - current.StartUtc);
+    }
+
+    private void PrintDeath(string player, string job, bool isYou, DeathInfo death, TimeSpan? at)
+    {
+        var sb = new Lumina.Text.SeStringBuilder();
+        sb.PushColorRgba(Muted).Append(Loc.T("[Death] "));
+        if (at is { } time && time >= TimeSpan.Zero)
+            sb.Append(NumberFormat.Duration(time)).Append(" ");
+        sb.PopColor();
+        sb.Append(player);
+        if (job.Length > 0)
+            sb.PushColorRgba(Muted).Append($" ({job})").PopColor();
+        sb.Append(Loc.T(": ")).PushColorRgba(Bad).Append(Describe(death)).PopColor();
+        if (plugin.Configuration.ChatDeathsOverkill && death.Overkill > 0)
+            sb.PushColorRgba(Muted)
+              .Append(Loc.F(" overkill {0}", death.Overkill.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)))
+              .PopColor();
+        chat.Print(sb.ToReadOnlySeString().ToDalamudString());
+    }
+
     /// <summary>Prints made-up summaries with the values ticked in the settings, to check what they look like.</summary>
     public void PrintPreview()
     {
@@ -251,7 +301,7 @@ public sealed class PullTracker : IDisposable
         PrintSummary(new PullRecord
         {
             StartUtc = DateTime.UtcNow,
-            Title = "Preview Boss",
+            Title = Loc.T("Preview Boss"),
             DurationSeconds = 272,
             Outcome = PullOutcome.Kill,
             Job = job,
@@ -264,12 +314,12 @@ public sealed class PullTracker : IDisposable
             RdpsRank = 3,
             PartySize = 8,
             Deaths = 1,
-            KilledBy = "Auto-attack (Preview Boss, 45,210)",
+            KilledBy = Loc.T("Auto-attack (Preview Boss, 45,210)"),
             Mistakes =
             [
-                new MechanicMistake(64, "You", job, true, "Vulnerability Up", "Preview Cleave", "Preview Boss"),
-                new MechanicMistake(131, "You", job, true, "Vulnerability Up", "Preview Cleave", "Preview Boss"),
-                new MechanicMistake(131, "Party member", "WHM", false, "Damage Down", "Preview Tower", "Preview Boss"),
+                new MechanicMistake(64, Loc.T("You"), job, true, Loc.T("Vulnerability Up"), Loc.T("Preview Cleave"), Loc.T("Preview Boss")),
+                new MechanicMistake(131, Loc.T("You"), job, true, Loc.T("Vulnerability Up"), Loc.T("Preview Cleave"), Loc.T("Preview Boss")),
+                new MechanicMistake(131, Loc.T("Party member"), Loc.T("WHM"), false, Loc.T("Damage Down"), Loc.T("Preview Tower"), Loc.T("Preview Boss")),
             ],
         }, preview: true);
 
@@ -283,22 +333,25 @@ public sealed class PullTracker : IDisposable
         }
     }
 
+    private DalamudLinkPayload PullLink(Guid pullId) =>
+        chat.AddChatLinkHandler(nextLinkId++, (_, _) => plugin.ShowPull(pullId));
+
     private void PrintSummary(PullRecord pull, bool preview = false)
     {
         var config = plugin.Configuration;
         var shown = config.ChatSummaryElements;
         var sb = new Lumina.Text.SeStringBuilder();
 
-        sb.PushColorRgba(Muted).Append("[Recap] ").PopColor();
-        sb.Append(string.IsNullOrEmpty(pull.Title) ? "Pull" : pull.Title)
+        sb.PushColorRgba(Muted).Append(Loc.T("[Recap] ")).PopColor();
+        sb.Append(string.IsNullOrEmpty(pull.Title) ? Loc.T("Pull") : pull.Title)
           .Append($" ({NumberFormat.Duration(TimeSpan.FromSeconds(pull.DurationSeconds))})");
         switch (pull.Outcome)
         {
             case PullOutcome.Kill:
-                sb.Append(" ").PushColorRgba(Good).Append("Kill").PopColor();
+                sb.Append(" ").PushColorRgba(Good).Append(Loc.T("Kill")).PopColor();
                 break;
             case PullOutcome.Wipe:
-                sb.Append(" ").PushColorRgba(Bad).Append("Wipe").PopColor();
+                sb.Append(" ").PushColorRgba(Bad).Append(Loc.T("Wipe")).PopColor();
                 break;
         }
 
@@ -312,7 +365,7 @@ public sealed class PullTracker : IDisposable
         {
             parts.Add(() =>
             {
-                sb.Append($"DPS {NumberFormat.Format(pull.YourDps, config.NumberStyle)}");
+                sb.Append(Loc.F("DPS {0}",NumberFormat.Format(pull.YourDps, config.NumberStyle)));
                 AppendRank(sb, pull.Rank, pull.PartySize);
                 AppendBest(sb, pull, pull.YourDps, p => p.YourDps, isRate: false, preview ? 1.021 : null);
             });
@@ -322,20 +375,20 @@ public sealed class PullTracker : IDisposable
         {
             parts.Add(() =>
             {
-                sb.Append($"rDPS {NumberFormat.Format(rdps, config.NumberStyle)}");
+                sb.Append(Loc.F("rDPS {0}",NumberFormat.Format(rdps, config.NumberStyle)));
                 AppendRank(sb, pull.RdpsRank, pull.PartySize);
                 AppendBest(sb, pull, rdps, p => p.YourRdps, isRate: false, preview ? 0.988 : null);
             });
         }
 
         if (shown.HasFlag(SummaryElement.Percentile) && pull.Percentile is { } pct)
-            parts.Add(() => sb.PushColorRgba(Fflogs.FflogsNames.Color(pct)).Append($"FFLogs ~{pct:0}").PopColor());
+            parts.Add(() => sb.PushColorRgba(Fflogs.FflogsNames.Color(pct)).Append(Loc.F("FFLogs ~{0:0}",pct)).PopColor());
 
         if (shown.HasFlag(SummaryElement.Uptime) && pull.Uptime is { } gcd)
         {
             parts.Add(() =>
             {
-                sb.Append($"GCD {gcd:0.0%}");
+                sb.Append(Loc.F("GCD {0:0.0%}",gcd));
                 AppendBest(sb, pull, gcd, p => p.Uptime, isRate: true, preview ? -0.004 : null);
             });
         }
@@ -344,15 +397,15 @@ public sealed class PullTracker : IDisposable
         {
             parts.Add(() =>
             {
-                sb.Append($"pDPS {NumberFormat.Format(pull.PartyDps, config.NumberStyle)}");
+                sb.Append(Loc.F("pDPS {0}",NumberFormat.Format(pull.PartyDps, config.NumberStyle)));
                 var threshold = config.FindThreshold(pull.TerritoryId, pull.Title);
                 if (preview)
-                    sb.Append(" ").PushColorRgba(Good).Append("(check OK)").PopColor();
+                    sb.Append(" ").PushColorRgba(Good).Append(Loc.T("(check OK)")).PopColor();
                 else if (threshold is not null)
                 {
                     var ok = pull.PartyDps >= threshold.EffectiveMinPartyDps;
                     sb.Append(" ").PushColorRgba(ok ? Good : Bad)
-                      .Append(ok ? "(check OK)" : $"(check {NumberFormat.Format(threshold.EffectiveMinPartyDps, config.NumberStyle)})")
+                      .Append(ok ? Loc.T("(check OK)") : Loc.F("(check {0})",NumberFormat.Format(threshold.EffectiveMinPartyDps, config.NumberStyle)))
                       .PopColor();
                 }
 
@@ -361,10 +414,10 @@ public sealed class PullTracker : IDisposable
         }
 
         if (shown.HasFlag(SummaryElement.Deaths) && pull.Deaths > 0)
-            parts.Add(() => sb.PushColorRgba(Bad).Append($"Deaths {pull.Deaths}").PopColor());
+            parts.Add(() => sb.PushColorRgba(Bad).Append(Loc.F("Deaths {0}",pull.Deaths)).PopColor());
 
         if (shown.HasFlag(SummaryElement.KilledBy) && pull.KilledBy.Length > 0)
-            parts.Add(() => sb.Append("Killed by ").PushColorRgba(Bad).Append(pull.KilledBy).PopColor());
+            parts.Add(() => sb.Append(Loc.T("Killed by ")).PushColorRgba(Bad).Append(pull.KilledBy).PopColor());
 
         // Your failed mechanics by debuff, then the party's total: "Mechanics: Vulnerability Up x2 (party 5)".
         if (shown.HasFlag(SummaryElement.Mistakes) && pull.Mistakes.Count > 0)
@@ -373,13 +426,13 @@ public sealed class PullTracker : IDisposable
                             .Select(g => g.Count() > 1 ? $"{g.Key} x{g.Count()}" : g.Key).ToList();
             parts.Add(() =>
             {
-                sb.Append("Mechanics: ");
+                sb.Append(Loc.T("Mechanics: "));
                 if (yours.Count > 0)
                     sb.PushColorRgba(Bad).Append(string.Join(", ", yours)).PopColor();
                 else
-                    sb.PushColorRgba(Good).Append("none").PopColor();
+                    sb.PushColorRgba(Good).Append(Loc.T("none")).PopColor();
                 if (pull.PartySize > 1)
-                    sb.PushColorRgba(Muted).Append($" (party {pull.Mistakes.Count})").PopColor();
+                    sb.PushColorRgba(Muted).Append(Loc.F(" (party {0})",pull.Mistakes.Count)).PopColor();
             });
         }
 
@@ -389,7 +442,18 @@ public sealed class PullTracker : IDisposable
             part();
         }
 
-        chat.Print(sb.ToReadOnlySeString().ToDalamudString());
+        // A link opening the main window on this pull in History.
+        var message = sb.ToReadOnlySeString().ToDalamudString();
+        // (Only for a pull kept in the history, not for the content left out of it in the settings.)
+        if (preview || plugin.History.Pulls.Any(p => p.Id == pull.Id))
+        {
+            var label = new Lumina.Text.SeStringBuilder().Append(" ").PushColorRgba(Link).Append(Loc.T("[Details]")).PopColor();
+            message.Payloads.Add(PullLink(pull.Id));
+            message.Payloads.AddRange(label.ToReadOnlySeString().ToDalamudString().Payloads);
+            message.Payloads.Add(RawPayload.LinkTerminator);
+        }
+
+        chat.Print(message);
     }
 
     /// <summary>
@@ -401,27 +465,27 @@ public sealed class PullTracker : IDisposable
         var config = plugin.Configuration;
         var sb = new Lumina.Text.SeStringBuilder();
 
-        sb.PushColorRgba(Muted).Append("[Recap] ").PopColor();
+        sb.PushColorRgba(Muted).Append(Loc.T("[Recap] ")).PopColor();
         sb.Append($"{result.Fight.Key} {result.Phase.Label} {result.Phase.Name} ({NumberFormat.Duration(result.Elapsed)})");
         if (result.Cleared)
-            sb.Append(" ").PushColorRgba(Good).Append("Cleared").PopColor();
+            sb.Append(" ").PushColorRgba(Good).Append(Loc.T("Cleared")).PopColor();
         else
-            sb.Append(" ").PushColorRgba(Bad).Append("Wipe").PopColor();
+            sb.Append(" ").PushColorRgba(Bad).Append(Loc.T("Wipe")).PopColor();
 
         var parts = new List<System.Action>();
 
         if (!result.Cleared && result.MaxHp > 0)
-            parts.Add(() => sb.Append($"HP left {result.HpLeft / result.MaxHp:0.0%}"));
+            parts.Add(() => sb.Append(Loc.F("HP left {0:0.0%}",result.HpLeft / result.MaxHp)));
 
         if (result.BossDps > 0)
         {
             parts.Add(() =>
             {
-                sb.Append($"Boss DPS {NumberFormat.Format(result.BossDps, config.NumberStyle)}");
+                sb.Append(Loc.F("Boss DPS {0}",NumberFormat.Format(result.BossDps, config.NumberStyle)));
                 if (result.RequiredDps is { } required)
                 {
                     sb.Append(" ").PushColorRgba(result.BossDps >= required ? Good : Bad)
-                      .Append($"(need {NumberFormat.Format(required, config.NumberStyle)}, {result.BossDps / required - 1:+0.0%;-0.0%})")
+                      .Append(Loc.F("(need {0}, {1:+0.0%;-0.0%})",NumberFormat.Format(required, config.NumberStyle),result.BossDps / required - 1))
                       .PopColor();
                 }
             });
@@ -430,8 +494,8 @@ public sealed class PullTracker : IDisposable
         if (result.Cleared && result.EnrageSeconds is { } enrage)
         {
             var margin = enrage - result.Elapsed.TotalSeconds;
-            parts.Add(() => sb.Append($"enrage {NumberFormat.Duration(TimeSpan.FromSeconds(enrage))}, ")
-                              .PushColorRgba(margin >= 0 ? Good : Bad).Append($"{margin:+0;-0}s margin").PopColor());
+            parts.Add(() => sb.Append(Loc.F("enrage {0}, ",NumberFormat.Duration(TimeSpan.FromSeconds(enrage))))
+                              .PushColorRgba(margin >= 0 ? Good : Bad).Append(Loc.F("{0:+0;-0}s margin",margin)).PopColor());
         }
 
         var phaseGcd = preview
@@ -440,14 +504,14 @@ public sealed class PullTracker : IDisposable
                                ? gcd.Uptime
                                : (double?)null;
         if (phaseGcd is { } phaseUptime)
-            parts.Add(() => sb.Append($"GCD {phaseUptime:0.0%}"));
+            parts.Add(() => sb.Append(Loc.F("GCD {0:0.0%}",phaseUptime)));
 
         // What killed you during this phase, if you died.
         var death = preview
-                        ? result.Cleared ? null : new DeathInfo(DateTime.UtcNow, "Hydrothermal Missile", "Living Liquid", 98_432)
+                        ? result.Cleared ? null : new DeathInfo(DateTime.UtcNow, Loc.T("Hydrothermal Missile"), Loc.T("Living Liquid"), 98_432)
                         : plugin.Sources.Native.Deaths.DeathBetween(DateTime.UtcNow - result.Elapsed - TimeSpan.FromSeconds(1), DateTime.UtcNow);
         if (config.ChatSummaryElements.HasFlag(SummaryElement.KilledBy) && death is not null)
-            parts.Add(() => sb.Append("Killed by ").PushColorRgba(Bad).Append(Describe(death)).PopColor());
+            parts.Add(() => sb.Append(Loc.T("Killed by ")).PushColorRgba(Bad).Append(Describe(death)).PopColor());
 
         foreach (var part in parts)
         {
@@ -458,10 +522,24 @@ public sealed class PullTracker : IDisposable
         chat.Print(sb.ToReadOnlySeString().ToDalamudString());
     }
 
-    /// <summary>"Hydrothermal Missile (Living Liquid, 98,432)".</summary>
+    /// <summary>
+    /// In a supported ultimate, the HP left of the current phase's bosses (all of them, e.g. Brute Justice and Cruise
+    /// Chaser): the biggest enemy of the fight can be an invisible one that never takes damage. In a transition there is
+    /// no boss to hit: the phase counts as just reached. Null elsewhere.
+    /// </summary>
+    private double? UltimateHpLeft(uint territory)
+    {
+        if (UltimateTracker.FightFor(territory) is null || plugin.Ultimates.Current is not { Supported: true } phase)
+            return null;
+        if (phase.IsTransition)
+            return 1;
+        return phase is { Started: true, MaxHp: > 0 } ? phase.HpFraction : 1;
+    }
+
     private static string DeathKey(IEnumerable<PartyDeath> deaths) =>
         string.Join("|", deaths.Select(d => $"{d.Player} {d.AtSeconds:0} {d.Cause} {d.Damage}"));
 
+    /// <summary>"Hydrothermal Missile (Living Liquid, 98,432)".</summary>
     private static string Describe(DeathInfo death)
     {
         var details = new List<string>();
@@ -498,11 +576,11 @@ public sealed class PullTracker : IDisposable
         else
             return;
 
-        var gap = isRate ? $"{(value - best) * 100:+0.0;-0.0} pts" : $"{value / best - 1:+0.0%;-0.0%}";
+        var gap = isRate ? Loc.F("{0:+0.0;-0.0} pts",(value - best) * 100) : $"{value / best - 1:+0.0%;-0.0%}";
         if (value >= best)
-            sb.Append(" ").PushColorRgba(Good).Append($"NEW BEST ({gap})").PopColor();
+            sb.Append(" ").PushColorRgba(Good).Append(Loc.F("NEW BEST ({0})",gap)).PopColor();
         else
-            sb.Append(" ").PushColorRgba(Muted).Append($"(best {gap})").PopColor();
+            sb.Append(" ").PushColorRgba(Muted).Append(Loc.F("(best {0})",gap)).PopColor();
     }
 }
 

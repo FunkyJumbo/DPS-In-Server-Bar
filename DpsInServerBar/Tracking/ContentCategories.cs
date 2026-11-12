@@ -27,7 +27,7 @@ public enum ContentCategory
 
 /// <summary>
 /// Classifies a territory from the game data: its duty's ContentType (dungeons, trials, raids, ultimates...),
-/// and its English name for the difficulty, which is not a content type of its own ("(Extreme)", "(Savage)").
+/// and its Duty Finder section for the difficulty, which is not a content type of its own (extreme, savage).
 /// </summary>
 public sealed class ContentCategories
 {
@@ -39,16 +39,16 @@ public sealed class ContentCategories
     private const uint VariantAndCriterionDungeons = 30;
     private const uint ChaoticAllianceRaid = 37;
 
-    public static readonly (ContentCategory Category, string Label)[] Labels =
+    public static (ContentCategory Category, string Label)[] Labels =>
     [
-        (ContentCategory.Dungeon, "Dungeons"),
-        (ContentCategory.Trial, "Trials"),
-        (ContentCategory.Extreme, "Extreme"),
-        (ContentCategory.Raid, "Raids"),
-        (ContentCategory.Savage, "Savage"),
-        (ContentCategory.Criterion, "Criterion"),
-        (ContentCategory.Ultimate, "Ultimate"),
-        (ContentCategory.Other, "Other"),
+        (ContentCategory.Dungeon, Loc.T("Dungeons")),
+        (ContentCategory.Trial, Loc.T("Trials")),
+        (ContentCategory.Extreme, Loc.T("Extreme")),
+        (ContentCategory.Raid, Loc.T("Raids")),
+        (ContentCategory.Savage, Loc.T("Savage")),
+        (ContentCategory.Criterion, Loc.T("Criterion")),
+        (ContentCategory.Ultimate, Loc.T("Ultimate")),
+        (ContentCategory.Other, Loc.T("Other")),
     ];
 
     private readonly IDataManager dataManager;
@@ -75,16 +75,19 @@ public sealed class ContentCategories
             return ContentCategory.Other;
         }
 
+        // The Duty Finder section of the duty tells the difficulty: "High-end Trials (Dawntrail)" holds the extremes
+        // and unreals (with "The Minstrel's Ballad: ..." ones), "Savage Raids (...)" the savage raids. Read in English.
+        var section = dataManager.GetExcelSheet<ContentUICategory>(ClientLanguage.English)
+                                 .TryGetRow(duty.ContentUICategory.RowId, out var ui) ? ui.Name.ExtractText() : string.Empty;
         var name = duty.Name.ExtractText();
         return duty.ContentType.RowId switch
         {
-            // Criterion dungeons ("Another ..."), normal and savage, apart from the variant ones.
+            // Criterion dungeons ("Another ..."), normal and savage, apart from the variant ones (no section for them).
             VariantAndCriterionDungeons when name.StartsWith("Another ", StringComparison.OrdinalIgnoreCase) => ContentCategory.Criterion,
             Dungeons or VariantAndCriterionDungeons => ContentCategory.Dungeon,
-            Trials when name.Contains("(Extreme)", StringComparison.OrdinalIgnoreCase)
-                        || name.Contains("(Unreal)", StringComparison.OrdinalIgnoreCase) => ContentCategory.Extreme,
+            Trials when section.StartsWith("High-end", StringComparison.OrdinalIgnoreCase) => ContentCategory.Extreme,
             Trials => ContentCategory.Trial,
-            Raids when name.Contains("(Savage)", StringComparison.OrdinalIgnoreCase) => ContentCategory.Savage,
+            Raids when section.StartsWith("Savage", StringComparison.OrdinalIgnoreCase) => ContentCategory.Savage,
             ChaoticAllianceRaid => ContentCategory.Savage,
             Raids => ContentCategory.Raid,
             UltimateRaids => ContentCategory.Ultimate,

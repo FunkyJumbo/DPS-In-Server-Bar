@@ -29,6 +29,7 @@ public sealed class PartyDeathLog
     private int revision;
     private (int Revision, DateTime StartUtc) publishedKey = (-1, default);
     private IReadOnlyList<PartyDeath> published = [];
+    private int announced;
 
     public PartyDeathLog(IDataManager dataManager, IPluginLog log, IObjectTable objectTable, DeathRecorder yours)
     {
@@ -56,6 +57,23 @@ public sealed class PartyDeathLog
         return published;
     }
 
+    /// <summary>
+    /// The deaths not handed out yet, once they are at least <paramref name="settle"/> old (a body still falling
+    /// refines its cause just after the death). Each death is handed out once.
+    /// </summary>
+    public List<(string Player, string Job, bool IsYou, DeathInfo Info)> TakeNew(TimeSpan settle)
+    {
+        var result = new List<(string, string, bool, DeathInfo)>();
+        var now = DateTime.UtcNow;
+        while (announced < deaths.Count && now - deaths[announced].Info.TimeUtc >= settle)
+        {
+            var e = deaths[announced++];
+            result.Add((e.Player, e.Job, e.IsYou, e.Info));
+        }
+
+        return result;
+    }
+
     /// <summary>Called every frame with the current party (you included).</summary>
     public void Tick(IEnumerable<(uint Id, string Name, string Job, bool IsYou)> party, bool inCombat, Func<uint, string> nameOf)
     {
@@ -63,6 +81,7 @@ public sealed class PartyDeathLog
         if (inCombat && !wasInCombat)
         {
             deaths.Clear();
+            announced = 0;
             revision++;
         }
         else if (!inCombat && wasInCombat)

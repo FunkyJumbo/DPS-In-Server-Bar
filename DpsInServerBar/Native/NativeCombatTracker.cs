@@ -124,8 +124,8 @@ public sealed unsafe class NativeCombatTracker : ICombatSource, IDisposable
     public event Action<uint, byte, uint>? LocalDamage;
 
     public string StatusText => HookError is not null
-        ? $"unavailable ({HookError})"
-        : IsEnabled ? "listening" : "disabled";
+        ? Loc.F("unavailable ({0})", HookError)
+        : IsEnabled ? Loc.T("listening") : Loc.T("disabled");
 
     public void SetEnabled(bool enabled)
     {

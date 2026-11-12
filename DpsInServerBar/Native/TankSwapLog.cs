@@ -129,17 +129,17 @@ public sealed class TankSwapLog
     private string Reason(uint from, uint to)
     {
         if (objectTable.SearchByEntityId(from) is IBattleChara { IsDead: true })
-            return "Death";
+            return Loc.T("Death");
 
         var since = candidateSince - CauseWindow;
         var provoked = lastProvoke.TryGetValue(to, out var p) && p >= since;
         var shirked = lastShirk.TryGetValue(from, out var s) && s >= since;
         return (provoked, shirked) switch
         {
-            (true, true) => "Provoke + Shirk",
-            (true, false) => "Provoke",
-            (false, true) => "Shirk",
-            _ => "Enmity (damage)",
+            (true, true) => Loc.T("Provoke + Shirk"),
+            (true, false) => Loc.T("Provoke"),
+            (false, true) => Loc.T("Shirk"),
+            _ => Loc.T("Enmity (damage)"),
         };
     }
 

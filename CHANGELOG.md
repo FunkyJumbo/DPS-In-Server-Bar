@@ -3,6 +3,24 @@
 <!-- One "## <version>" section per release. The Release workflow publishes the section of the tagged
      version as the GitHub release notes; the same notes go into pluginmaster.json (shown in Dalamud). -->
 
+## 1.3.0.0
+
+- Chat summary: a [Details] link opens the main window on the pull in History.
+- Chat: option to print each party death as it happens, with its cause and optionally the overkill (Settings > Chat summary).
+- Display: "Hide player names" replaces every player name in the windows by a made-up one, for screenshots.
+- New: French and German translations (Settings > Display > Language, Auto follows Dalamud).
+- New: screenshot of the whole Live, History or Progression view (right click on its tab), saved in Pictures\Raid Companion.
+- Commands renamed to /raidcompanion (short: /rcomp). /dpsbar still works.
+- Server bar: new DoT uptime element, for the jobs with a DoT. The job icon, job name and boss HP elements are removed.
+- History: the fight list shows the instance names, like Progression, and the boss HP left (or Kill) is in the pull list and on a card of the pull.
+- History: in an ultimate, the duration shown is the time in the phase reached, the whole pull below.
+- History (experimental): Personal shows the DPS lost to Damage Down and to Weakness / Brink of Death after a raise.
+- Pulls history: choose the kinds of content recorded (e.g. no dungeons or trials).
+- Progression: in Pulls, the pulls are grouped by entry into the duty, ticked or unticked in one click.
+- History: "Casts & debuffs" next to the timeline lists the enemy casts and the party debuffs, with when they were applied and ran out.
+- Fix: The Minstrel's Ballad extremes (e.g. Necron) were not counted as extremes, so missing from Progression.
+- Fix: Progression in ultimates: the boss HP left was always 100% (an invisible enemy was taken for the boss), fresh copies of the bosses at the enrage raised it again, and a wipe could count as reaching the next phase.
+
 ## 1.2.2.0
 
 - Progression: the furthest mechanic shows "Kill" once the encounter is cleared.

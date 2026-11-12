@@ -36,8 +36,9 @@ public sealed class OpenerWindow : Window
     private float countdownLeft;
 
     public OpenerWindow(Plugin plugin)
-        : base("Opener practice###DpsInServerBarOpener", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base(Loc.T("Opener practice###DpsInServerBarOpener"), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
+        Loc.Changed += () => WindowName = Loc.T("Opener practice###DpsInServerBarOpener");
         this.plugin = plugin;
         Size = new Vector2(760, 300);
         SizeCondition = ImGuiCond.FirstUseEver;
@@ -118,14 +119,14 @@ public sealed class OpenerWindow : Window
         openers = OpenerDefinitions.ForJob(job).ToList();
         if (!plugin.OpenerTracker.Available)
         {
-            Theme.Hint("Unavailable: the game hook could not be created (see /xllog).");
+            Theme.Hint(Loc.T("Unavailable: the game hook could not be created (see /xllog)."));
             return null;
         }
 
         if (openers.Count == 0)
         {
             run = null;
-            Theme.Hint($"No opener for {(job.Length > 0 ? job : "this job")} yet. Available: "
+            Theme.Hint(Loc.F("No opener for {0} yet. Available: ",(job.Length > 0 ? job : Loc.T("this job")))
                        + string.Join(", ", OpenerDefinitions.All.Select(o => o.Job).Distinct()) + ".");
             return null;
         }
@@ -147,7 +148,7 @@ public sealed class OpenerWindow : Window
     {
         if (Prepare(out _, out _) is not { } opener)
         {
-            if (Theme.Chip("Full view", false))
+            if (Theme.Chip(Loc.T("Full view"), false))
                 plugin.SetOpenerCompact(false);
             return;
         }
@@ -155,7 +156,7 @@ public sealed class OpenerWindow : Window
         DrawTimeline(run!, singleRow: true, Math.Clamp(plugin.Configuration.OpenerCompactScale, 0.5f, 1.5f));
 
         var transparent = plugin.Configuration.OpenerOpacity < 0.5f;
-        if (Theme.Chip(run!.Started ? "Reset" : "Start", run.Started, transparent))
+        if (Theme.Chip(run!.Started ? Loc.T("Reset") : Loc.T("Start"), run.Started, transparent))
         {
             if (run.Started)
                 run = NewRun(opener);
@@ -164,7 +165,7 @@ public sealed class OpenerWindow : Window
         }
 
         ImGui.SameLine();
-        if (Theme.Chip("Full view", false, transparent))
+        if (Theme.Chip(Loc.T("Full view"), false, transparent))
             plugin.SetOpenerCompact(false);
 
         // Size: a small pop-up with the usual steps.
@@ -173,14 +174,14 @@ public sealed class OpenerWindow : Window
         if (Theme.Chip($"{Math.Round(config.OpenerCompactScale * 100)}%", false, transparent))
             ImGui.OpenPopup("##openercompactsize");
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Size of this window");
+            ImGui.SetTooltip(Loc.T("Size of this window"));
 
         // Close, at the bottom right.
         ImGui.SameLine();
-        var closeX = ImGui.GetContentRegionMax().X - (ImGui.CalcTextSize("Close").X + Theme.Px(20));
+        var closeX = ImGui.GetContentRegionMax().X - (ImGui.CalcTextSize(Loc.T("Close")).X + Theme.Px(20));
         if (closeX > ImGui.GetCursorPosX())
             ImGui.SetCursorPosX(closeX);
-        if (Theme.Chip("Close", false, transparent))
+        if (Theme.Chip(Loc.T("Close"), false, transparent))
             plugin.CloseOpener();
 
         using var popup = ImRaii.Popup("##openercompactsize");
@@ -251,26 +252,26 @@ public sealed class OpenerWindow : Window
 
         ImGui.SameLine();
         var gameCountdown = UseGameCountdown(config);
-        if (Theme.PrimaryButton(run!.Started ? "Restart" : "Start"))
+        if (Theme.PrimaryButton(run!.Started ? Loc.T("Restart") : Loc.T("Start")))
             StartRun(opener);
 
         if (ImGui.IsItemHovered())
         {
             var how = gameCountdown
-                ? $"Starts the in-game /countdown {config.OpenerCountdown}."
-                : $"Starts a {config.OpenerCountdown} s countdown in this window"
-                  + (config.OpenerGameCountdown ? " (in combat or during a countdown, the game refuses /countdown)." : ".");
-            ImGui.SetTooltip(how + "\nYou can also just use the first action: the run starts with it.");
+                ? Loc.F("Starts the in-game /countdown {0}.",config.OpenerCountdown)
+                : Loc.F("Starts a {0} s countdown in this window",config.OpenerCountdown)
+                  + (config.OpenerGameCountdown ? Loc.T(" (in combat or during a countdown, the game refuses /countdown).") : ".");
+            ImGui.SetTooltip(how + Loc.T("\nYou can also just use the first action: the run starts with it."));
         }
 
         ImGui.SameLine();
-        if (Theme.GhostButton("Reset"))
+        if (Theme.GhostButton(Loc.T("Reset")))
             run = NewRun(opener);
 
         ImGui.SameLine();
         var countdown = config.OpenerCountdown;
         ImGui.SetNextItemWidth(Theme.Px(130));
-        if (ImGui.SliderInt("##countdown", ref countdown, 5, 30, "Countdown %d s"))
+        if (ImGui.SliderInt("##countdown", ref countdown, 5, 30, Loc.T("Countdown %d s")))
             config.OpenerCountdown = countdown;
         if (ImGui.IsItemDeactivatedAfterEdit())
             config.Save();
@@ -279,50 +280,50 @@ public sealed class OpenerWindow : Window
         ImGui.SameLine();
         var style = ImGui.GetStyle();
         var sliderWidth = Theme.Px(150);
-        var compactWidth = ImGui.CalcTextSize("Compact").X + style.FramePadding.X * 2;
+        var compactWidth = ImGui.CalcTextSize(Loc.T("Compact")).X + style.FramePadding.X * 2;
         var right = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - sliderWidth - style.ItemSpacing.X - compactWidth;
         if (right > ImGui.GetCursorPosX())
             ImGui.SetCursorPosX(right);
 
         var opacity = (int)Math.Round(config.OpenerOpacity * 100);
         ImGui.SetNextItemWidth(sliderWidth);
-        if (ImGui.SliderInt("##openeropacity", ref opacity, 0, 100, "Background %d%%"))
+        if (ImGui.SliderInt("##openeropacity", ref opacity, 0, 100, Loc.T("Background %d%%")))
             config.OpenerOpacity = opacity / 100f;
         if (ImGui.IsItemDeactivatedAfterEdit())
             config.Save();
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Opacity of the window's background only: icons and text stay fully visible.");
+            ImGui.SetTooltip(Loc.T("Opacity of the window's background only: icons and text stay fully visible."));
 
         ImGui.SameLine();
-        if (Theme.PrimaryButton("Compact"))
+        if (Theme.PrimaryButton(Loc.T("Compact")))
             plugin.SetOpenerCompact(true);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Only the opener's icons, Start / Reset and a way back, in a small pop-up window.");
+            ImGui.SetTooltip(Loc.T("Only the opener's icons, Start / Reset and a way back, in a small pop-up window."));
 
         var prepull = config.OpenerPrepull;
-        if (ImGui.Checkbox("Pre-pull", ref prepull))
+        if (ImGui.Checkbox(Loc.T("Pre-pull"), ref prepull))
         {
             config.OpenerPrepull = prepull;
             config.Save();
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Include the actions used before the pull. Off: the run starts with the first action after the pull.");
+            ImGui.SetTooltip(Loc.T("Include the actions used before the pull. Off: the run starts with the first action after the pull."));
 
         ImGui.SameLine(0, Theme.Px(14));
         var potion = config.OpenerPotion;
-        if (ImGui.Checkbox("Tincture", ref potion))
+        if (ImGui.Checkbox(Loc.T("Tincture"), ref potion))
         {
             config.OpenerPotion = potion;
             config.Save();
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Include the tincture. Off: using an item is ignored.");
+            ImGui.SetTooltip(Loc.T("Include the tincture. Off: using an item is ignored."));
 
         ImGui.SameLine(0, Theme.Px(14));
         var useGame = config.OpenerGameCountdown;
-        if (ImGui.Checkbox("Use /countdown", ref useGame))
+        if (ImGui.Checkbox(Loc.T("Use /countdown"), ref useGame))
         {
             config.OpenerGameCountdown = useGame;
             config.Save();
@@ -330,28 +331,26 @@ public sealed class OpenerWindow : Window
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Start launches the in-game /countdown (seen by your party), for a real pull on a striking dummy.\n"
-                             + "In combat the game refuses it: the countdown then runs in this window only.\n"
-                             + "A /countdown started by you or anyone in the party also starts a run.");
+            ImGui.SetTooltip(Loc.T("Start launches the in-game /countdown (seen by your party), for a real pull on a striking dummy.\nIn combat the game refuses it: the countdown then runs in this window only.\nA /countdown started by you or anyone in the party also starts a run."));
         }
 
         ImGui.SameLine(0, Theme.Px(14));
         var autoClose = config.OpenerAutoClose;
-        if (ImGui.Checkbox("Auto close", ref autoClose))
+        if (ImGui.Checkbox(Loc.T("Auto close"), ref autoClose))
         {
             config.OpenerAutoClose = autoClose;
             config.Save();
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"Closes the window by itself once the opener is done, or {config.OpenerAutoCloseSeconds} s after its first action.");
+            ImGui.SetTooltip(Loc.F("Closes the window by itself once the opener is done, or {0} s after its first action.",config.OpenerAutoCloseSeconds));
 
         using (ImRaii.Disabled(!config.OpenerAutoClose))
         {
             ImGui.SameLine();
             var seconds = config.OpenerAutoCloseSeconds;
             ImGui.SetNextItemWidth(Theme.Px(120));
-            if (ImGui.SliderInt("##autoclose", ref seconds, 10, 120, "after %d s"))
+            if (ImGui.SliderInt("##autoclose", ref seconds, 10, 120, Loc.T("after %d s")))
                 config.OpenerAutoCloseSeconds = seconds;
             if (ImGui.IsItemDeactivatedAfterEdit())
                 config.Save();
@@ -401,10 +400,10 @@ public sealed class OpenerWindow : Window
     {
         var problems = new List<string>();
         if (Plugin.Condition[ConditionFlag.InCombat])
-            problems.Add("in combat");
+            problems.Add(Loc.T("in combat"));
 
         if (Plugin.ObjectTable.LocalPlayer is { } player && player.MaxMp > 0 && player.CurrentMp < player.MaxMp)
-            problems.Add($"MP {player.CurrentMp:N0} / {player.MaxMp:N0}");
+            problems.Add(Loc.F("MP {0:N0} / {1:N0}",player.CurrentMp,player.MaxMp));
 
         var manager = ActionManager.Instance();
         if (manager != null)
@@ -443,7 +442,7 @@ public sealed class OpenerWindow : Window
                 if (itemId != 0 && manager->IsRecastTimerActive(ActionType.Item, itemId))
                 {
                     var left = manager->GetRecastTime(ActionType.Item, itemId) - manager->GetRecastTimeElapsed(ActionType.Item, itemId);
-                    problems.Add($"Tincture {left:0}s");
+                    problems.Add(Loc.F("Tincture {0:0}s",left));
                 }
             }
         }
@@ -452,13 +451,13 @@ public sealed class OpenerWindow : Window
         {
             Theme.Icon(FontAwesomeIcon.CheckCircle, Theme.Good);
             ImGui.SameLine();
-            ImGui.TextColored(Theme.Good, "Ready: cooldowns up, full MP.");
+            ImGui.TextColored(Theme.Good, Loc.T("Ready: cooldowns up, full MP."));
             return;
         }
 
         Theme.Icon(FontAwesomeIcon.ExclamationTriangle, Theme.Warn);
         ImGui.SameLine();
-        ImGui.TextColored(Theme.Warn, "Not ready:");
+        ImGui.TextColored(Theme.Warn, Loc.T("Not ready:"));
         ImGui.SameLine();
         ImGui.TextWrapped(string.Join(", ", problems));
     }
@@ -468,11 +467,11 @@ public sealed class OpenerWindow : Window
     {
         if (opener.Notes.Count == 0)
         {
-            Theme.Hint($"Source: {opener.Source}.");
+            Theme.Hint(Loc.F("Source: {0}.",opener.Source));
             return;
         }
 
-        if (!ImGui.CollapsingHeader($"Notes ({opener.Notes.Count})###openernotes"))
+        if (!ImGui.CollapsingHeader(Loc.F("Notes ({0})###openernotes",opener.Notes.Count)))
             return;
 
         using var wrap = ImRaii.TextWrapPos(ImGui.GetCursorPosX() + Theme.Px(820));
@@ -482,7 +481,7 @@ public sealed class OpenerWindow : Window
             ImGui.TextColored(Theme.TextMuted, note);
         }
 
-        Theme.Hint($"Source: {opener.Source}.");
+        Theme.Hint(Loc.F("Source: {0}.",opener.Source));
     }
 
     private OpenerRun NewRun(OpenerDefinition opener) =>
@@ -579,7 +578,7 @@ public sealed class OpenerWindow : Window
             var px = origin.X + pullAt.X;
             draw.AddLine(new Vector2(px, OgcdY(pullAt.Row) - Theme.Px(2)), new Vector2(px, GcdY(pullAt.Row) + gcdSize),
                          Theme.U32(Theme.Gold, 0.8f), Theme.Px(2));
-            draw.AddText(new Vector2(px + Theme.Px(4), origin.Y + pullAt.Row * rowHeight), Theme.U32(Theme.Gold), "Pull");
+            draw.AddText(new Vector2(px + Theme.Px(4), origin.Y + pullAt.Row * rowHeight), Theme.U32(Theme.Gold), Loc.T("Pull"));
         }
 
         var next = current.Next;
@@ -638,13 +637,13 @@ public sealed class OpenerWindow : Window
 
             if (hovered && mouse.X >= pos.X && mouse.Y >= pos.Y && mouse.X < max.X && mouse.Y < max.Y)
             {
-                var kind = step.Kind switch { StepKind.Gcd => "GCD", StepKind.Ogcd => "oGCD", _ => "Tincture (any item counts)" };
+                var kind = step.Kind switch { StepKind.Gcd => Loc.T("GCD"), StepKind.Ogcd => Loc.T("oGCD"), _ => Loc.T("Tincture (any item counts)") };
                 var others = step.Names.Count > 1
-                    ? "\nOr: " + string.Join(", ", step.Names.Skip(1).Select(DisplayName))
+                    ? Loc.T("\nOr: ") + string.Join(", ", step.Names.Skip(1).Select(DisplayName))
                     : string.Empty;
                 var planned = step.Prepull is { } p ? $", -{p:0.##} s" : string.Empty;
-                var used = current.Times[i] is { } u ? $"\nUsed at {u:0.0} s" : string.Empty;
-                var missed = state == StepState.Missed ? "\nMissed" : string.Empty;
+                var used = current.Times[i] is { } u ? Loc.F("\nUsed at {0:0.0} s",u) : string.Empty;
+                var missed = state == StepState.Missed ? Loc.T("\nMissed") : string.Empty;
                 ImGui.SetTooltip($"{name}{others}\n{kind}{planned}{used}{missed}");
             }
         }
@@ -669,8 +668,8 @@ public sealed class OpenerWindow : Window
         {
             var clean = current.Mistakes == 0 && current.Missed == 0;
             ImGui.TextColored(clean ? Theme.Good : Theme.Text,
-                              $"Done in {current.FinishedAt:0.0} s. Mistakes: {current.Mistakes}, missed: {current.Missed}."
-                              + (clean ? " Clean!" : string.Empty));
+                              Loc.F("Done in {0:0.0} s. Mistakes: {1}, missed: {2}.",current.FinishedAt,current.Mistakes,current.Missed)
+                              + (clean ? Loc.T(" Clean!") : string.Empty));
             return;
         }
 
@@ -678,27 +677,27 @@ public sealed class OpenerWindow : Window
         if (next >= 0)
         {
             var step = current.Steps[next];
-            ImGui.TextColored(Theme.TextMuted, "Next:");
+            ImGui.TextColored(Theme.TextMuted, Loc.T("Next:"));
             ImGui.SameLine();
             ImGui.TextColored(Theme.GoldBright, Info(step).Name);
             ImGui.SameLine();
-            ImGui.TextColored(Theme.TextFaint, step.IsGcd ? "(GCD)" : "(oGCD)");
+            ImGui.TextColored(Theme.TextFaint, step.IsGcd ? Loc.T("(GCD)") : Loc.T("(oGCD)"));
         }
 
         if (current.LastWrong is { } wrong)
         {
             ImGui.SameLine(0, Theme.Px(16));
-            ImGui.TextColored(Theme.Bad, $"Wrong: {(wrong.Type == 2 ? "item" : ActionInfo(wrong.Id).Name)}");
+            ImGui.TextColored(Theme.Bad, Loc.F("Wrong: {0}",(wrong.Type == 2 ? "item" : ActionInfo(wrong.Id).Name)));
         }
 
         if (current.Mistakes > 0 || current.Missed > 0)
         {
             ImGui.SameLine(0, Theme.Px(16));
-            ImGui.TextColored(Theme.TextMuted, $"Mistakes: {current.Mistakes}, missed: {current.Missed}");
+            ImGui.TextColored(Theme.TextMuted, Loc.F("Mistakes: {0}, missed: {1}",current.Mistakes,current.Missed));
         }
 
         if (!current.Started)
-            Theme.Hint("Press Start for a countdown, or use the first action to start right away. Big boxes: GCDs, small ones: oGCDs.");
+            Theme.Hint(Loc.T("Press Start for a countdown, or use the first action to start right away. Big boxes: GCDs, small ones: oGCDs."));
     }
 
     /// <summary>Icon and name (in the game's language) of a step: its first action, or the tincture.</summary>
@@ -727,7 +726,7 @@ public sealed class OpenerWindow : Window
 
         info = Plugin.DataManager.GetExcelSheet<Action>().TryGetRow(id, out var row)
             ? (row.Icon, row.Name.ExtractText())
-            : (0u, $"Action {id}");
+            : (0u, Loc.F("Action {0}",id));
         actions[id] = info;
         return info;
     }
@@ -746,7 +745,7 @@ public sealed class OpenerWindow : Window
                          .Max();
         (uint, uint, string) result = best != 0 && Plugin.DataManager.GetExcelSheet<Item>().TryGetRow(best, out var item)
             ? (best, item.Icon, item.Name.ExtractText())
-            : (0u, 0u, "Tincture");
+            : (0u, 0u, Loc.T("Tincture"));
         potions[stat] = result;
         return result;
     }

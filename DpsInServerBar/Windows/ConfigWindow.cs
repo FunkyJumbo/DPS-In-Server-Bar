@@ -30,8 +30,9 @@ public sealed class ConfigWindow : Window
     private string renameBuffer = string.Empty;
     private int portInput;
 
-    public ConfigWindow(Plugin plugin) : base("Raid Companion - Settings###DpsInServerBarConfig")
+    public ConfigWindow(Plugin plugin) : base(Loc.T("Raid Companion - Settings###DpsInServerBarConfig"))
     {
+        Loc.Changed += () => WindowName = Loc.T("Raid Companion - Settings###DpsInServerBarConfig");
         this.plugin = plugin;
         AllowBackgroundBlur = false;
         hostInput = plugin.Configuration.Host;
@@ -43,19 +44,18 @@ public sealed class ConfigWindow : Window
     /// <param name="Wip">Still being worked on: marked in the menu, with a warning on the page.</param>
     private sealed record Section(FontAwesomeIcon Icon, string Label, string Description, System.Action Draw, bool Wip = false);
 
-    private Section[] Sections => sections ??=
+    private Section[] Sections =>
     [
-        new(FontAwesomeIcon.Server, "DPS in server bar", "What the server bar shows, in which order, and how.", DrawServerBarTab),
-        new(FontAwesomeIcon.CommentDots, "Chat summary", "The recap printed in chat after each pull and each ultimate phase.", DrawChatSummaryTab),
-        new(FontAwesomeIcon.Desktop, "Display", "The compact meter and the main window.", DrawDisplayTab),
-        new(FontAwesomeIcon.History, "Pulls history", "Which pulls are recorded and kept.", DrawPullsTab),
-        new(FontAwesomeIcon.Palette, "Appearance", "Theme, colors and transparency of the plugin's windows.", DrawAppearanceTab),
-        new(FontAwesomeIcon.Crosshairs, "DPS check", "Boss HP and enrage of each fight: the party DPS needed to clear it.", DrawDpsCheckTab, Wip: true),
-        new(FontAwesomeIcon.Plug, "Data source", "Where the damage numbers come from: ACT or the built-in tracker.", DrawSourceTab),
-        new(FontAwesomeIcon.ChartLine, "FFLogs", "Estimate of your FFLogs percentile, from the FFLogs API.", DrawFflogsTab),
+        new(FontAwesomeIcon.Server, Loc.T("DPS in server bar"), Loc.T("What the server bar shows, in which order, and how."), DrawServerBarTab),
+        new(FontAwesomeIcon.CommentDots, Loc.T("Chat summary"), Loc.T("The recap printed in chat after each pull and each ultimate phase."), DrawChatSummaryTab),
+        new(FontAwesomeIcon.Desktop, Loc.T("Display"), Loc.T("The compact meter and the main window."), DrawDisplayTab),
+        new(FontAwesomeIcon.History, Loc.T("Pulls history"), Loc.T("Which pulls are recorded and kept."), DrawPullsTab),
+        new(FontAwesomeIcon.Palette, Loc.T("Appearance"), Loc.T("Theme, colors and transparency of the plugin's windows."), DrawAppearanceTab),
+        new(FontAwesomeIcon.Crosshairs, Loc.T("DPS check"), Loc.T("Boss HP and enrage of each fight: the party DPS needed to clear it."), DrawDpsCheckTab, Wip: true),
+        new(FontAwesomeIcon.Plug, Loc.T("Data source"), Loc.T("Where the damage numbers come from: ACT or the built-in tracker."), DrawSourceTab),
+        new(FontAwesomeIcon.ChartLine, Loc.T("FFLogs"), Loc.T("Estimate of your FFLogs percentile, from the FFLogs API."), DrawFflogsTab),
     ];
 
-    private Section[]? sections;
     private int selectedSection;
     private IDisposable? themeScope;
 
@@ -109,7 +109,7 @@ public sealed class ConfigWindow : Window
             {
                 for (var i = 0; i < Sections.Length; i++)
                 {
-                    if (Theme.NavItem($"##nav{i}", Sections[i].Icon, Sections[i].Wip ? $"{Sections[i].Label} (WIP)" : Sections[i].Label, i == selectedSection))
+                    if (Theme.NavItem($"##nav{i}", Sections[i].Icon, Sections[i].Wip ? Loc.F("{0} (WIP)",Sections[i].Label) : Sections[i].Label, i == selectedSection))
                         selectedSection = i;
                 }
 
@@ -142,7 +142,7 @@ public sealed class ConfigWindow : Window
         if (section.Wip)
         {
             ImGui.SameLine();
-            Theme.Badge("WIP", Theme.Warn);
+            Theme.Badge(Loc.T("WIP"), Theme.Warn);
         }
 
         Theme.Hint(section.Description);
@@ -152,10 +152,14 @@ public sealed class ConfigWindow : Window
             Theme.Icon(FontAwesomeIcon.ExclamationTriangle, Theme.Warn);
             ImGui.SameLine();
             using (ImRaii.PushColor(ImGuiCol.Text, Theme.Warn))
-                ImGui.TextWrapped("This section is still a work in progress: the current values may be incomplete, or even wrong, for the time being.");
+                ImGui.TextWrapped(Loc.T("This section is still a work in progress: the current values may be incomplete, or even wrong, for the time being."));
         }
 
         Theme.Rule();
+
+        // Pages opening on a group title: the same gap above it as above the next titles (the rule pads 4px itself).
+        if (section.Draw != (System.Action)DrawDpsCheckTab)
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() - Theme.Px(4));
 
         // A little room at the end of each group of settings (before the next title, and after the last one).
         Theme.SectionSpacing = Theme.Px(12);
@@ -194,10 +198,10 @@ public sealed class ConfigWindow : Window
 
         DrawBarPresets(c);
 
-        Theme.SectionHeader("Value");
+        Theme.SectionHeader(Loc.T("Value"));
         var metric = (int)c.Metric;
         ImGui.SetNextItemWidth(Theme.Px(240));
-        if (ImGui.Combo("Metric", ref metric, "Personal DPS\0Party DPS (pDPS)\0Raid-contributed DPS (rDPS)\0"))
+        if (ImGui.Combo(Loc.T("Metric"), ref metric, Loc.T("Personal DPS\0Party DPS (pDPS)\0Raid-contributed DPS (rDPS)\0")))
         {
             c.Metric = (DisplayMetric)metric;
             changed = true;
@@ -205,37 +209,37 @@ public sealed class ConfigWindow : Window
 
         var style = (int)c.NumberStyle;
         ImGui.SetNextItemWidth(Theme.Px(240));
-        if (ImGui.Combo("Number format", ref style, "12345\012,345\012.3k\0"))
+        if (ImGui.Combo(Loc.T("Number format"), ref style, "12345\012,345\012.3k\0"))
         {
             c.NumberStyle = (NumberStyle)style;
             changed = true;
         }
 
-        Theme.SectionHeader("Server bar elements");
-        Theme.Hint("Tick what to show and use the arrows to change the order.");
+        Theme.SectionHeader(Loc.T("Server bar elements"));
+        Theme.Hint(Loc.T("Tick what to show and use the arrows to change the order."));
         changed |= DrawBarLayout(c);
         changed |= DrawSeparator(c);
         ImGui.Dummy(new Vector2(0, Theme.Px(3)));
         DrawBarPreviewButton();
 
-        Theme.SectionHeader("Behavior");
-        changed |= Checkbox("Hide while no data source is available", c.HideWhenDisconnected, v => c.HideWhenDisconnected = v);
+        Theme.SectionHeader(Loc.T("Behavior"));
+        changed |= Checkbox(Loc.T("Hide while no data source is available"), c.HideWhenDisconnected, v => c.HideWhenDisconnected = v);
 
         var hide = c.HideAfterSeconds;
         ImGui.SetNextItemWidth(120);
-        if (ImGui.InputInt("Hide N seconds after combat (0 = never)", ref hide))
+        if (ImGui.InputInt(Loc.T("Hide N seconds after combat (0 = never)"), ref hide))
         {
             c.HideAfterSeconds = Math.Clamp(hide, 0, 3600);
             changed = true;
         }
 
-        Theme.SectionHeader("Colors");
-        changed |= Checkbox("Use colors", c.UseColors, v => c.UseColors = v);
+        Theme.SectionHeader(Loc.T("Colors"));
+        changed |= Checkbox(Loc.T("Use colors"), c.UseColors, v => c.UseColors = v);
         using (ImRaii.Disabled(!c.UseColors))
         {
-            changed |= ColorEdit("Final value", c.FinalColor, v => c.FinalColor = v);
-            changed |= ColorEdit("pDPS below check", c.BelowThresholdColor, v => c.BelowThresholdColor = v);
-            changed |= ColorEdit("pDPS above check", c.AboveThresholdColor, v => c.AboveThresholdColor = v);
+            changed |= ColorEdit(Loc.T("Final value"), c.FinalColor, v => c.FinalColor = v);
+            changed |= ColorEdit(Loc.T("pDPS below check"), c.BelowThresholdColor, v => c.BelowThresholdColor = v);
+            changed |= ColorEdit(Loc.T("pDPS above check"), c.AboveThresholdColor, v => c.AboveThresholdColor = v);
         }
 
         if (changed)
@@ -247,12 +251,23 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var changed = false;
 
-        Theme.SectionHeader("Compact meter");
-        Theme.Hint("The small pop-up meter (/dpsbar compact): player and DPS / rDPS, then the columns ticked here.");
+        Theme.SectionHeader(Loc.T("Language"));
+        var languages = Loc.Languages.Select(l => l.Code == "auto" ? Loc.T(l.Name) : l.Name).ToArray();
+        var language = Math.Max(0, Array.FindIndex(Loc.Languages, l => l.Code == c.Language));
+        ImGui.SetNextItemWidth(Theme.Px(260));
+        if (ImGui.Combo(Loc.T("Language of the plugin"), ref language, languages, languages.Length))
+        {
+            c.Language = Loc.Languages[language].Code;
+            changed = true;
+        }
+        Help(Loc.T("Auto follows the language chosen in Dalamud's settings. Game data (actions, bosses, debuffs) stays in the game client's language."));
+
+        Theme.SectionHeader(Loc.T("Compact meter"));
+        Theme.Hint(Loc.T("The small pop-up meter (/raidcompanion compact): player and DPS / rDPS, then the columns ticked here."));
         foreach (var (column, label) in new[]
                  {
-                     (CompactColumn.Share, "% of the party"), (CompactColumn.Crit, "Crit rate"),
-                     (CompactColumn.DirectHit, "Direct hit rate"), (CompactColumn.Deaths, "Deaths"),
+                     (CompactColumn.Share, Loc.T("% of the party")), (CompactColumn.Crit, Loc.T("Crit rate")),
+                     (CompactColumn.DirectHit, Loc.T("Direct hit rate")), (CompactColumn.Deaths, Loc.T("Deaths")),
                  })
         {
             var on = c.CompactColumns.HasFlag(column);
@@ -263,24 +278,28 @@ public sealed class ConfigWindow : Window
             }
         }
 
-        changed |= Checkbox("Show the header", c.CompactShowHeader, v => c.CompactShowHeader = v);
+        changed |= Checkbox(Loc.T("Show the header"), c.CompactShowHeader, v => c.CompactShowHeader = v);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Without it, switch DPS / rDPS from the right click menu.");
+            ImGui.SetTooltip(Loc.T("Without it, switch DPS / rDPS from the right click menu."));
 
         var compactPercent = (int)Math.Round(c.CompactOpacity * 100);
         ImGui.SetNextItemWidth(Theme.Px(240));
-        if (ImGui.SliderInt("Background opacity##compact", ref compactPercent, 0, 100, "%d%%"))
+        if (ImGui.SliderInt(Loc.T("Background opacity##compact"), ref compactPercent, 0, 100, "%d%%"))
         {
             c.CompactOpacity = compactPercent / 100f;
             changed = true;
         }
 
-        if (Theme.GhostButton(plugin.CompactOpen ? "Close the compact meter" : "Open the compact meter"))
+        if (Theme.GhostButton(plugin.CompactOpen ? Loc.T("Close the compact meter") : Loc.T("Open the compact meter")))
             plugin.SetCompact(!plugin.CompactOpen);
 
-        Theme.SectionHeader("Main window");
-        changed |= Checkbox("Show DPS graphs in the main window", c.ShowGraph, v => c.ShowGraph = v);
-        changed |= Checkbox("Include Limit Break in party DPS", c.IncludeLimitBreakInParty, v => c.IncludeLimitBreakInParty = v);
+        Theme.SectionHeader(Loc.T("Main window"));
+        changed |= Checkbox(Loc.T("Show DPS graphs in the main window"), c.ShowGraph, v => c.ShowGraph = v);
+        changed |= Checkbox(Loc.T("Include Limit Break in party DPS"), c.IncludeLimitBreakInParty, v => c.IncludeLimitBreakInParty = v);
+
+        Theme.SectionHeader(Loc.T("Screenshots"));
+        changed |= Checkbox(Loc.T("Hide player names"), c.HideNames, v => { c.HideNames = v; Names.Anonymize = v; });
+        Help(Loc.T("Every player name in the windows (you included) is replaced by a made-up one, always the same for a given player: handy for screenshots. Recorded pulls keep the real names."));
 
         if (changed)
             plugin.OnConfigChanged();
@@ -292,12 +311,12 @@ public sealed class ConfigWindow : Window
         var changed = false;
         var presets = c.BarPresets;
 
-        Theme.SectionHeader("Presets");
+        Theme.SectionHeader(Loc.T("Presets"));
         var current = c.CurrentBarPreset;
         var modified = current is not null && !current.Matches(c);
         Theme.Hint(current is null
-                       ? "Save the setup below (value, format, elements and order) to switch to it with a command or a macro."
-                       : "Selecting a preset loads its settings below. Change them, then save them into the preset.");
+                       ? Loc.T("Save the setup below (value, format, elements and order) to switch to it with a command or a macro.")
+                       : Loc.T("Selecting a preset loads its settings below. Change them, then save them into the preset."));
 
         int? toDelete = null;
         for (var i = 0; i < presets.Count; i++)
@@ -334,21 +353,21 @@ public sealed class ConfigWindow : Window
                     var shown = preset.Layout.Where(e => e.Enabled).Select(e => Describe(e.Element).Label).ToList();
                     var metric = preset.Metric switch
                     {
-                        DisplayMetric.Party => "Party DPS",
-                        DisplayMetric.Raid => "rDPS",
-                        _ => "Personal DPS",
+                        DisplayMetric.Party => Loc.T("Party DPS"),
+                        DisplayMetric.Raid => Loc.T("rDPS"),
+                        _ => Loc.T("Personal DPS"),
                     };
-                    ImGui.SetTooltip($"{metric}\n{(shown.Count > 0 ? string.Join("\n", shown) : "(nothing shown)")}");
+                    ImGui.SetTooltip($"{metric}\n{(shown.Count > 0 ? string.Join("\n", shown) : Loc.T("(nothing shown)"))}");
                 }
 
                 if (selected && modified)
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(Theme.Warn, "(modified)");
+                    ImGui.TextColored(Theme.Warn, Loc.T("(modified)"));
                 }
 
                 ImGui.SameLine();
-                if (Theme.IconButton("rename", FontAwesomeIcon.Pen, "Rename"))
+                if (Theme.IconButton("rename", FontAwesomeIcon.Pen, Loc.T("Rename")))
                 {
                     renamingPreset = i;
                     renameBuffer = preset.Name;
@@ -357,17 +376,17 @@ public sealed class ConfigWindow : Window
             }
 
             ImGui.SameLine();
-            if (Theme.IconButton("delete", FontAwesomeIcon.TrashAlt, "Delete this preset (hold Ctrl)", Theme.TextFaint)
+            if (Theme.IconButton("delete", FontAwesomeIcon.TrashAlt, Loc.T("Delete this preset (hold Ctrl)"), Theme.TextFaint)
                 && ImGui.GetIO().KeyCtrl)
             {
                 toDelete = i;
             }
 
             ImGui.SameLine();
-            var command = $"/dpsbar preset {i + 1}";
+            var command = $"/raidcompanion preset {i + 1}";
             ImGui.TextDisabled(command);
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Click to copy the command, for a macro.");
+                ImGui.SetTooltip(Loc.T("Click to copy the command, for a macro."));
             if (ImGui.IsItemClicked())
                 ImGui.SetClipboardText(command);
         }
@@ -387,24 +406,24 @@ public sealed class ConfigWindow : Window
         {
             using (ImRaii.Disabled(!modified))
             {
-                if (Theme.PrimaryButton($"Save changes to \"{current.Name}\""))
+                if (Theme.PrimaryButton(Loc.F("Save changes to \"{0}\"",current.Name)))
                 {
                     current.CaptureFrom(c);
                     changed = true;
                 }
 
                 ImGui.SameLine();
-                if (Theme.GhostButton("Revert"))
+                if (Theme.GhostButton(Loc.T("Revert")))
                     plugin.ApplyBarPreset(c.ActiveBarPreset);
             }
 
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip("Reloads the settings saved in the preset.");
+                ImGui.SetTooltip(Loc.T("Reloads the settings saved in the preset."));
 
             ImGui.SameLine();
         }
 
-        if (Theme.GhostButton("Save as a new preset"))
+        if (Theme.GhostButton(Loc.T("Save as a new preset")))
         {
             var preset = new BarPreset { Name = NewPresetName(c) };
             preset.CaptureFrom(c);
@@ -414,8 +433,7 @@ public sealed class ConfigWindow : Window
         }
 
         if (presets.Count > 0)
-            Help("In game or in a macro: /dpsbar preset 2 (by number), /dpsbar preset Raid (by name) "
-                 + "or /dpsbar preset next (the next one).");
+            Help(Loc.T("In game or in a macro: /raidcompanion preset 2 (by number), /raidcompanion preset Raid (by name) or /raidcompanion preset next (the next one)."));
 
         if (changed)
             plugin.OnConfigChanged();
@@ -426,7 +444,7 @@ public sealed class ConfigWindow : Window
     {
         for (var n = 1; ; n++)
         {
-            var name = $"Preset {n}";
+            var name = Loc.F("Preset {0}",n);
             if (c.BarPresets.All(p => !p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
                 return name;
         }
@@ -438,7 +456,7 @@ public sealed class ConfigWindow : Window
         var changed = false;
         var savedSelected = c.SavedThemeIndex >= 0 && c.SavedThemeIndex < c.SavedThemes.Count;
 
-        Theme.SectionHeader("Theme");
+        Theme.SectionHeader(Loc.T("Theme"));
         foreach (var preset in Enum.GetValues<ThemePreset>())
         {
             var colors = preset == ThemePreset.Custom ? c.CustomTheme : ThemePalette.For(preset);
@@ -455,29 +473,28 @@ public sealed class ConfigWindow : Window
 
         changed |= DrawSavedThemes();
 
-        Theme.SectionHeader("Background");
+        Theme.SectionHeader(Loc.T("Background"));
         var percent = (int)Math.Round(c.BackgroundOpacity * 100);
         ImGui.SetNextItemWidth(Theme.Px(240));
-        if (ImGui.SliderInt("Background opacity", ref percent, 20, 100, "%d%%"))
+        if (ImGui.SliderInt(Loc.T("Background opacity"), ref percent, 20, 100, "%d%%"))
         {
             c.BackgroundOpacity = percent / 100f;
             changed = true;
         }
 
-        Help("How much of the game shows through the plugin's windows. Text and fields stay opaque.");
+        Help(Loc.T("How much of the game shows through the plugin's windows. Text and fields stay opaque."));
 
         // The colors edited: those of the saved theme in use, otherwise the custom theme.
         savedSelected = c.SavedThemeIndex >= 0 && c.SavedThemeIndex < c.SavedThemes.Count;
         var edited = savedSelected ? c.SavedThemes[c.SavedThemeIndex].Palette : c.CustomTheme;
-        Theme.SectionHeader(savedSelected ? $"Colors of \"{c.SavedThemes[c.SavedThemeIndex].Name}\"" : "Custom colors");
+        Theme.SectionHeader(savedSelected ? Loc.F("Colors of \"{0}\"",c.SavedThemes[c.SavedThemeIndex].Name) : Loc.T("Custom colors"));
         Theme.Hint(savedSelected
-                       ? "Changes are saved in this theme right away."
-                       : "Pick your own colors. Changing one switches to the Custom theme; hover, border and muted text "
-                         + "shades are derived from them.");
+                       ? Loc.T("Changes are saved in this theme right away.")
+                       : Loc.T("Pick your own colors. Changing one switches to the Custom theme; hover, border and muted text shades are derived from them."));
 
         using (ImRaii.Disabled(savedSelected || c.ThemePreset == ThemePreset.Custom))
         {
-            if (Theme.GhostButton("Start from the selected theme"))
+            if (Theme.GhostButton(Loc.T("Start from the selected theme")))
             {
                 c.CustomTheme = ThemePalette.For(c.ThemePreset).Copy();
                 c.ThemePreset = ThemePreset.Custom;
@@ -486,7 +503,7 @@ public sealed class ConfigWindow : Window
         }
 
         ImGui.SameLine();
-        if (Theme.GhostButton("Save as a new theme"))
+        if (Theme.GhostButton(Loc.T("Save as a new theme")))
         {
             c.SavedThemes.Add(new SavedTheme { Name = NewThemeName(c), Palette = c.ActivePalette.Copy() });
             c.SavedThemeIndex = c.SavedThemes.Count - 1;
@@ -494,12 +511,12 @@ public sealed class ConfigWindow : Window
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Saves the colors in use as a theme of its own, which you can rename.");
+            ImGui.SetTooltip(Loc.T("Saves the colors in use as a theme of its own, which you can rename."));
 
         if (!savedSelected)
         {
             ImGui.SameLine();
-            if (Theme.GhostButton("Reset custom colors"))
+            if (Theme.GhostButton(Loc.T("Reset custom colors")))
             {
                 c.CustomTheme = ThemePalette.For(ThemePreset.Midnight);
                 changed = true;
@@ -525,24 +542,24 @@ public sealed class ConfigWindow : Window
             }
         }
 
-        Theme.SectionHeader("Preview");
+        Theme.SectionHeader(Loc.T("Preview"));
         var width = Theme.CardWidth(3);
-        Theme.StatCard("DPS", "21,234", Theme.Gold, width, "#2 of 8");
+        Theme.StatCard(Loc.T("DPS"), "21,234", Theme.Gold, width, Loc.T("#2 of 8"));
         ImGui.SameLine();
-        Theme.StatCard("Party DPS", "182,345", Theme.Good, width, "need 176,600 (+3.3%)", Theme.Good);
+        Theme.StatCard(Loc.T("Party DPS"), "182,345", Theme.Good, width, Loc.T("need 176,600 (+3.3%)"), Theme.Good);
         ImGui.SameLine();
-        Theme.StatCard("GCD uptime", "98.7%", Theme.Crystal, width, "lost 1.2s");
-        Theme.Badge("Kill", Theme.Good);
+        Theme.StatCard(Loc.T("GCD uptime"), "98.7%", Theme.Crystal, width, Loc.T("lost 1.2s"));
+        Theme.Badge(Loc.T("Kill"), Theme.Good);
         ImGui.SameLine();
-        Theme.Badge("Wipe", Theme.Bad);
+        Theme.Badge(Loc.T("Wipe"), Theme.Bad);
         ImGui.SameLine();
-        Theme.Chip("Savage 12", true);
+        Theme.Chip(Loc.T("Savage 12"), true);
         ImGui.SameLine();
-        Theme.Chip("Dungeon 4", false);
+        Theme.Chip(Loc.T("Dungeon 4"), false);
         ImGui.SameLine();
-        Theme.PrimaryButton("Main action");
+        Theme.PrimaryButton(Loc.T("Main action"));
         ImGui.SameLine();
-        Theme.GhostButton("Other action");
+        Theme.GhostButton(Loc.T("Other action"));
 
         if (changed)
             plugin.OnConfigChanged();
@@ -556,7 +573,7 @@ public sealed class ConfigWindow : Window
         if (c.SavedThemes.Count == 0)
             return false;
 
-        Theme.SectionHeader("Saved themes");
+        Theme.SectionHeader(Loc.T("Saved themes"));
         int? toDelete = null;
         for (var i = 0; i < c.SavedThemes.Count; i++)
         {
@@ -594,7 +611,7 @@ public sealed class ConfigWindow : Window
                 }
 
                 ImGui.SameLine();
-                if (Theme.IconButton("rename", FontAwesomeIcon.Pen, "Rename"))
+                if (Theme.IconButton("rename", FontAwesomeIcon.Pen, Loc.T("Rename")))
                 {
                     renamingTheme = i;
                     renameBuffer = saved.Name;
@@ -603,7 +620,7 @@ public sealed class ConfigWindow : Window
             }
 
             ImGui.SameLine();
-            if (Theme.IconButton("delete", FontAwesomeIcon.TrashAlt, "Delete this theme (hold Ctrl)", Theme.TextFaint)
+            if (Theme.IconButton("delete", FontAwesomeIcon.TrashAlt, Loc.T("Delete this theme (hold Ctrl)"), Theme.TextFaint)
                 && ImGui.GetIO().KeyCtrl)
             {
                 toDelete = i;
@@ -629,7 +646,7 @@ public sealed class ConfigWindow : Window
     {
         for (var n = 1; ; n++)
         {
-            var name = $"Custom theme {n}";
+            var name = Loc.F("Custom theme {0}",n);
             if (c.SavedThemes.All(t => !t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
                 return name;
         }
@@ -654,38 +671,38 @@ public sealed class ConfigWindow : Window
         ImGui.Dummy(new Vector2(shown.Length * (square + Theme.Px(3)), size));
     }
 
-    private static readonly (SummaryElement Element, string Label)[] SummaryLabels =
+    private static (SummaryElement Element, string Label)[] SummaryLabels =>
     [
-        (SummaryElement.Job, "Job"),
-        (SummaryElement.Dps, "DPS"),
-        (SummaryElement.Rdps, "rDPS"),
-        (SummaryElement.Percentile, "FFLogs %"),
-        (SummaryElement.Uptime, "GCD"),
-        (SummaryElement.PartyDps, "pDPS"),
-        (SummaryElement.Deaths, "Deaths"),
-        (SummaryElement.KilledBy, "Killed by"),
-        (SummaryElement.Mistakes, "Mechanics"),
+        (SummaryElement.Job, Loc.T("Job")),
+        (SummaryElement.Dps, Loc.T("DPS")),
+        (SummaryElement.Rdps, Loc.T("rDPS")),
+        (SummaryElement.Percentile, Loc.T("FFLogs %")),
+        (SummaryElement.Uptime, Loc.T("GCD")),
+        (SummaryElement.PartyDps, Loc.T("pDPS")),
+        (SummaryElement.Deaths, Loc.T("Deaths")),
+        (SummaryElement.KilledBy, Loc.T("Killed by")),
+        (SummaryElement.Mistakes, Loc.T("Mechanics")),
     ];
 
-    private static readonly (string Label, string Value)[] SeparatorPresets =
+    private static (string Label, string Value)[] SeparatorPresets =>
     [
-        ("Space", " "),
+        (Loc.T("Space"), " "),
         ("|", " | "),
         ("/", " / "),
         ("-", " - "),
-        ("Double space", "  "),
+        (Loc.T("Double space"), "  "),
     ];
 
     private bool DrawSeparator(Configuration c)
     {
         var changed = false;
         var preset = Array.FindIndex(SeparatorPresets, p => p.Value == c.BarSeparator);
-        var labels = SeparatorPresets.Select(p => p.Label).Append("Custom").ToArray();
+        var labels = SeparatorPresets.Select(p => p.Label).Append(Loc.T("Custom")).ToArray();
         var custom = labels.Length - 1;
         var selected = editingCustomSeparator || preset < 0 ? custom : preset;
 
         ImGui.SetNextItemWidth(130);
-        if (ImGui.Combo("Separator between elements", ref selected, labels, labels.Length))
+        if (ImGui.Combo(Loc.T("Separator between elements"), ref selected, labels, labels.Length))
         {
             // "Custom" keeps the current text as a starting point.
             editingCustomSeparator = selected == custom;
@@ -700,13 +717,13 @@ public sealed class ConfigWindow : Window
         {
             var text = c.BarSeparator;
             ImGui.SetNextItemWidth(130);
-            if (ImGui.InputText("Custom separator", ref text, 16))
+            if (ImGui.InputText(Loc.T("Custom separator"), ref text, 16))
             {
                 c.BarSeparator = text;
                 changed = true;
             }
 
-            Help("Spaces count: \" | \" puts a space on each side. Some characters may not exist in the game font.");
+            Help(Loc.T("Spaces count: \" | \" puts a space on each side. Some characters may not exist in the game font."));
         }
 
         return changed;
@@ -717,16 +734,15 @@ public sealed class ConfigWindow : Window
         var left = plugin.Bar.PreviewLeft;
         if (left > TimeSpan.Zero)
         {
-            if (Theme.GhostButton($"Stop the preview ({Math.Ceiling(left.TotalSeconds):0}s)"))
+            if (Theme.GhostButton(Loc.F("Stop the preview ({0:0}s)",Math.Ceiling(left.TotalSeconds))))
                 plugin.Bar.StopPreview();
         }
-        else if (Theme.PrimaryButton("Preview the server bar"))
+        else if (Theme.PrimaryButton(Loc.T("Preview the server bar")))
         {
             plugin.Bar.StartPreview();
         }
 
-        Help("Shows made-up values in the server bar for 10 seconds, for every element ticked above, in their order. "
-             + "Changes made meanwhile show up right away.");
+        Help(Loc.T("Shows made-up values in the server bar for 10 seconds, for every element ticked above, in their order. Changes made meanwhile show up right away."));
     }
 
     private static bool DrawBarLayout(Configuration c)
@@ -789,30 +805,24 @@ public sealed class ConfigWindow : Window
 
     private static (string Label, string Example, string? Help) Describe(BarElement element) => element switch
     {
-        BarElement.JobIcon => ("Job icon", "(icon)", null),
-        BarElement.JobName => ("Job name", "DRK", null),
-        BarElement.Rank => ("Rank in the party", "#2", "Personal DPS and rDPS only, when in a party."),
-        BarElement.RoleGap => ("Rank in your role and gap", "#1 (+8%)",
-                               "Compared with players of your role only (tanks, healers or DPS): with the first one, "
-                               + "or with the second one when you are first. Uses rDPS when the metric is rDPS."),
-        BarElement.Value => ("Value", "21,234 DPS", null),
-        BarElement.Pace => ("Pace vs your best pull", "Best +4%",
-                            "Damage done so far compared with your best pull of the same encounter, at the same second."),
-        BarElement.BossHp => ("Boss HP", "HP 54%", "HP of the enemy with the most HP in the fight, read from the game."),
-        BarElement.Percentile => ("FFLogs percentile (estimate)", "~92",
-                                  "Your rDPS placed among FFLogs' rankings for your job on this fight. "
-                                  + "Needs FFLogs API credentials (FFLogs tab)."),
-        BarElement.Uptime => ("GCD uptime", "GCD 98.7%",
-                              "Share of the time an enemy was targetable during which your GCD was rolling or you were casting. "
-                              + "Deaths count as lost time. In an ultimate, uptime of the current phase."),
-        BarElement.PhaseDps => ("Ultimate phase boss DPS", "Boss 145,000 (+3.6%)",
-                                "In an ultimate, DPS on the bosses of the current phase only, and its gap to the DPS needed "
-                                + "for the phase enrage (DPS check tab). Green / red against that requirement."),
-        BarElement.Phase => ("Ultimate phase", "P1", "Current phase number, in the supported ultimates (DPS check tab)."),
-        BarElement.EnrageTimer => ("Enrage timer", "Enrage 3:12",
-                                   "Time left before the enrage entered for this fight in the DPS check tab. "
-                                   + "Red for the last 30 seconds."),
-        BarElement.Duration => ("Fight duration", "3:42", "Time since the pull. Stays on the final time once the fight is over."),
+        BarElement.Rank => (Loc.T("Rank in the party"), "#2", Loc.T("Personal DPS and rDPS only, when in a party.")),
+        BarElement.RoleGap => (Loc.T("Rank in your role and gap"), "#1 (+8%)",
+                               Loc.T("Compared with players of your role only (tanks, healers or DPS): with the first one, or with the second one when you are first. Uses rDPS when the metric is rDPS.")),
+        BarElement.Value => (Loc.T("Value"), Loc.T("21,234 DPS"), null),
+        BarElement.Pace => (Loc.T("Pace vs your best pull"), Loc.T("Best +4%"),
+                            Loc.T("Damage done so far compared with your best pull of the same encounter, at the same second.")),
+        BarElement.Percentile => (Loc.T("FFLogs percentile (estimate)"), "~92",
+                                  Loc.T("Your rDPS placed among FFLogs' rankings for your job on this fight. Needs FFLogs API credentials (FFLogs tab).")),
+        BarElement.Uptime => (Loc.T("GCD uptime"), Loc.T("GCD 98.7%"),
+                              Loc.T("Share of the time an enemy was targetable during which your GCD was rolling or you were casting. Deaths count as lost time. In an ultimate, uptime of the current phase.")),
+        BarElement.PhaseDps => (Loc.T("Ultimate phase boss DPS"), Loc.T("Boss 145,000 (+3.6%)"),
+                                Loc.T("In an ultimate, DPS on the bosses of the current phase only, and its gap to the DPS needed for the phase enrage (DPS check tab). Green / red against that requirement.")),
+        BarElement.Phase => (Loc.T("Ultimate phase"), "P1", Loc.T("Current phase number, in the supported ultimates (DPS check tab).")),
+        BarElement.EnrageTimer => (Loc.T("Enrage timer"), Loc.T("Enrage 3:12"),
+                                   Loc.T("Time left before the enrage entered for this fight in the DPS check tab. Red for the last 30 seconds.")),
+        BarElement.DotUptime => (Loc.T("DoT uptime"), Loc.T("DoT 97.1%"),
+                                 Loc.T("Jobs with a damage over time only: share of the time each of your DoTs was on the boss while it could be attacked. Several DoTs are shown one after the other.")),
+        BarElement.Duration => (Loc.T("Fight duration"), "3:42", Loc.T("Time since the pull. Stays on the final time once the fight is over.")),
         _ => (element.ToString(), string.Empty, null),
     };
 
@@ -820,27 +830,26 @@ public sealed class ConfigWindow : Window
     {
         var changed = false;
 
-        Theme.Hint("Min pDPS = boss HP / enrage time, or the value typed by hand when one of them is missing. "
-                   + "It colors the pDPS value and the enrage timer.");
+        Theme.Hint(Loc.T("Min pDPS = boss HP / enrage time, or the value typed by hand when one of them is missing. It colors the pDPS value and the enrage timer."));
 
         var boss = plugin.Boss.Current;
         var territory = plugin.CurrentTerritory;
         ImGui.TextDisabled(boss is not null
-                               ? $"Boss detected: {boss.Name} - {boss.MaxHp:N0} HP"
-                               : "Boss HP is read from the game during a fight (enemy with the most HP).");
-        ImGui.TextDisabled($"Current zone: {ZoneName(territory)} ({territory})");
+                               ? Loc.F("Boss detected: {0} - {1:N0} HP",boss.Name,boss.MaxHp)
+                               : Loc.T("Boss HP is read from the game during a fight (enemy with the most HP)."));
+        ImGui.TextDisabled(Loc.F("Current zone: {0} ({1})",ZoneName(territory),territory));
 
         ImGui.SetNextItemWidth(220);
-        ImGui.InputTextWithHint("##fightfilter", "Search a fight", ref fightFilter, 64);
+        ImGui.InputTextWithHint("##fightfilter", Loc.T("Search a fight"), ref fightFilter, 64);
         ImGui.Spacing();
 
         using (var child = ImRaii.Child("##dpschecks", new Vector2(-1, -1)))
         {
             if (child)
             {
-                changed |= DrawFightSection(FightCategory.Ultimate, "Ultimate", boss);
-                changed |= DrawFightSection(FightCategory.Savage, "Savage", boss);
-                changed |= DrawFightSection(FightCategory.Extreme, "Extreme", boss);
+                changed |= DrawFightSection(FightCategory.Ultimate, Loc.T("Ultimate"), boss);
+                changed |= DrawFightSection(FightCategory.Savage, Loc.T("Savage"), boss);
+                changed |= DrawFightSection(FightCategory.Extreme, Loc.T("Extreme"), boss);
                 changed |= DrawCustomChecks(boss);
             }
         }
@@ -864,11 +873,8 @@ public sealed class ConfigWindow : Window
 
         if (category == FightCategory.Ultimate)
         {
-            changed |= Checkbox("Track ultimate phases", c.UltimateMode, v => c.UltimateMode = v);
-            Help("In an ultimate the fight never stops between phases. Each supported phase gets its own timer, starting "
-                 + "when its boss becomes targetable, and only its own bosses count for the DPS check (adds are ignored). "
-                 + "Boss HP, Enrage timer and Ultimate phase boss DPS then follow the current phase. "
-                 + "Each phase's enrage is measured from the phase start.");
+            changed |= Checkbox(Loc.T("Track ultimate phases"), c.UltimateMode, v => c.UltimateMode = v);
+            Help(Loc.T("In an ultimate the fight never stops between phases. Each supported phase gets its own timer, starting when its boss becomes targetable, and only its own bosses count for the DPS check (adds are ignored). Enrage timer and Ultimate phase boss DPS then follow the current phase. Each phase's enrage is measured from the phase start."));
         }
 
         // Then one group per expansion, the most recent first (and open).
@@ -902,16 +908,16 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var changed = false;
         // The names are never cut: their column is as wide as the longest one, and the table scrolls when too narrow.
-        var nameWidth = NameColumnWidth("Fight", fights.Select(f => f.Name));
+        var nameWidth = NameColumnWidth(Loc.T("Fight"), fights.Select(f => f.Name));
         var layout = CheckTable(fights.Count + (category == FightCategory.Savage ? fights.Count / 4 : 0), nameWidth + Theme.Px(CheckColumnsWidth));
         using var table = ImRaii.Table($"##fights{id}", 5, layout.Flags, layout.Size, layout.InnerWidth);
         if (!table)
             return false;
 
-        ImGui.TableSetupColumn("Fight", ImGuiTableColumnFlags.WidthFixed, nameWidth);
-        ImGui.TableSetupColumn("Boss HP", ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
-        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
-        ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn(Loc.T("Fight"), ImGuiTableColumnFlags.WidthFixed, nameWidth);
+        ImGui.TableSetupColumn(Loc.T("Boss HP"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
+        ImGui.TableSetupColumn(Loc.T("Enrage (m:s)"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn(Loc.T("Min pDPS"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("##notes", ImGuiTableColumnFlags.WidthStretch, 1f);
         Theme.TableHeaders();
 
@@ -940,7 +946,7 @@ public sealed class ConfigWindow : Window
             else
                 ImGui.TextUnformatted(fight.Name);
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(here ? $"You are here (zone {fight.TerritoryId})." : $"Zone {fight.TerritoryId}");
+                ImGui.SetTooltip(here ? Loc.F("You are here (zone {0}).",fight.TerritoryId) : Loc.F("Zone {0}",fight.TerritoryId));
 
             using (ImRaii.PushColor(ImGuiCol.Text, Theme.TextFaint, builtIn is not null))
             {
@@ -995,7 +1001,7 @@ public sealed class ConfigWindow : Window
         var definition = UltimateDefinitions.All.FirstOrDefault(u => u.TerritoryId == fight.TerritoryId);
         if (definition is null)
         {
-            Theme.Hint("Phases not supported yet: one check for the whole fight.");
+            Theme.Hint(Loc.T("Phases not supported yet: one check for the whole fight."));
             return DrawFightTable(FightCategory.Ultimate, $"ult{fight.TerritoryId}", [fight], boss);
         }
 
@@ -1007,15 +1013,15 @@ public sealed class ConfigWindow : Window
             DrawPhaseTable(phase);
         }
 
-        ImGui.TextColored(Theme.Gold, "Whole fight");
-        Help("Optional: a check on the party DPS of the whole pull, used for the pDPS value of the server bar.");
+        ImGui.TextColored(Theme.Gold, Loc.T("Whole fight"));
+        Help(Loc.T("Optional: a check on the party DPS of the whole pull, used for the pDPS value of the server bar."));
         return DrawFightTable(FightCategory.Ultimate, $"ultall{fight.TerritoryId}", [fight], boss);
     }
 
     // "P1" -> "Phase 1"; named steps ("Limit Cut") stay as they are.
     private static string PhaseTitle(UltimatePhase phase) =>
         phase.Label.Length > 1 && phase.Label[0] == 'P' && phase.Label[1..].All(char.IsDigit)
-            ? $"Phase {phase.Label[1..]}"
+            ? Loc.F("Phase {0}",phase.Label[1..])
             : phase.Label;
 
     /// <summary>The boss row of an ultimate phase: combined HP, enrage, required DPS, timings from your pulls.</summary>
@@ -1024,17 +1030,17 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var tracker = plugin.Ultimates;
 
-        var nameWidth = NameColumnWidth("Boss", [phase.Name]);
+        var nameWidth = NameColumnWidth(Loc.T("Boss"), [phase.Name]);
         // The notes column holds the "Use last wipe" button: keep room for it too.
         var layout = CheckTable(1, nameWidth + Theme.Px(CheckColumnsWidth + 170));
         using var table = ImRaii.Table("##phase", 5, layout.Flags, layout.Size, layout.InnerWidth);
         if (!table)
             return;
 
-        ImGui.TableSetupColumn("Boss", ImGuiTableColumnFlags.WidthFixed, nameWidth);
-        ImGui.TableSetupColumn("Boss HP (all)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
-        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
-        ImGui.TableSetupColumn("Required DPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn(Loc.T("Boss"), ImGuiTableColumnFlags.WidthFixed, nameWidth);
+        ImGui.TableSetupColumn(Loc.T("Boss HP (all)"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
+        ImGui.TableSetupColumn(Loc.T("Enrage (m:s)"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn(Loc.T("Required DPS"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("##notes", ImGuiTableColumnFlags.WidthStretch, 1f);
         Theme.TableHeaders();
         ImGui.TableNextRow();
@@ -1042,7 +1048,7 @@ public sealed class ConfigWindow : Window
         ImGui.TableNextColumn();
         ImGui.TextUnformatted(phase.Name);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"Tracked: {string.Join(", ", phase.TrackedBosses)}");
+            ImGui.SetTooltip(Loc.F("Tracked: {0}",string.Join(", ", phase.TrackedBosses)));
 
         ImGui.TableNextColumn();
         DrawPhaseHp(phase);
@@ -1062,17 +1068,17 @@ public sealed class ConfigWindow : Window
         ImGui.TableNextColumn();
         if (tracker.LastWipes.TryGetValue(phase.Key, out var wipe))
         {
-            if (ImGui.SmallButton($"Use last wipe ({NumberFormat.Duration(wipe)})"))
+            if (ImGui.SmallButton(Loc.F("Use last wipe ({0})",NumberFormat.Duration(wipe))))
                 SetPhaseEnrage(phase.Key, Math.Round(wipe.TotalSeconds));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Phase time when your last pull ended in this phase, e.g. a wipe to the enrage.");
+                ImGui.SetTooltip(Loc.T("Phase time when your last pull ended in this phase, e.g. a wipe to the enrage."));
         }
 
         if (tracker.LastClears.TryGetValue(phase.Key, out var clear))
         {
             if (tracker.LastWipes.ContainsKey(phase.Key))
                 ImGui.SameLine();
-            ImGui.TextDisabled($"last clear {NumberFormat.Duration(clear)}");
+            ImGui.TextDisabled(Loc.F("last clear {0}",NumberFormat.Duration(clear)));
         }
     }
 
@@ -1082,11 +1088,10 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var changed = false;
 
-        if (!ImGui.CollapsingHeader("Other / custom###sectionCustom"))
+        if (!ImGui.CollapsingHeader(Loc.T("Other / custom###sectionCustom")))
             return false;
 
-        Theme.Hint("Any other zone, or a single encounter of a zone: an entry with an encounter name only applies to "
-                          + "that fight and wins over a zone-wide one. Zone 0 = any zone.");
+        Theme.Hint(Loc.T("Any other zone, or a single encounter of a zone: an entry with an encounter name only applies to that fight and wins over a zone-wide one. Zone 0 = any zone."));
 
         var territory = plugin.CurrentTerritory;
         var zoneName = ZoneName(territory);
@@ -1094,7 +1099,7 @@ public sealed class ConfigWindow : Window
 
         using (ImRaii.Disabled(territory == 0))
         {
-            if (ImGui.Button("Add current zone"))
+            if (ImGui.Button(Loc.T("Add current zone")))
             {
                 c.Thresholds.Add(new PartyDpsThreshold { TerritoryId = territory, Label = zoneName });
                 changed = true;
@@ -1104,7 +1109,7 @@ public sealed class ConfigWindow : Window
         ImGui.SameLine();
         using (ImRaii.Disabled(encounter.Length == 0))
         {
-            if (ImGui.Button(encounter.Length > 0 ? $"Add last encounter ({encounter})" : "Add last encounter"))
+            if (ImGui.Button(encounter.Length > 0 ? Loc.F("Add last encounter ({0})",encounter) : Loc.T("Add last encounter")))
             {
                 c.Thresholds.Add(new PartyDpsThreshold
                 {
@@ -1115,7 +1120,7 @@ public sealed class ConfigWindow : Window
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Add empty row"))
+        if (ImGui.Button(Loc.T("Add empty row")))
         {
             c.Thresholds.Add(new PartyDpsThreshold());
             changed = true;
@@ -1127,12 +1132,12 @@ public sealed class ConfigWindow : Window
         if (!table)
             return changed;
 
-        ImGui.TableSetupColumn("Zone ID", ImGuiTableColumnFlags.WidthFixed, Theme.Px(60));
-        ImGui.TableSetupColumn("Encounter (optional)", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthStretch, 1f);
-        ImGui.TableSetupColumn("Boss HP", ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
-        ImGui.TableSetupColumn("Enrage (m:s)", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
-        ImGui.TableSetupColumn("Min pDPS", ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn(Loc.T("Zone ID"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(60));
+        ImGui.TableSetupColumn(Loc.T("Encounter (optional)"), ImGuiTableColumnFlags.WidthStretch, 1f);
+        ImGui.TableSetupColumn(Loc.T("Label"), ImGuiTableColumnFlags.WidthStretch, 1f);
+        ImGui.TableSetupColumn(Loc.T("Boss HP"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(140));
+        ImGui.TableSetupColumn(Loc.T("Enrage (m:s)"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
+        ImGui.TableSetupColumn(Loc.T("Min pDPS"), ImGuiTableColumnFlags.WidthFixed, Theme.Px(90));
         ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, Theme.Px(24));
         Theme.TableHeaders();
 
@@ -1244,15 +1249,15 @@ public sealed class ConfigWindow : Window
     /// <summary>"built-in" with the values of each fight of the zone on hover.</summary>
     private static void DrawBuiltInNote(uint territory)
     {
-        ImGui.TextDisabled("built-in");
+        ImGui.TextDisabled(Loc.T("built-in"));
         if (!ImGui.IsItemHovered())
             return;
 
         var lines = FightDefaults.In(territory).Select(d =>
-            $"{FightDefaults.LocalName(d.Boss)}: {NumberFormat.Format(d.BossHp, NumberStyle.Grouped)} HP, enrage "
-            + (d.EnrageSeconds > 0 ? NumberFormat.Duration(TimeSpan.FromSeconds(d.EnrageSeconds)) : "unknown"));
-        ImGui.SetTooltip("Read from FFLogs: boss HP from recent logs, enrage from the wipes to the enrage after release.\n"
-                         + string.Join("\n", lines) + "\nType a value to use your own instead.");
+            Loc.F("{0}: {1} HP, enrage ",FightDefaults.LocalName(d.Boss),NumberFormat.Format(d.BossHp, NumberStyle.Grouped))
+            + (d.EnrageSeconds > 0 ? NumberFormat.Duration(TimeSpan.FromSeconds(d.EnrageSeconds)) : Loc.T("unknown")));
+        ImGui.SetTooltip(Loc.T("Read from FFLogs: boss HP from recent logs, enrage from the wipes to the enrage after release.\n")
+                         + string.Join("\n", lines) + Loc.T("\nType a value to use your own instead."));
     }
 
     // A listed fight's own check: its whole zone, no encounter name.
@@ -1300,7 +1305,7 @@ public sealed class ConfigWindow : Window
         ImGui.SameLine(0, 2);
         using (ImRaii.Disabled(boss is null))
         {
-            if (ImGui.SmallButton("Get"))
+            if (ImGui.SmallButton(Loc.T("Get")))
             {
                 result = boss!.MaxHp;
                 changed = true;
@@ -1309,8 +1314,7 @@ public sealed class ConfigWindow : Window
 
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
-            ImGui.SetTooltip("Use the max HP of the boss of the current fight (only in this fight's zone).\n"
-                             + "For a fight with several bosses or HP pools, add them up by hand.");
+            ImGui.SetTooltip(Loc.T("Use the max HP of the boss of the current fight (only in this fight's zone).\nFor a fight with several bosses or HP pools, add them up by hand."));
         }
 
         return changed;
@@ -1337,16 +1341,29 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var changed = false;
 
-        Theme.SectionHeader("When");
-        changed |= Checkbox("Print a summary in chat after each pull", c.ChatSummary, v => c.ChatSummary = v);
+        Theme.SectionHeader(Loc.T("When"));
+        changed |= Checkbox(Loc.T("Print a summary in chat after each pull"), c.ChatSummary, v => c.ChatSummary = v);
         using (ImRaii.Disabled(!c.ChatSummary))
         {
             ImGui.Indent();
-            changed |= Checkbox("Also in dungeons", c.ChatSummaryInDungeons, v => c.ChatSummaryInDungeons = v);
-            changed |= Checkbox("Also at the end of each ultimate phase", c.ChatSummaryPhases, v => c.ChatSummaryPhases = v);
-
+            changed |= Checkbox(Loc.T("Also in dungeons"), c.ChatSummaryInDungeons, v => c.ChatSummaryInDungeons = v);
+            changed |= Checkbox(Loc.T("Also at the end of each ultimate phase"), c.ChatSummaryPhases, v => c.ChatSummaryPhases = v);
             ImGui.Unindent();
-            Theme.SectionHeader("Values shown");
+        }
+
+        changed |= Checkbox(Loc.T("Print each party death in chat as it happens"), c.ChatDeaths, v => c.ChatDeaths = v);
+        Help(Loc.T("During the fight, for every party member (you included): who died, when, and what killed them, e.g. [Death] 7:35 Cyra Frostvale (DNC): Memento Mori (Necron, 3,948,501). Stops once the party wipes (the recap tells the rest). Party members far from you may be missed."));
+        using (ImRaii.Disabled(!c.ChatDeaths))
+        {
+            ImGui.Indent();
+            changed |= Checkbox(Loc.T("Show the overkill"), c.ChatDeathsOverkill, v => c.ChatDeathsOverkill = v);
+            Help(Loc.T("The damage of the killing hit beyond the HP that was left, e.g. ... (Necron, 3,948,501) overkill 3,812,240. Not shown for deaths without a hit (fall, debuff)."));
+            ImGui.Unindent();
+        }
+
+        using (ImRaii.Disabled(!c.ChatSummary))
+        {
+            Theme.SectionHeader(Loc.T("Values shown"));
             foreach (var (element, label) in SummaryLabels)
             {
                 // Same line as the previous checkbox when it fits.
@@ -1365,18 +1382,17 @@ public sealed class ConfigWindow : Window
                 }
             }
 
-            Theme.SectionHeader("Comparison");
-            changed |= Checkbox("Compare DPS, rDPS, GCD and pDPS with your best kill", c.ChatSummaryCompareBest,
+            Theme.SectionHeader(Loc.T("Comparison"));
+            changed |= Checkbox(Loc.T("Compare DPS, rDPS, GCD and pDPS with your best kill"), c.ChatSummaryCompareBest,
                                 v => c.ChatSummaryCompareBest = v);
-            Help("After each value: NEW BEST with the gain, or the gap to your best kill of the same fight. Wipes are never compared.");
-            Theme.Hint("e.g. [Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | GCD 98.7%");
+            Help(Loc.T("After each value: NEW BEST with the gain, or the gap to your best kill of the same fight. Wipes are never compared."));
+            Theme.Hint(Loc.T("e.g. [Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | GCD 98.7%"));
         }
 
-        Theme.SectionHeader("Preview");
-        if (Theme.PrimaryButton("Preview the chat summary"))
+        Theme.SectionHeader(Loc.T("Preview"));
+        if (Theme.PrimaryButton(Loc.T("Preview the chat summary")))
             plugin.Pulls.PrintPreview();
-        Help("Prints a summary with made-up values in your chat (only you see it), showing the values ticked above. "
-             + "With ultimate phase summaries on, a phase summary too.");
+        Help(Loc.T("Prints a summary with made-up values in your chat (only you see it), showing the values ticked above. With ultimate phase summaries on, a phase summary too."));
 
         if (changed)
             plugin.OnConfigChanged();
@@ -1387,12 +1403,33 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var changed = false;
 
-        Theme.SectionHeader("Recording");
-        changed |= Checkbox("Only record pulls inside duties", c.RecordOnlyInDuties, v => c.RecordOnlyInDuties = v);
+        Theme.SectionHeader(Loc.T("Recording"));
+        changed |= Checkbox(Loc.T("Only record pulls inside duties"), c.RecordOnlyInDuties, v => c.RecordOnlyInDuties = v);
+
+        ImGui.TextUnformatted(Loc.T("Content recorded"));
+        Help(Loc.T("Kinds of content whose pulls are saved in the history. The others are not kept (their chat summary is still printed). Pulls already recorded stay."));
+        var categories = ContentCategories.Labels;
+        for (var i = 0; i < categories.Length; i++)
+        {
+            var (category, label) = categories[i];
+            if (i > 0)
+            {
+                // Same line as the previous checkbox when it fits.
+                ImGui.SameLine();
+                var width = ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X + ImGui.CalcTextSize(label).X;
+                if (ImGui.GetContentRegionAvail().X < width)
+                    ImGui.NewLine();
+            }
+
+            var on = (c.RecordedCategories & category) != 0;
+            changed |= Checkbox($"{label}##record{i}", on, v => c.RecordedCategories = v ? c.RecordedCategories | category : c.RecordedCategories & ~category);
+        }
+
+        ImGui.Dummy(new Vector2(0, Theme.Px(4)));
 
         var min = c.MinPullSeconds;
         ImGui.SetNextItemWidth(120);
-        if (ImGui.InputInt("Ignore pulls shorter than (s)", ref min))
+        if (ImGui.InputInt(Loc.T("Ignore pulls shorter than (s)"), ref min))
         {
             c.MinPullSeconds = Math.Clamp(min, 0, 600);
             changed = true;
@@ -1400,35 +1437,37 @@ public sealed class ConfigWindow : Window
 
         var max = c.MaxHistory;
         ImGui.SetNextItemWidth(120);
-        if (ImGui.InputInt("Pulls kept in history", ref max, 50))
+        if (ImGui.InputInt(Loc.T("Pulls kept in history"), ref max, 50))
         {
             c.MaxHistory = Math.Clamp(max, 10, 5000);
             changed = true;
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Number of pulls saved (10 to 5000, 300 by default). Past it, the oldest pulls are removed when a new one is recorded.");
+            ImGui.SetTooltip(Loc.T("Number of pulls saved (10 to 5000, 300 by default). Past it, the oldest pulls are removed when a new one is recorded."));
 
         var window = c.GraphWindowSeconds;
         ImGui.SetNextItemWidth(120);
-        if (ImGui.SliderInt("Rolling DPS window (s)", ref window, 3, 60))
+        if (ImGui.SliderInt(Loc.T("Rolling DPS window (s)"), ref window, 3, 60))
         {
             c.GraphWindowSeconds = window;
             changed = true;
         }
 
-        Theme.SectionHeader("Failed mechanics");
-        changed |= Checkbox("Ignore tankbuster vulnerabilities on tanks", c.MistakesIgnoreTankbusters,
+        Theme.SectionHeader(Loc.T("Failed mechanics"));
+        changed |= Checkbox(Loc.T("Ignore tankbuster vulnerabilities on tanks"), c.MistakesIgnoreTankbusters,
                             v => c.MistakesIgnoreTankbusters = v);
         Theme.HelpMarker(
-            "A failed mechanic is an enemy action putting a penalty debuff on a party member: Vulnerability Up "
-            + "(physical, magic), Damage Down, Down for the Count.\nTankbusters often put a vulnerability on the tanks on "
-            + "purpose: with this on, a vulnerability on a tank from an action hitting at most two players is not counted.");
-
-        Theme.SectionHeader("History");
-        Theme.Badge($"{plugin.History.Pulls.Count} / {c.MaxHistory} pulls", plugin.History.Pulls.Count >= c.MaxHistory ? Theme.Warn : Theme.Gold);
+            Loc.T("A failed mechanic is an enemy action putting a penalty debuff on a party member: Vulnerability Up (physical, magic), Damage Down, Down for the Count.\nTankbusters often put a vulnerability on the tanks on purpose: with this on, a vulnerability on a tank from an action hitting at most two players is not counted."));
+        Theme.Icon(FontAwesomeIcon.ExclamationTriangle, Theme.Warn);
         ImGui.SameLine();
-        Theme.Hint("recorded. /dpsbar history to browse them.");
+        using (ImRaii.PushColor(ImGuiCol.Text, Theme.Warn))
+            ImGui.TextWrapped(Loc.T("Work in progress: this option is not perfect yet, some tankbusters may still be counted (or other hits ignored)."));
+
+        Theme.SectionHeader(Loc.T("History"));
+        Theme.Badge(Loc.F("{0} / {1} pulls",plugin.History.Pulls.Count,c.MaxHistory), plugin.History.Pulls.Count >= c.MaxHistory ? Theme.Warn : Theme.Gold);
+        ImGui.SameLine();
+        Theme.Hint(Loc.T("recorded. /raidcompanion history to browse them."));
 
         if (changed)
             plugin.OnConfigChanged();
@@ -1444,7 +1483,7 @@ public sealed class ConfigWindow : Window
         var manual = c.UltimatePhaseHp.GetValueOrDefault(phase.Key);
 
         ImGui.SetNextItemWidth(-1);
-        var hint = detected > 0 ? NumberFormat.Format(detected, NumberStyle.Grouped) : "not seen yet";
+        var hint = detected > 0 ? NumberFormat.Format(detected, NumberStyle.Grouped) : Loc.T("not seen yet");
         var text = manual > 0 ? manual.ToString("0") : string.Empty;
         if (ImGui.InputTextWithHint("##hp", hint, ref text, 16))
         {
@@ -1458,9 +1497,9 @@ public sealed class ConfigWindow : Window
         if (ImGui.IsItemHovered())
         {
             var bosses = phase.TrackedBosses.Count > 1 ? $" ({string.Join(" + ", phase.TrackedBosses)})" : string.Empty;
-            ImGui.SetTooltip($"Combined max HP of the phase's bosses{bosses}.\n"
-                             + (detected > 0 ? $"Read in game: {detected:N0}.\n" : "Read automatically the first time the phase is reached.\n")
-                             + "Type a value to override it, clear the field to go back to the detected HP.");
+            ImGui.SetTooltip(Loc.F("Combined max HP of the phase's bosses{0}.\n",bosses)
+                             + (detected > 0 ? Loc.F("Read in game: {0:N0}.\n",detected) : Loc.T("Read automatically the first time the phase is reached.\n"))
+                             + Loc.T("Type a value to override it, clear the field to go back to the detected HP."));
         }
     }
 
@@ -1479,25 +1518,23 @@ public sealed class ConfigWindow : Window
         var c = plugin.Configuration;
         var percentiles = plugin.Percentiles;
 
-        Theme.SectionHeader("Percentile");
-        if (Checkbox("Estimate the FFLogs percentile of your rDPS", c.ShowPercentile, v => c.ShowPercentile = v))
+        Theme.SectionHeader(Loc.T("Percentile"));
+        if (Checkbox(Loc.T("Estimate the FFLogs percentile of your rDPS"), c.ShowPercentile, v => c.ShowPercentile = v))
             plugin.OnConfigChanged();
 
-        Theme.Hint("Uses the FFLogs API v2. On fflogs.com, open your profile > API Clients (fflogs.com/api/clients), "
-                          + "create a client (any name, redirect URL http://localhost) and paste its Client ID and "
-                          + "Client Secret below. The old \"V1 Client Key\" does not work with this API.");
-        Theme.SectionHeader("API credentials");
+        Theme.Hint(Loc.T("Uses the FFLogs API v2. On fflogs.com, open your profile > API Clients (fflogs.com/api/clients), create a client (any name, redirect URL http://localhost) and paste its Client ID and Client Secret below. The old \"V1 Client Key\" does not work with this API."));
+        Theme.SectionHeader(Loc.T("API credentials"));
 
         var credentialsChanged = false;
         var clientId = c.FflogsClientId;
-        if (ImGui.InputText("Client ID", ref clientId, 128))
+        if (ImGui.InputText(Loc.T("Client ID"), ref clientId, 128))
         {
             c.FflogsClientId = clientId.Trim();
             credentialsChanged = true;
         }
 
         var secret = c.FflogsClientSecret;
-        if (ImGui.InputText("Client Secret", ref secret, 128, ImGuiInputTextFlags.Password))
+        if (ImGui.InputText(Loc.T("Client Secret"), ref secret, 128, ImGuiInputTextFlags.Password))
         {
             c.FflogsClientSecret = secret.Trim();
             credentialsChanged = true;
@@ -1511,26 +1548,26 @@ public sealed class ConfigWindow : Window
 
         using (ImRaii.Disabled(!percentiles.HasCredentials || percentiles.Testing))
         {
-            if (Theme.GhostButton(percentiles.Testing ? "Testing..." : "Test connection"))
+            if (Theme.GhostButton(percentiles.Testing ? Loc.T("Testing...") : Loc.T("Test connection")))
                 percentiles.TestConnection();
         }
 
         if (percentiles.TestResult is { } result)
         {
             ImGui.SameLine();
-            ImGui.TextColored(result.Ok ? Theme.Good : Theme.Bad, result.Ok ? result.Message : $"Failed: {result.Message}");
+            ImGui.TextColored(result.Ok ? Theme.Good : Theme.Bad, result.Ok ? result.Message : Loc.F("Failed: {0}",result.Message));
         }
 
-        Theme.SectionHeader("Current fight");
+        Theme.SectionHeader(Loc.T("Current fight"));
         var territory = plugin.CurrentTerritory;
         var boss = plugin.Boss.Current;
-        ImGui.TextDisabled($"Current fight: {percentiles.Describe(territory, boss?.NameId ?? 0)}");
+        ImGui.TextDisabled(Loc.F("Current fight: {0}",percentiles.Describe(territory, boss?.NameId ?? 0)));
         if (boss is null)
-            ImGui.TextDisabled("(the boss is detected during a fight)");
+            ImGui.TextDisabled(Loc.T("(the boss is detected during a fight)"));
 
         var forced = c.FflogsEncounterOverrides.GetValueOrDefault(territory);
         ImGui.SetNextItemWidth(120);
-        if (ImGui.InputInt($"FFLogs encounter id for this zone ({territory})", ref forced, 0))
+        if (ImGui.InputInt(Loc.F("FFLogs encounter id for this zone ({0})",territory), ref forced, 0))
         {
             if (forced > 0)
                 c.FflogsEncounterOverrides[territory] = forced;
@@ -1539,52 +1576,48 @@ public sealed class ConfigWindow : Window
             plugin.OnConfigChanged();
         }
 
-        Help("Only needed if the automatic match by boss name fails. The id is in the FFLogs URL of the fight "
-             + "(fflogs.com/zone/rankings/...?boss=ID). 0 = automatic.");
+        Help(Loc.T("Only needed if the automatic match by boss name fails. The id is in the FFLogs URL of the fight (fflogs.com/zone/rankings/...?boss=ID). 0 = automatic."));
 
         if (percentiles.LastError is { } err)
             ImGui.TextColored(Theme.Bad, err);
 
-        Theme.SectionHeader("How it works");
-        Theme.Hint("The estimate compares your rDPS to the best parse of each character for your job "
-                          + "(current partition). During the fight it is only a trend: rDPS jumps around burst windows.");
+        Theme.SectionHeader(Loc.T("How it works"));
+        Theme.Hint(Loc.T("The estimate compares your rDPS to the best parse of each character for your job (current partition). During the fight it is only a trend: rDPS jumps around burst windows."));
     }
 
     private void DrawSourceTab()
     {
         var c = plugin.Configuration;
 
-        Theme.SectionHeader("Source");
+        Theme.SectionHeader(Loc.T("Source"));
         // The recommended source first.
         CombatSourceKind[] kinds = [CombatSourceKind.Native, CombatSourceKind.Auto, CombatSourceKind.Act];
-        string[] labels = ["Built-in only (recommended)", "Auto (ACT if available, else built-in)", "ACT only"];
+        string[] labels = [Loc.T("Built-in only (recommended)"), Loc.T("Auto (ACT if available, else built-in)"), Loc.T("ACT only")];
         var source = Array.IndexOf(kinds, c.Source);
         ImGui.SetNextItemWidth(Theme.Px(300));
-        if (ImGui.Combo("Source", ref source, labels, labels.Length))
+        if (ImGui.Combo(Loc.T("Source"), ref source, labels, labels.Length))
         {
             c.Source = kinds[source];
             plugin.OnConfigChanged();
         }
 
-        Help("The built-in tracker reads the damage straight from the game: no ACT needed, and it is the one that "
-             + "computes rDPS and tells what killed you. ACT is only useful if you already run it.");
+        Help(Loc.T("The built-in tracker reads the damage straight from the game: no ACT needed, and it is the one that computes rDPS and tells what killed you. ACT is only useful if you already run it."));
 
-        ImGui.TextDisabled($"In use: {plugin.Sources.Current.Name}");
+        ImGui.TextDisabled(Loc.F("In use: {0}",plugin.Sources.Current.Name));
         ImGui.Spacing();
 
-        if (ImGui.CollapsingHeader("ACT / OverlayPlugin", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader(Loc.T("ACT / OverlayPlugin"), ImGuiTreeNodeFlags.DefaultOpen))
         {
-            Theme.Hint("In ACT: Plugins > OverlayPlugin WSServer, then start the server. "
-                              + "Default address is 127.0.0.1:10501.");
+            Theme.Hint(Loc.T("In ACT: Plugins > OverlayPlugin WSServer, then start the server. Default address is 127.0.0.1:10501."));
 
-            ImGui.InputText("Host", ref hostInput, 128);
-            ImGui.InputInt("Port", ref portInput);
+            ImGui.InputText(Loc.T("Host"), ref hostInput, 128);
+            ImGui.InputInt(Loc.T("Port"), ref portInput);
             portInput = Math.Clamp(portInput, 1, 65535);
 
             var dirty = hostInput != c.Host || portInput != c.Port;
             using (ImRaii.Disabled(!dirty))
             {
-                if (ImGui.Button("Apply"))
+                if (ImGui.Button(Loc.T("Apply")))
                 {
                     c.Host = hostInput.Trim();
                     c.Port = portInput;
@@ -1593,26 +1626,23 @@ public sealed class ConfigWindow : Window
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Reconnect now"))
+            if (ImGui.Button(Loc.T("Reconnect now")))
                 plugin.OnConfigChanged(reconnect: true);
 
             ImGui.SameLine();
-            if (ImGui.Button("Reset"))
+            if (ImGui.Button(Loc.T("Reset")))
             {
                 hostInput = "127.0.0.1";
                 portInput = 10501;
             }
 
-            ImGui.TextDisabled($"Status: {plugin.Sources.Act.StatusText}");
+            ImGui.TextDisabled(Loc.F("Status: {0}",plugin.Sources.Act.StatusText));
         }
 
-        if (ImGui.CollapsingHeader("Built-in tracker", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader(Loc.T("Built-in tracker"), ImGuiTreeNodeFlags.DefaultOpen))
         {
-            Theme.Hint("Reads the damage of your party directly from the game, without ACT. "
-                              + "Pets are merged into their owner and the Limit Break is counted separately. "
-                              + "DoTs whose owner cannot be determined are ignored, so values can be slightly "
-                              + "lower than ACT's.");
-            ImGui.TextDisabled($"Status: {plugin.Sources.Native.StatusText}");
+            Theme.Hint(Loc.T("Reads the damage of your party directly from the game, without ACT. Pets are merged into their owner and the Limit Break is counted separately. DoTs whose owner cannot be determined are ignored, so values can be slightly lower than ACT's."));
+            ImGui.TextDisabled(Loc.F("Status: {0}",plugin.Sources.Native.StatusText));
         }
     }
 
@@ -1637,5 +1667,5 @@ public sealed class ConfigWindow : Window
     private static string ZoneName(uint territory) =>
         Plugin.DataManager.GetExcelSheet<TerritoryType>().TryGetRow(territory, out var row)
             ? row.PlaceName.Value.Name.ExtractText()
-            : "Unknown";
+            : Loc.T("Unknown");
 }

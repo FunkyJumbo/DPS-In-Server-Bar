@@ -20,10 +20,11 @@ public sealed class OpenerCompactWindow : Window
     private IDisposable? styleScope;
 
     public OpenerCompactWindow(Plugin plugin, OpenerWindow full)
-        : base("Opener practice (compact)###DpsInServerBarOpenerCompact",
+        : base(Loc.T("Opener practice (compact)###DpsInServerBarOpenerCompact"),
                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar
                | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize)
     {
+        Loc.Changed += () => WindowName = Loc.T("Opener practice (compact)###DpsInServerBarOpenerCompact");
         this.plugin = plugin;
         this.full = full;
         RespectCloseHotkey = false;
@@ -76,22 +77,22 @@ public sealed class OpenerCompactWindow : Window
         ImGui.SetWindowFontScale(1f);
         var size = (int)Math.Round(config.OpenerCompactScale * 100);
         ImGui.SetNextItemWidth(Theme.Px(140));
-        if (ImGui.SliderInt("Size", ref size, 50, 150, "%d%%"))
+        if (ImGui.SliderInt(Loc.T("Size"), ref size, 50, 150, "%d%%"))
             config.OpenerCompactScale = size / 100f;
         if (ImGui.IsItemDeactivatedAfterEdit())
             config.Save();
 
         var percent = (int)Math.Round(config.OpenerOpacity * 100);
         ImGui.SetNextItemWidth(Theme.Px(140));
-        if (ImGui.SliderInt("Background", ref percent, 0, 100, "%d%%"))
+        if (ImGui.SliderInt(Loc.T("Background"), ref percent, 0, 100, "%d%%"))
             config.OpenerOpacity = percent / 100f;
         if (ImGui.IsItemDeactivatedAfterEdit())
             config.Save();
 
         ImGui.Separator();
-        if (ImGui.MenuItem("Full view"))
+        if (ImGui.MenuItem(Loc.T("Full view")))
             plugin.SetOpenerCompact(false);
-        if (ImGui.MenuItem("Close"))
+        if (ImGui.MenuItem(Loc.T("Close")))
             plugin.CloseOpener();
     }
 }

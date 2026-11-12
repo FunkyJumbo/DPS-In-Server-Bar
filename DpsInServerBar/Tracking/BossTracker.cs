@@ -25,6 +25,9 @@ public sealed class BossTracker
     private readonly IDataManager dataManager;
     private readonly Dictionary<ulong, uint> casting = new();
     private readonly Dictionary<uint, string> actionNames = new();
+    // Enemies seen targetable during the fight in progress: an invisible actor that is never targetable (often with a
+    // huge HP pool, e.g. Perfect Alexander during the first phases of TEA) is not the boss.
+    private readonly HashSet<ulong> engaged = [];
     private bool wasInCombat;
 
     public BossTracker(IObjectTable objectTable, ICondition condition, IDataManager dataManager)
@@ -48,6 +51,7 @@ public sealed class BossTracker
             Current = null;
             LastCast = string.Empty;
             casting.Clear();
+            engaged.Clear();
         }
 
         wasInCombat = inCombat;
@@ -68,6 +72,10 @@ public sealed class BossTracker
             // Helpers without HP or a name cast most mechanics: their casts count too.
             WatchCast(npc);
             if (npc.MaxHp == 0)
+                continue;
+            if (npc.IsTargetable)
+                engaged.Add(npc.GameObjectId);
+            if (!engaged.Contains(npc.GameObjectId))
                 continue;
 
             // Prefer enemies actually fighting, then the biggest HP pool.

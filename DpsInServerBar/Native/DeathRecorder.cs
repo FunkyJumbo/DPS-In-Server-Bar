@@ -14,6 +14,9 @@ public sealed record DeathInfo(DateTime TimeUtc, string Ability, string Source, 
     /// <summary>HP left just before the death.</summary>
     public uint HpBefore { get; init; }
 
+    /// <summary>Damage of the lethal hit(s) beyond the HP that was left, 0 when no hit killed.</summary>
+    public long Overkill { get; init; }
+
     /// <summary>The last hits taken before the death, oldest first.</summary>
     public IReadOnlyList<DeathHit> Recap { get; init; } = [];
 }
@@ -59,6 +62,7 @@ public sealed class DeathRecorder
     private readonly List<Hit> hits = [];
     private (uint StatusId, uint SourceId, float Remaining)[] lastDebuffs = [];
     private uint lastAliveHp;
+    private DateTime lastAliveUtc;
     private Func<uint, string> nameOf = _ => string.Empty;
     private bool wasDead;
     private bool observed;
@@ -87,7 +91,7 @@ public sealed class DeathRecorder
         AddHit(new Hit(DateTime.UtcNow, ActionName(actionType, actionId), source, damage));
 
     public void OnDotTaken(uint statusId, string source, long damage) =>
-        AddHit(new Hit(DateTime.UtcNow, $"{StatusName(statusId)} (DoT)", source, damage));
+        AddHit(new Hit(DateTime.UtcNow, Loc.F("{0} (DoT)",StatusName(statusId)), source, damage));
 
     /// <summary>
     /// Called every frame: records your HP, height and debuffs while alive, catches a death whose packet was missed and
@@ -107,6 +111,7 @@ public sealed class DeathRecorder
         if (!isDead)
         {
             lastAliveHp = player.CurrentHp;
+            lastAliveUtc = now;
             heights.Enqueue((now, player.Position.Y));
             while (heights.Count > 0 && now - heights.Peek().TimeUtc > FallWindow)
                 heights.Dequeue();
@@ -152,15 +157,24 @@ public sealed class DeathRecorder
         else if (delayed is not null)
             LastDeath = delayed.ToDeath(now);
         else if (ExpiringDebuff() is { } debuff)
-            LastDeath = new DeathInfo(now, $"{StatusName(debuff.StatusId)} (debuff)", nameOf(debuff.SourceId), 0);
+            LastDeath = new DeathInfo(now, Loc.F("{0} (debuff)",StatusName(debuff.StatusId)), nameOf(debuff.SourceId), 0);
         else if (FellBeforeDeath())
             LastDeath = new DeathInfo(now, Fall, string.Empty, 0);
         else
             LastDeath = new DeathInfo(now, Instant, string.Empty, 0);
 
+        // Overkill: the hits landed since the HP was last seen (the named hit when the HP showed none of them), minus that HP.
+        long overkill = 0;
+        if (LastDeath.Damage > 0)
+        {
+            var landed = hits.Where(h => h.TimeUtc > lastAliveUtc).Sum(h => h.Damage);
+            overkill = Math.Max(0, Math.Max(landed, LastDeath.Damage) - lastAliveHp);
+        }
+
         LastDeath = LastDeath with
         {
             HpBefore = lastAliveHp,
+            Overkill = overkill,
             Recap = hits.TakeLast(RecapHits)
                         .Select(h => new DeathHit(Math.Round((now - h.TimeUtc).TotalSeconds, 1), h.Ability, h.Source, h.Damage))
                         .ToList(),
@@ -213,14 +227,14 @@ public sealed class DeathRecorder
         if (actionType != 1 || !dataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>().TryGetRow(actionId, out var row))
             return $"#{actionId}";
         if (row.ActionCategory.RowId == AutoAttackCategory)
-            return "Auto-attack";
+            return Loc.T("Auto-attack");
         return row.Name.ExtractText() is { Length: > 0 } name ? name : $"#{actionId}";
     }
 
     private string StatusName(uint statusId) =>
         dataManager.GetExcelSheet<Status>().TryGetRow(statusId, out var row) && row.Name.ExtractText() is { Length: > 0 } name
             ? name
-            : "damage over time";
+            : Loc.T("damage over time");
 
     private sealed record Hit(DateTime TimeUtc, string Ability, string Source, long Damage)
     {

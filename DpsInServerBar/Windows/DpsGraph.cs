@@ -30,7 +30,7 @@ public sealed class DpsGraph
     {
         var kind = ShowUptime ? 1 : 0;
         ImGui.SetNextItemWidth(90);
-        if (ImGui.Combo("##graphkind", ref kind, "DPS\0Uptime\0"))
+        if (ImGui.Combo("##graphkind", ref kind, Loc.T("DPS\0Uptime\0")))
             ShowUptime = kind == 1;
 
         if (ShowUptime)
@@ -39,17 +39,17 @@ public sealed class DpsGraph
         ImGui.SameLine();
         var party = ShowParty ? 1 : 0;
         ImGui.SetNextItemWidth(110);
-        if (ImGui.Combo("##graphmetric", ref party, "Personal\0Party\0"))
+        if (ImGui.Combo("##graphmetric", ref party, Loc.T("Personal\0Party\0")))
             ShowParty = party == 1;
 
         ImGui.SameLine();
         var rolling = ShowRolling;
-        if (ImGui.Checkbox($"Rolling ({window}s)", ref rolling))
+        if (ImGui.Checkbox(Loc.F("Rolling ({0}s)",window), ref rolling))
             ShowRolling = rolling;
 
         ImGui.SameLine();
         var average = ShowAverage;
-        if (ImGui.Checkbox("Encounter average", ref average))
+        if (ImGui.Checkbox(Loc.T("Encounter average"), ref average))
             ShowAverage = average;
     }
 
@@ -59,9 +59,9 @@ public sealed class DpsGraph
         if (cumulative.Length < 2)
             return;
         if (ShowRolling)
-            series.Add(new Series($"{prefix} rolling", Timeline.Rolling(cumulative, window)));
+            series.Add(new Series(Loc.F("{0} rolling",prefix), Timeline.Rolling(cumulative, window)));
         if (ShowAverage)
-            series.Add(new Series($"{prefix} average", Timeline.Average(cumulative)));
+            series.Add(new Series(Loc.F("{0} average",prefix), Timeline.Average(cumulative)));
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public sealed class DpsGraph
     {
         if (pulls.Count == 0 || pulls[0].Available.Length < 2)
         {
-            ImGui.TextDisabled("No uptime data for this fight.");
+            ImGui.TextDisabled(Loc.T("No uptime data for this fight."));
             return;
         }
 
@@ -82,12 +82,12 @@ public sealed class DpsGraph
         if (!ImPlot.BeginPlot(id, new Vector2(-1, Math.Max(height, MinHeight)), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
             return;
 
-        ImPlot.SetupAxes("Time (s)", "Uptime %", ImPlotAxisFlags.AutoFit, ImPlotAxisFlags.None);
+        ImPlot.SetupAxes(Loc.T("Time (s)"), Loc.T("Uptime %"), ImPlotAxisFlags.AutoFit, ImPlotAxisFlags.None);
         ImPlot.SetupAxisLimits(ImAxis.Y1, 0, 105, ImPlotCond.Always);
 
         var downtime = Timeline.Downtime(pulls[0].Available);
         ImPlot.SetNextFillStyle(Theme.Alpha(Theme.TextFaint, 0.35f));
-        ImPlot.PlotShaded("No target", ref downtime[0], downtime.Length, 0, 1, 0, ImPlotShadedFlags.None, 0, sizeof(float));
+        ImPlot.PlotShaded(Loc.T("No target"), ref downtime[0], downtime.Length, 0, 1, 0, ImPlotShadedFlags.None, 0, sizeof(float));
 
         var index = 0;
         foreach (var (label, available, active) in pulls)
@@ -117,9 +117,9 @@ public sealed class DpsGraph
     {
         foreach (var (kind, label, color) in new[]
                  {
-                     (GcdGapKind.NoGcd, "No GCD", Theme.Bad),
-                     (GcdGapKind.Clipping, "Clipping", Theme.Warn),
-                     (GcdGapKind.Late, "Late", Theme.TextMuted),
+                     (GcdGapKind.NoGcd, Loc.T("No GCD"), Theme.Bad),
+                     (GcdGapKind.Clipping, Loc.T("Clipping"), Theme.Warn),
+                     (GcdGapKind.Late, Loc.T("Late"), Theme.TextMuted),
                  })
         {
             var ofKind = gaps.Where(g => g.Kind == kind).ToList();
@@ -162,7 +162,7 @@ public sealed class DpsGraph
 
         var xs = deaths.Select(d => (float)d.AtSeconds).ToArray();
         ImPlot.SetNextLineStyle(Theme.Alpha(Theme.Bad, 0.8f), 1.5f);
-        ImPlot.PlotInfLines("Deaths", ref xs[0], xs.Length, ImPlotInfLinesFlags.None, 0, sizeof(float));
+        ImPlot.PlotInfLines(Loc.T("Deaths"), ref xs[0], xs.Length, ImPlotInfLinesFlags.None, 0, sizeof(float));
 
         if (!ImPlot.IsPlotHovered())
             return;
@@ -170,7 +170,7 @@ public sealed class DpsGraph
         var mouse = ImPlot.GetPlotMousePos();
         var near = deaths.Where(d => Math.Abs(d.AtSeconds - mouse.X) <= 1.5).ToList();
         if (near.Count > 0)
-            ImGui.SetTooltip(string.Join("\n", near.Select(d => $"{NumberFormat.Duration(TimeSpan.FromSeconds(d.AtSeconds))}  {d.Player} died: {d.Cause}")));
+            ImGui.SetTooltip(string.Join("\n", near.Select(d => Loc.F("{0}  {1} died: {2}",NumberFormat.Duration(TimeSpan.FromSeconds(d.AtSeconds)),Names.Show(d.Player),d.Cause))));
     }
 
     /// <summary>
@@ -222,16 +222,16 @@ public sealed class DpsGraph
             return null;
 
         var ultimate = phases is { Count: > 0 };
-        ImPlot.SetupAxes(xLabel, ultimate ? "Phase (boss HP taken)" : "Boss HP taken %", ImPlotAxisFlags.None,
+        ImPlot.SetupAxes(xLabel, ultimate ? Loc.T("Phase (boss HP taken)") : Loc.T("Boss HP taken %"), ImPlotAxisFlags.None,
                          ImPlotAxisFlags.NoLabel | (ultimate ? ImPlotAxisFlags.NoTickLabels : ImPlotAxisFlags.None));
         var xMin = 0.0; // the graph starts from nothing done, at 0
         var xMax = Math.Max(xs.Max(), xMin + 1);
-        var margin = (xMax - xMin) * 0.02 + (xLabel == "Pull" ? 0.3 : 0);
+        var margin = (xMax - xMin) * 0.02 + (xLabel == Loc.T("Pull") ? 0.3 : 0);
         ImPlot.SetupAxisLimits(ImAxis.X1, xMin, xMax + margin, ImPlotCond.Always);
         ImPlot.SetupAxisLimits(ImAxis.Y1, 0, max * 1.05, ImPlotCond.Always);
 
         // Readable ticks: whole pulls, or hours and minutes (not fractions of an hour).
-        var (tickValues, tickLabels) = xLabel == "Pull" ? PullTicks(xMax) : HourTicks(xMax);
+        var (tickValues, tickLabels) = xLabel == Loc.T("Pull") ? PullTicks(xMax) : HourTicks(xMax);
         ImPlot.SetupAxisTicks(ImAxis.X1, ref tickValues[0], tickValues.Length, tickLabels);
 
         // Ultimate: a line between phases, each phase named in its band.
@@ -268,22 +268,22 @@ public sealed class DpsGraph
             var startX = new[] { 0f, x[first] };
             var startY = new[] { 0f, ys[first] };
             ImPlot.SetNextLineStyle(Theme.Series[0], 2f);
-            ImPlot.PlotLine("Pull", ref startX[0], ref startY[0], 2, ImPlotLineFlags.None, 0, sizeof(float));
+            ImPlot.PlotLine(Loc.T("Pull"), ref startX[0], ref startY[0], 2, ImPlotLineFlags.None, 0, sizeof(float));
         }
 
         ImPlot.SetNextLineStyle(Theme.Alpha(Theme.Good, 0.7f), 1.5f);
-        ImPlot.PlotLine("Best so far", ref x[0], ref bestSoFar[0], x.Length, ImPlotLineFlags.SkipNaN, 0, sizeof(float));
+        ImPlot.PlotLine(Loc.T("Best so far"), ref x[0], ref bestSoFar[0], x.Length, ImPlotLineFlags.SkipNaN, 0, sizeof(float));
 
         ImPlot.SetNextLineStyle(Theme.Series[0], 2f);
         ImPlot.SetNextMarkerStyle(ImPlotMarker.Circle, 4f);
-        ImPlot.PlotLine("Pull", ref x[0], ref ys[0], x.Length, ImPlotLineFlags.SkipNaN, 0, sizeof(float));
+        ImPlot.PlotLine(Loc.T("Pull"), ref x[0], ref ys[0], x.Length, ImPlotLineFlags.SkipNaN, 0, sizeof(float));
 
         var killXs = x.Where((_, i) => kills[i] && !float.IsNaN(ys[i])).ToArray();
         var killYs = ys.Where((y, i) => kills[i] && !float.IsNaN(y)).ToArray();
         if (killXs.Length > 0)
         {
             ImPlot.SetNextMarkerStyle(ImPlotMarker.Diamond, 7f, Theme.Good, 1f, Theme.Good);
-            ImPlot.PlotScatter("Kill", ref killXs[0], ref killYs[0], killXs.Length, ImPlotScatterFlags.None, 0, sizeof(float));
+            ImPlot.PlotScatter(Loc.T("Kill"), ref killXs[0], ref killYs[0], killXs.Length, ImPlotScatterFlags.None, 0, sizeof(float));
         }
 
         int? clicked = null;
@@ -293,7 +293,7 @@ public sealed class DpsGraph
             var mouse = ImPlot.GetPlotMousePos().X;
             var index = Enumerable.Range(0, x.Length).MinBy(i => Math.Abs(x[i] - mouse));
             var perPixel = (xMax - xMin + margin) / Math.Max(ImPlot.GetPlotSize().X, 1);
-            if (Math.Abs(x[index] - mouse) <= Math.Max(perPixel * 12, xLabel == "Pull" ? 0.5 : 0))
+            if (Math.Abs(x[index] - mouse) <= Math.Max(perPixel * 12, xLabel == Loc.T("Pull") ? 0.5 : 0))
             {
                 ImGui.SetTooltip(describe(index));
                 if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
@@ -307,9 +307,9 @@ public sealed class DpsGraph
 
     public static string GapLabel(GcdGapKind kind) => kind switch
     {
-        GcdGapKind.Clipping => "clipping",
-        GcdGapKind.Late => "late",
-        _ => "no GCD",
+        GcdGapKind.Clipping => Loc.T("clipping"),
+        GcdGapKind.Late => Loc.T("late"),
+        _ => Loc.T("no GCD"),
     };
 
     /// <summary>Plot colors matching the theme: dark frame, muted grid and text.</summary>
@@ -335,7 +335,7 @@ public sealed class DpsGraph
         if (!ImPlot.BeginPlot(id, new Vector2(-1, Math.Max(height, MinHeight)), ImPlotFlags.NoMenus | ImPlotFlags.NoBoxSelect))
             return;
 
-        ImPlot.SetupAxes("Time (s)", "DPS", ImPlotAxisFlags.AutoFit, ImPlotAxisFlags.AutoFit);
+        ImPlot.SetupAxes(Loc.T("Time (s)"), Loc.T("DPS"), ImPlotAxisFlags.AutoFit, ImPlotAxisFlags.AutoFit);
 
         var longest = 0;
         var index = 0;
@@ -352,7 +352,7 @@ public sealed class DpsGraph
         {
             var line = new[] { (float)t, (float)t };
             ImPlot.SetNextLineStyle(Theme.Bad, 1.5f);
-            ImPlot.PlotLine("Check", ref line[0], 2, longest - 1, 0, ImPlotLineFlags.None, 0, sizeof(float));
+            ImPlot.PlotLine(Loc.T("Check"), ref line[0], 2, longest - 1, 0, ImPlotLineFlags.None, 0, sizeof(float));
         }
 
         DrawDeaths(deaths);

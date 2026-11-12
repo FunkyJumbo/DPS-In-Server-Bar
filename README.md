@@ -5,32 +5,30 @@
 <h1 align="center">Raid Companion</h1>
 
 <p align="center">
-  Your live DPS, rDPS and party DPS — right in FFXIV's server info bar.<br>
-  A <a href="https://github.com/goatcorp/Dalamud">Dalamud</a> plugin. Works with ACT, or on its own.
+  <b>Advanced Fight Tracker — Let's get gud!</b><br>
+  A <a href="https://github.com/goatcorp/Dalamud">Dalamud</a> plugin for FFXIV. Works on its own, or with ACT.
 </p>
 
 ---
 
+Meant to be your new high-end content buddy: the main features of FFLogs, ACT, xivanalysis and death recaps merged
+into one clean, standalone plugin, so you get the info you need on the go, in the same place, inside the game.
+
+- **You** — What's my DPS / rDPS? How did I perform? How was my uptime? Did I miss a positional, drop a combo,
+  overcap my resources?
+- **Your party** — How did the party perform? How many deaths, and what caused them? How many vulnerabilities and
+  damage downs did we take, by whom and when? How was our mitigation?
+- **The fight** — Is our damage enough to clear? By how much?
+
+No more logging, uploading and waiting for the end of the session to check: these answers, and more, are ready the
+moment it happens, without alt-tabbing. An **opener practice** is included too.
+
+> We do not reinvent the wheel, we polish it!
+
 <p align="center">
-  <img src="docs/images/bar.png" alt="Raid Companion entry showing 46,209 rDPS in the server info bar"><br>
-  <sub>Your rDPS, right next to the clock.</sub>
+  <img src="docs/images/live.png" width="720" alt="The Live tab after a pull: your cards, personal section, party table, deaths and failed mechanics"><br>
+  <sub>The Live tab after a pull (player names hidden for the screenshot).</sub>
 </p>
-
-<!-- More screenshots / GIFs go to docs/images/ (e.g. the Live window). -->
-
-## Why
-
-The aim of this project is a clean DPS meter, built into the game's UI, that shows the essentials at a glance.
-
-Full overlays are great, but sometimes you want to keep your UI clean and still see what matters where your
-eyes already are. Raid Companion puts your DPS in the server info bar, at the top right of the screen.
-At a glance you also see your place in the party, the gap to the top player (or to the second one when you
-are first), and whether the party's DPS is on track for the boss' enrage.
-
-When you need more, the full picture is one click away in a classic window: per-player breakdown, graphs,
-pull history and an FFLogs-style rDPS.
-
-This plugin doesn't reinvent the DPS meter: it brings it into the game's UI in a clean and meaningful way.
 
 ## Installation
 
@@ -41,99 +39,211 @@ This plugin doesn't reinvent the DPS meter: it brings it into the game's UI in a
    ```
 3. Save, then install **Raid Companion** from `/xlplugins`.
 
-## Features
+**Languages:** English, French and German (Settings > Display > Language; *Auto* follows Dalamud's language).
+Game data (actions, bosses, debuffs) stays in your game client's language.
 
-### In the server bar
+## Main window
 
-A single compact entry, for example `[icon] DRK #1 (+8%) 21,234 rDPS ~92`. Every piece is optional
+`/raidcompanion` opens the main window, with three tabs: **Live**, **History** and **Progression**.
+
+### Live
+
+See Live as a very detailed DPS meter. You can keep it open during the fight, but it takes room on screen: it is
+just as handy to check it between pulls. Most of the information is here, and starting a new fight resets the page.
+
+During the fight, two minimalist displays keep your UI clean:
+
+- **Compact meter** — your typical DPS meter, damage info only, in a small pop-up (`/raidcompanion compact`, or *Compact view*).
+- **DPS in server bar** — the feature this plugin started with: many more values in the game's server info bar, for
+  a fully integrated UI.
+
+<p align="center">
+  <img src="docs/images/bar.png" alt="Raid Companion entry showing 46,209 rDPS in the server info bar"><br>
+  <sub>Your rDPS, right next to the clock.</sub>
+</p>
+
+<details>
+<summary><b>What's in Live</b></summary>
+
+- **Cards** — your DPS and rDPS with your rank, the party DPS with its gap to the enrage (when the fight has one),
+  the boss HP with how long before (or after) the enrage the boss would die at this pace, and your pace against your
+  best pull. Then a DPS graph (rolling and average, personal or party, compared with your best kill), or the **Uptime**
+  graph showing exactly when you lost GCD uptime.
+- **Personal** — your own play, only what your job has: **GCD uptime**, **gauge overcap** (job gauge lost because it
+  was too full when an action filled it), **positionals** (melee jobs, read from the bonus the game gave each hit),
+  **combo errors** (wrong step, combo restarted, combo timer ran out), **DoT uptime**, **overheal** (healers) and
+  **tank swaps** (tanks: who had the boss, and why the swap happened).
+- **Party** — every player's DPS, rDPS, damage %, crit, direct hit and deaths, sortable by DPS or rDPS. Hover an rDPS
+  value to see what the player gave to / received from buffs.
+- **Deaths** — every death of the party with its cause (the hit that took the last HP, a debuff running out, a fall
+  from the arena); hover a death for the last hits taken before it.
+- **Failed mechanics** — each penalty debuff an enemy action put on a party member (Vulnerability Up, Damage Down,
+  Down for the Count), per player, with when and from which attack. Tankbuster vulnerabilities on tanks can be
+  ignored (Settings > Pulls history; still a work in progress).
+
+</details>
+
+<details>
+<summary><b>The server bar entry</b></summary>
+
+A single compact entry, for example `#1 (+8%) 21,234 rDPS ~92`. Every piece is optional
 and can be **reordered**, with the separator of your choice between them (space, `|`, `/`, `-` or custom):
 
 | Element | Example | What it shows |
 |---|---|---|
-| Job icon / name | `[icon] DRK` | Your job, with the game's own icon |
 | Rank | `#2` | Your rank in the party |
 | Rank in your role | `#1 (+8%)` | Rank among tanks, healers or DPS only, and the gap to #1 (or to #2 when you are first) |
 | Value | `21,234 DPS` | Personal DPS, party DPS (pDPS) or rDPS |
 | Pace | `Best +4%` | Damage so far vs. your best **kill** of this fight, at the same second |
-| Boss HP | `HP 54%` | HP of the boss, read from the game |
 | Enrage timer | `Enrage 3:12` | Time left before the enrage entered for this fight — red for the last 30 seconds |
 | Ultimate phase | `P1` | Current phase in a supported ultimate |
 | Ultimate phase boss DPS | `Boss 145,000 (+3.6%)` | DPS on the current phase's bosses only, and its gap to the DPS needed for the phase enrage |
 | GCD uptime | `GCD 98.7%` | Share of the time an enemy was targetable during which your GCD was rolling — per phase in an ultimate |
+| DoT uptime | `DoT 97.1%` | Jobs with a damage over time only: share of the time each of your DoTs was on the boss while it could be attacked |
 | Fight duration | `3:42` | Time since the pull |
 | FFLogs percentile | `~92` | Estimated FFLogs percentile of your rDPS, in FFLogs colors |
 
 - **Left click** cycles DPS → pDPS → rDPS. **Right click** opens the main window.
 - **Presets**: save several setups (value, format, elements and order), rename them, and switch with
-  `/dpsbar preset 2`, handy in a macro.
+  `/raidcompanion preset 2`, handy in a macro.
 - Once the fight is over, every element keeps its last value until the next fight.
-- **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, GCD uptime (per phase in an ultimate), best kill, percentile.
+- **Hover** for a summary: encounter, rDPS, rank in your role, crit/DH rates, party DPS check, boss HP, projected kill, time to enrage, GCD uptime (per phase in an ultimate), DoT uptime, best kill, percentile.
 - Colors: with a DPS check for the fight, only the pDPS value turns green/red, with its gap to the required DPS
   (`182,345 pDPS (+3.2%)`); everything turns grey once the fight is over.
 
-### Main window
+</details>
 
-- **Live** — every player's DPS, rDPS, damage %, crit, direct hit and deaths, sortable by DPS or rDPS.
-  Hover an rDPS value to see what the player gave to / received from buffs.
-  At the top, cards of the same size: your DPS and rDPS with your rank, the party DPS with its gap to the enrage (when
-  the fight has one: the DPS still needed for the boss HP left in the time left), the boss HP with how long before (or
-  after) the enrage the boss would die at this pace, and the pace against your best pull. Then a DPS graph (rolling and
-  average, personal or party, compared with your best kill).
-  Switch the graph to **Uptime** to see exactly when you lost GCD uptime; periods where nothing was targetable are shaded.
-  A **Personal** section, between the cards and the party, gathers your own play (only what your job has):
-  **GCD uptime** (hover for the time lost); the full GCD analysis is in History.
-  **GCD analysis** (History): the lost GCD time split by cause: clipping (an oGCD's animation lock held you
-  with the GCD ready), late (free to act, the GCD came late), no GCD (a whole GCD or more without one: movement,
-  mechanics) and dead, plus the number of GCDs it represents. Hover the ? for details.
-  The gaps are also marked at the bottom of the **Uptime** graph (red: no GCD, orange: clipping, grey: late; hover one for
-  its time and length).
-  **Gauge overcap**: the job gauge lost because it was too full when an action filled it (Blood, Beast Gauge, Cartridges,
-  Kenki, Ninki, Soul, Shroud, Heat, Battery, mana, Palette...), each with the icon of the action that spends it, and the actions that overcapped it on hover. The gain of
-  each action is learned from your own uses, so its first uses are not counted. Lilies, Addersgall and Polyglot: time
-  spent full, in stacks lost. Gauges filled by crits or by chance (Chakra, Esprit, Soul Voice...) are not tracked.
-  **Positionals** (melee jobs): how many of your positionals landed, read from the bonus the game gave each hit (True
-  North and bosses without positionals count), with the icon of each action you missed and when on hover.
-  **Combo errors**: combo steps used without the step before them (wrong button), combos restarted before they were
-  finished, and combos whose timer ran out before the next step (not counted while dead), by the icon of the action used.
-  **DoT uptime** (jobs with a DoT): how long each of your DoTs stayed on the boss while it could be attacked (a dummy is
-  not a boss: test it on a real fight).
-  **Overheal** (healers): the share of each healer's healing that went over full HP, for information (in Live, a foldable
-  line with yours, the other healers inside).
-  **Tank swaps** (tanks): a foldable list of the boss going from one tank to another, with why: death, Provoke,
-  Shirk or enmity from damage.
-  **Failed mechanics**: each penalty debuff an enemy action puts on a party member (Vulnerability Up, Damage Down,
-  Down for the Count), counted per player with the debuffs taken (hover a row for each one: when, which debuff, from which action). Tankbuster vulnerabilities on tanks are ignored by
-  default (Settings > Pulls history).
-  **Deaths**: every death of the party with its cause (the hit that took the last HP, a debuff running out, a fall
-  from the arena); hover a death for the last hits taken before it. Deaths are also marked on the graph.
-  **Compact view** opens a small rounded pop-up without a title bar: only the party meter (DPS or rDPS, share,
-  deaths, ranked by the chosen metric), sized to its content, next to the main window. Drag it by its background; click
-  the metric header to switch DPS / rDPS; right click for the menu (background opacity, main window, history,
-  settings, close). Its columns (%, crit, direct hit, deaths), header and background opacity are set in Settings > Display.
-- **History** — every pull is saved with its result (Kill / Wipe), duration, DPS, rDPS, rank and timeline.
-  Filter by kind of content (Dungeons, Trials, Extreme, Raids, Savage, Criterion, Ultimate, Other — several at once, read from the game data)
-  and by encounter (type in the list to search a fight). The pull list can be made taller by dragging the grip under it
-  (double-click to reset). Open a pull to see its breakdown and graph, tick another one to **compare** them.
-  **Progression** (its own tab, next to Live and History; its filters keep to Extreme, Savage, Criterion and Ultimate): pick an instance (by its name, with the
-  fight's name when it has two) to see how far each pull got (boss HP taken, or phase and
-  HP in an ultimate) pull after pull, with the best so far, the best pull, wipes per phase and what wiped the party
-  most (the main cause of death at the end of each wipe), and the furthest mechanic seen ("Kill" once cleared, else the last enemy cast of the
-  furthest wipe). The graph is per pull or per time spent in the instance; in an
-  ultimate each phase has its band, and pulls are listed under the ultimate's name. Click a pull on the graph to open it.
-  Choose a **group** (found from the players of each pull, searchable by name or player) to follow only your static;
-  **Save group** gives it a name (renamed or forgotten later), and saved groups come first in the list. Untick pulls in **Pulls**
-  to leave some out (a night with another group, a test pull); Shift+click ticks or unticks a whole range.
-  Each pull has the same **Personal** section as Live, each line foldable for its detail: GCD uptime (with the number of
-  GCDs; inside, the uptime per ultimate phase, the GCD analysis and the clipping timeline showing the
-  oGCD behind each clip by its icon), gauge overcap (inside: each gauge with the actions that overcapped it), positionals
-  and combo errors (inside: a list of each miss with its time and action), DoT uptime (inside: each time a DoT stayed off
-  the boss a second or more, and for how long), overheal (inside: every healer, and your overheal per heal action and HoT)
-  and tank swaps, and your mitigation (inside: how many times you used each mitigation and defensive buff). Under the
-  deaths, a **Mitigation** section lists, for each party member (one foldable line each), every mitigation and defensive buff used with the time
-  of each use (GCD shields left out). It also keeps its uptime graph, the deaths of the party with their cause, and its failed mechanics with who took what and from which
-  attack. A **timeline** places along the pull what you tick above it, one lane each: deaths, tank swaps,
-  failed mechanics and mitigation (one lane per player, by the icon of each action; it grows with what is shown). Hover a
-  mark for its detail. Deaths are marked on the graphs.
+<details>
+<summary><b>The compact meter</b></summary>
+
+A small rounded pop-up without a title bar: only the party meter (DPS or rDPS, share, deaths, ranked by the chosen
+metric), sized to its content. Drag it by its background; click the metric header to switch DPS / rDPS; right click
+for the menu (background opacity, main window, history, settings, close). Its columns (%, crit, direct hit, deaths),
+header and background opacity are set in Settings > Display.
+
+</details>
+
+### History
+
+<p align="center">
+  <img src="docs/images/history.webp" width="560" alt="The History tab: the pull list of an instance, then the selected pull in detail"><br>
+  <sub>A pull opened in History: personal section, party, deaths, mitigation, failed mechanics and timeline.</sub>
+</p>
+
+History stores your fights in a personal database on your computer. Check them whenever you like: each pull holds
+even more than Live, such as the detailed uptime, the mitigation used, a timeline of the fight, and more, and you
+can compare your damage stats between two pulls. In the settings you choose the kinds of content kept in the history
+(dungeons, trials, extremes, raids, savage, criterion, ultimates, other) and how many pulls are kept (up to 5000).
+
+<details>
+<summary><b>What's in History</b></summary>
+
+- **Pull list** — result (Kill / Wipe), boss HP left (of the phase reached in an ultimate), duration, job, DPS, rDPS, pDPS and rank. Filter by kind of content (several at
+  once) and by instance (type in the list to search a fight). Drag the grip under the list to make it taller
+  (double-click to reset). Tick **vs** on another pull to **compare** it with the selected one.
+- **Cards** — your DPS and rDPS, the party DPS, the duration and the boss HP left (or Kill), each with its gap to the
+  compared pull when one is ticked. In an ultimate, the duration is the time in the phase reached (also in the pull
+  list), the whole pull below it.
+- **Personal** — the same lines as Live, each foldable for its detail: GCD uptime (uptime per ultimate phase, GCD
+  analysis splitting the lost time into clipping, late, no GCD and dead, clipping timeline with the oGCD behind each
+  clip), gauge overcap (the actions that overcapped each gauge), positionals and combo errors (each miss with its time),
+  DoT uptime (each time a DoT stayed off the boss), overheal (per heal action and HoT), tank swaps and your mitigation.
+  History also shows the **DPS lost to Damage Down and to Weakness / Brink of Death** after a raise (*experimental*, estimated from
+  your damage while each debuff was on, with each one listed).
+- **Mitigation** — for each party member, every mitigation and defensive buff used, with the time of each use
+  (GCD shields left out).
+- **Timeline** — along the pull, one lane each for what you tick: deaths, tank swaps, failed mechanics and mitigation
+  (one lane per player, by the icon of each action). Hover a mark for its detail.
+- **Casts & debuffs** — next to the timeline, a table of every cast started by the enemies and every debuff put on a
+  party member: when it was applied, on whom, by whom, when it ran out and how long it lasted. Filter casts or debuffs,
+  or search an action, a debuff or a player.
+- Also the uptime graph, the party deaths with their cause and the failed mechanics, as in Live.
+
+</details>
+
+### Progression
+
+<p align="center">
+  <img src="docs/images/progression.png" width="720" alt="The Progression tab for The Ageless Necropolis: best pull, what wiped the party and the progression graph"><br>
+  <sub>Following a prog: best pull, what wiped the party most, and how far each pull got.</sub>
+</p>
+
+The Progression tab follows your progression on a fight: how far you went, how you performed on a given prog session
+or overall, and how you improve over time. Save a party as a **group** under a name to see only the pulls made with
+your static, and tick the **pulls** that matter to leave the others out.
+
+<details>
+<summary><b>What's in Progression</b></summary>
+
+- For extremes, savage raids, criterion and ultimates. Pick an instance to see how far each pull got: boss HP taken, or
+  phase and HP in an ultimate.
+- **Cards** — number of pulls and kills, best pull, best of the last 10, time in the fight and in the instance, and the
+  furthest mechanic seen ("Kill" once cleared, else the last enemy cast of the furthest wipe).
+- **Wiped by** — the main cause of death at the end of each wipe, the most frequent first. In an ultimate, the wipes per phase.
+- **Pull after pull** — the graph per pull or per time spent in the instance, with the best so far (one band per phase
+  in an ultimate). Click a pull on the graph to open it in History.
+- **Groups** — found from the players of each pull and searchable by name or player; **Save group** gives one a name
+  (renamed or forgotten later), and saved groups come first. Untick pulls in **Pulls** to leave some out (a night with
+  another group, a test pull). They are grouped by entry into the duty, whose box ticks or unticks all its pulls at
+  once (e.g. only the two runs of tonight); Shift+click ticks or unticks a whole range.
+
+</details>
+
+### Screenshots
+
+Right click the Live, History or Progression tab and choose **Screenshot**: the whole view is saved as a PNG in
+`Pictures\Raid Companion`, even when the window is smaller than its content or taller than your screen (it is then
+captured in slices put back together). Pair it with **Hide player names** (Settings > Display) to share it without
+real names: every player gets a made-up name, always the same one.
+
+## Opener practice
+
+Imported from [The Balance](https://www.thebalanceffxiv.com/): practice any opener of any job. Start the timer (or an
+in-game `/countdown`, or just your first action), then play: the window follows the opener as you press your keys and
+tells whether each action was the right one. A **compact** mode and an **auto close** option let it fade out by itself
+when you use it during a fight. The Balance's notes are there too if you need them. `/raidcompanion opener`, or *Opener
+practice* in the Live tab.
+
+<details>
+<summary><b>More about the opener practice</b></summary>
+
+Every job has The Balance's level 100 openers (several for some jobs, e.g. 6 for Monk, 3 for Bard and Red Mage).
+GCDs are the big boxes on the track, oGCDs the small ones above; the oGCDs of a weave window can come in any order.
+A wrong action flashes the expected box in red, a GCD used before its oGCDs marks them missed. Each GCD shows the time
+it was used, and the run ends with the total time, mistakes and missed actions. The pre-pull actions and the tincture
+can each be left out. **Auto close** closes the window 3 s after the opener is done, or a chosen time (40 s by default)
+after its first action. Stretch the window sideways to fit a long opener on fewer rows. **Compact** switches to a small
+pop-up with only the icons, Start / Reset, **Full view** and **Close**; right click it for the background opacity.
+Before the pull, a line tells whether you are ready (out of combat, full MP, the opener's cooldowns and tincture back
+up) or what is still on cooldown. **Start** launches the in-game `/countdown` (option), or a countdown in the window
+when in combat, where the game refuses it.
+
+</details>
+
+## Data and privacy
+
+**What is collected.** While you fight, the plugin reads the combat from the game on your computer (the built-in
+tracker), or from ACT if you chose it: damage, healing, buffs, deaths, debuffs and mitigation of you and your party
+members, with their names and jobs. Nothing else, and only during combat.
+
+**Where it goes.** Nowhere but your computer.
+
+- Recorded pulls are saved in `history.json`, in the plugin's configuration folder
+  (`%AppData%\XIVLauncher\pluginConfigs\DpsInServerBar\`). They include your party members' names. Choose what is
+  recorded in Settings > Pulls history; delete a pull with its bin icon, or everything with **Clear all** (hold Ctrl).
+- Screenshots go to `Pictures\Raid Companion`, only when you ask for one.
+- Settings, including FFLogs credentials if you enter them, are kept in the plugin's configuration file, like any
+  other Dalamud plugin setting.
+
+**Network.** No telemetry, no account, no upload, no data sent to the author.
+
+- **ACT** (only if you choose it as data source): a WebSocket connection to OverlayPlugin on your own machine
+  (`127.0.0.1` by default).
+- **FFLogs** (only if you enable the percentile and enter your own API credentials): the plugin downloads the
+  encounter list and the public rDPS rankings of your job for the current fight. It sends your credentials, the
+  encounter and the job, never your character's name or your logs. Rankings are cached for 24 hours.
+
+## More features
 
 ### After each pull
 
@@ -141,9 +251,10 @@ An optional chat summary, with the values of your choice (job, DPS, rDPS, FFLogs
 the ability that killed you, and the mechanics you failed with the party's count):
 
 ```
-[Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST (+0.8%)
+[Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST (+0.8%) [Details]
 ```
 
+Click **[Details]** to open the main window on this pull in History (not on the ultimate phase summaries).
 DPS, rDPS, GCD and pDPS can each be compared with your best kill of the fight (`NEW BEST (+2.1%)` or the gap).
 If you died during the pull (any content, wipe or kill), `Killed by Hydrothermal Missile (Living Liquid, 98,432)` tells the
 last hit you took before dying, auto-attacks included (also in the ultimate phase summaries; read by the built-in tracker).
@@ -169,8 +280,8 @@ fight with several bosses only counts one of them.
 
 In an ultimate the fight never stops between phases and several bosses are often up at once.
 Each supported phase is tracked on its own: its timer starts when its boss becomes targetable, only its own
-boss counts for the DPS check (adds are ignored), and the Boss HP and Enrage timer elements
-follow the current phase. GCD uptime is also measured per phase. The **Ultimate phase boss DPS** element shows the DPS on the phase's bosses only (not the whole fight's pDPS), against the DPS needed for its enrage, and a chat summary is printed at the end of each phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
+boss counts for the DPS check (adds are ignored), and the Enrage timer element
+follows the current phase. GCD uptime is also measured per phase. The **Ultimate phase boss DPS** element shows the DPS on the phase's bosses only (not the whole fight's pDPS), against the DPS needed for its enrage, and a chat summary is printed at the end of each phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
 The combined HP of each phase's bosses (all of them must die) is read in game the first time the phase is reached and
 shown under the ultimate in the DPS check tab with the resulting required DPS; it can be overridden by hand.
 
@@ -183,15 +294,6 @@ both bosses are targetable). In a supported ultimate, the phase summaries replac
 An approximation of [FFLogs' rDPS](https://www.fflogs.com/help/rdps): damage gained from a raid buff
 is taken from the player who dealt it and credited to the player who gave the buff.
 See [How rDPS is computed](#how-rdps-is-computed).
-
-### Opener practice
-
-Pick an opener of your current job: every job has The Balance's level 100 openers (several for some jobs, e.g. 6 for
-Monk, 3 for Bard and Red Mage), with the guide's notes, press **Start** for a countdown, start an
-in-game `/countdown` (the run follows it, a cancelled countdown resets it) or just use its first action, then play it: each action used in the right order is greyed out and checked. GCDs are the big
-boxes on the track, oGCDs the small ones above; the oGCDs of a weave window can come in any order. A wrong action
-flashes the expected box in red, a GCD used before its oGCDs marks them missed. Each GCD shows the time it was used,
-and the run ends with the total time, mistakes and missed actions. The pre-pull actions and the tincture can each be left out. **Auto close** (option) closes the window 3 s after the opener is done, or a chosen time (40 s by default) after its first action. Stretch the window sideways to fit a long opener on fewer rows. **Compact** switches to a small pop-up (no title bar, sized to its content) with only the icons, Start / Reset, **Full view** and **Close**; right click it for the background opacity. The background opacity slider only fades the background, never the icons. Before the pull, a line tells whether you are ready (out of combat, full MP, the opener's cooldowns and tincture back up) or what is still on cooldown. **Start** launches the in-game `/countdown` (option), or a countdown in the window when in combat, where the game refuses it. `/dpsbar opener` or the Live tab.
 
 ### FFLogs percentile (optional)
 
@@ -214,25 +316,27 @@ tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
 
 | Command | Action |
 |---|---|
-| `/dpsbar` | Open / close the main window |
-| `/dpsbar config` | Settings |
-| `/dpsbar history` | Main window on the History tab |
-| `/dpsbar toggle` | Cycle DPS → pDPS → rDPS |
-| `/dpsbar compact` | Open / close the compact meter |
-| `/dpsbar opener` | Open / close the opener practice (in the view used last) |
-| `/dpsbar opener compact` | Open / close the opener practice in its compact view |
-| `/dpsbar opener full` | Open / close the opener practice in its full window |
-| `/dpsbar reconnect` | Reconnect to ACT |
-| `/dpsbar preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
+| `/raidcompanion` | Open / close the main window |
+| `/raidcompanion config` | Settings |
+| `/raidcompanion history` | Main window on the History tab |
+| `/raidcompanion toggle` | Cycle DPS → pDPS → rDPS |
+| `/raidcompanion compact` | Open / close the compact meter |
+| `/raidcompanion opener` | Open / close the opener practice (in the view used last) |
+| `/raidcompanion opener compact` | Open / close the opener practice in its compact view |
+| `/raidcompanion opener full` | Open / close the opener practice in its full window |
+| `/raidcompanion reconnect` | Reconnect to ACT |
+| `/raidcompanion preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
+
+`/rcomp` is a shorter alias of `/raidcompanion` (e.g. `/rcomp preset 2`). The old `/dpsbar` still works, so existing macros keep working.
 
 ## Settings
 
 | Tab | Contents |
 |---|---|
-| **DPS in server bar** | Presets (renamable, switchable with `/dpsbar preset N`), metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), auto-hide, colors |
-| **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, values shown, comparison with your best kill, **preview in chat** |
-| **Display** | Compact meter (columns, header, background opacity), DPS graphs in the main window, Limit Break in party DPS |
-| **Pulls history** | Record only in duties, minimum pull length, history size, graph window |
+| **DPS in server bar** | Presets (renamable, switchable with `/raidcompanion preset N`), metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), auto-hide, colors |
+| **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, **each party death as it happens** (`[Death] 7:35 Name (DNC): Memento Mori (Necron, 3,948,501)`, stops once the party wipes, optionally with the **overkill**), values shown, comparison with your best kill, **preview in chat** |
+| **Display** | **Language** (English, French or German; Auto follows Dalamud's language), compact meter (columns, header, background opacity), DPS graphs in the main window, Limit Break in party DPS, **hide player names** (made-up names in every window, for screenshots) |
+| **Pulls history** | Record only in duties, **kinds of content recorded** (dungeons, trials, extremes, raids, savage, criterion, ultimates, other), minimum pull length, history size, graph window |
 | **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
 | **DPS check** (WIP) | Still a work in progress: the values may be incomplete or wrong for now. Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |
 | **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
@@ -270,12 +374,6 @@ The fight is matched to FFLogs by the boss' English name; if that fails, enter t
 Rankings are cached for 24 hours. The percentile compares your rDPS with each character's best parse for your job
 in the current partition — close to FFLogs' *rank %*. During a fight it is only a trend, since rDPS moves with burst windows.
 
-## Privacy
-
-- Pull history (`history.json`) and the FFLogs cache stay on your computer, in the plugin's configuration folder.
-- The plugin only talks to ACT on your machine and, if you enable it, to the FFLogs API with your own credentials.
-- FFLogs credentials are stored in the plugin's configuration file, like any other setting.
-
 ## Known limitations
 
 - rDPS is an estimate (see [Accuracy](#how-rdps-is-computed)); raid buff values need updating when a patch changes them.
@@ -291,9 +389,10 @@ in the current partition — close to FFLogs' *rank %*. During a fight it is onl
 - [Dalamud](https://github.com/goatcorp/Dalamud) and [FFXIVClientStructs](https://github.com/aers/FFXIVClientStructs).
 - joncho's *FFLogs Buff Allocation Math* for the rDPS method.
 - [FFLogs](https://www.fflogs.com/) for rDPS and the rankings API.
+- [The Balance](https://www.thebalanceffxiv.com/) for the openers and their notes.
 - [LootView](https://github.com/GitHixy/LootView), whose midnight-blue and gold interface inspired ours.
 
-This project is not affiliated with FFLogs, Archon or Square Enix.
+This project is not affiliated with FFLogs, Archon, The Balance or Square Enix.
 
 ## License
 

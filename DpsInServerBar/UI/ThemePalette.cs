@@ -38,17 +38,17 @@ public sealed class ThemePalette
     /// <summary>The editable colors, with their label, for the settings.</summary>
     public IEnumerable<(string Label, Func<Vector4> Get, Action<Vector4> Set)> Entries()
     {
-        yield return ("Background", () => Background, v => Background = v);
-        yield return ("Surface (fields, cards)", () => Surface, v => Surface = v);
-        yield return ("Accent", () => Accent, v => Accent = v);
-        yield return ("Secondary accent", () => Secondary, v => Secondary = v);
-        yield return ("Text", () => Text, v => Text = v);
-        yield return ("Good", () => Good, v => Good = v);
-        yield return ("Warning", () => Warn, v => Warn = v);
-        yield return ("Bad", () => Bad, v => Bad = v);
-        yield return ("Tank bars", () => Tank, v => Tank = v);
-        yield return ("Healer bars", () => Healer, v => Healer = v);
-        yield return ("DPS bars", () => Dps, v => Dps = v);
+        yield return (Loc.T("Background"), () => Background, v => Background = v);
+        yield return (Loc.T("Surface (fields, cards)"), () => Surface, v => Surface = v);
+        yield return (Loc.T("Accent"), () => Accent, v => Accent = v);
+        yield return (Loc.T("Secondary accent"), () => Secondary, v => Secondary = v);
+        yield return (Loc.T("Text"), () => Text, v => Text = v);
+        yield return (Loc.T("Good"), () => Good, v => Good = v);
+        yield return (Loc.T("Warning"), () => Warn, v => Warn = v);
+        yield return (Loc.T("Bad"), () => Bad, v => Bad = v);
+        yield return (Loc.T("Tank bars"), () => Tank, v => Tank = v);
+        yield return (Loc.T("Healer bars"), () => Healer, v => Healer = v);
+        yield return (Loc.T("DPS bars"), () => Dps, v => Dps = v);
     }
 
     public static ThemePalette For(ThemePreset preset) => preset switch
@@ -82,12 +82,12 @@ public sealed class ThemePalette
 
     public static string Name(ThemePreset preset) => preset switch
     {
-        ThemePreset.Midnight => "Midnight (blue & gold)",
-        ThemePreset.Crimson => "Crimson (wine & rose gold)",
-        ThemePreset.Emerald => "Emerald (forest & gold)",
-        ThemePreset.Aether => "Aether (violet & cyan)",
-        ThemePreset.Slate => "Slate (grey & blue)",
-        _ => "Custom",
+        ThemePreset.Midnight => Loc.T("Midnight (blue & gold)"),
+        ThemePreset.Crimson => Loc.T("Crimson (wine & rose gold)"),
+        ThemePreset.Emerald => Loc.T("Emerald (forest & gold)"),
+        ThemePreset.Aether => Loc.T("Aether (violet & cyan)"),
+        ThemePreset.Slate => Loc.T("Slate (grey & blue)"),
+        _ => Loc.T("Custom"),
     };
 
     // Status and role colors shared by every preset.

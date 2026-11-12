@@ -22,10 +22,11 @@ public sealed class CompactWindow : Window
     private IDisposable? styleScope;
 
     public CompactWindow(Plugin plugin)
-        : base("DPS meter###DpsInServerBarCompact",
+        : base(Loc.T("DPS meter###DpsInServerBarCompact"),
                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar
                | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize)
     {
+        Loc.Changed += () => WindowName = Loc.T("DPS meter###DpsInServerBarCompact");
         this.plugin = plugin;
         AllowBackgroundBlur = false;
         RespectCloseHotkey = false;
@@ -58,7 +59,7 @@ public sealed class CompactWindow : Window
         if (snapshot is not null)
             DrawTable(snapshot, config);
         else
-            Theme.Hint("No combat data yet.");
+            Theme.Hint(Loc.T("No combat data yet."));
     }
 
     /// <summary>Right click menu: metric, opacity, main window, history, settings, close.</summary>
@@ -71,19 +72,19 @@ public sealed class CompactWindow : Window
         if (!popup)
             return;
 
-        if (ImGui.MenuItem("DPS", string.Empty, !config.SortByRdps))
+        if (ImGui.MenuItem(Loc.T("DPS"), string.Empty, !config.SortByRdps))
         {
             config.SortByRdps = false;
             config.Save();
         }
 
-        if (ImGui.MenuItem("rDPS", string.Empty, config.SortByRdps))
+        if (ImGui.MenuItem(Loc.T("rDPS"), string.Empty, config.SortByRdps))
         {
             config.SortByRdps = true;
             config.Save();
         }
 
-        if (ImGui.MenuItem("Header", string.Empty, config.CompactShowHeader))
+        if (ImGui.MenuItem(Loc.T("Header"), string.Empty, config.CompactShowHeader))
         {
             config.CompactShowHeader = !config.CompactShowHeader;
             config.Save();
@@ -91,19 +92,19 @@ public sealed class CompactWindow : Window
 
         var percent = (int)Math.Round(config.CompactOpacity * 100);
         ImGui.SetNextItemWidth(Theme.Px(140));
-        if (ImGui.SliderInt("Opacity", ref percent, 0, 100, "%d%%"))
+        if (ImGui.SliderInt(Loc.T("Opacity"), ref percent, 0, 100, "%d%%"))
             config.CompactOpacity = percent / 100f;
         if (ImGui.IsItemDeactivatedAfterEdit())
             config.Save();
 
         ImGui.Separator();
-        if (ImGui.MenuItem("Main window"))
+        if (ImGui.MenuItem(Loc.T("Main window")))
             plugin.ShowMainWindow();
-        if (ImGui.MenuItem("History"))
+        if (ImGui.MenuItem(Loc.T("History")))
             plugin.ShowMainWindow(history: true);
-        if (ImGui.MenuItem("Settings"))
+        if (ImGui.MenuItem(Loc.T("Settings")))
             plugin.ToggleConfigUi();
-        if (ImGui.MenuItem("Close"))
+        if (ImGui.MenuItem(Loc.T("Close")))
             plugin.SetCompact(false);
     }
 
@@ -125,16 +126,16 @@ public sealed class CompactWindow : Window
         if (shown.HasFlag(CompactColumn.Share))
             extras.Add(("%", "100.0%", c => (total > 0 && (!byRdps || c.HasRdps) ? $"{Value(c) / total:0.0%}" : "-", Theme.TextMuted)));
         if (shown.HasFlag(CompactColumn.Crit))
-            extras.Add(("Crit", "100%", c => ($"{c.CritPercent:0}%", Theme.TextMuted)));
+            extras.Add((Loc.T("Crit"), "100%", c => ($"{c.CritPercent:0}%", Theme.TextMuted)));
         if (shown.HasFlag(CompactColumn.DirectHit))
-            extras.Add(("DH", "100%", c => ($"{c.DirectHitPercent:0}%", Theme.TextMuted)));
+            extras.Add((Loc.T("DH"), "100%", c => ($"{c.DirectHitPercent:0}%", Theme.TextMuted)));
         if (shown.HasFlag(CompactColumn.Deaths))
-            extras.Add(("Deaths", "Deaths", c => (c.Deaths.ToString(), c.Deaths > 0 ? Theme.Bad : Theme.TextFaint)));
+            extras.Add((Loc.T("Deaths"), Loc.T("Deaths"), c => (c.Deaths.ToString(), c.Deaths > 0 ? Theme.Bad : Theme.TextFaint)));
 
         // Fixed column widths, sized for the widest possible value, so the window does not twitch as numbers change.
         // The name column leaves a little room for the bar past the longest name.
-        var nameWidth = Math.Max(ImGui.CalcTextSize("Player").X,
-                                 rows.Count > 0 ? rows.Max(c => ImGui.CalcTextSize(c.Name).X) + iconSize + Theme.Px(13) : 0);
+        var nameWidth = Math.Max(ImGui.CalcTextSize(Loc.T("Player")).X,
+                                 rows.Count > 0 ? rows.Max(c => ImGui.CalcTextSize(Names.Show(c.Name)).X) + iconSize + Theme.Px(13) : 0);
         var valueWidth = ImGui.CalcTextSize("000,000").X;
         var widths = extras.Select(e => Math.Max(ImGui.CalcTextSize(e.Widest).X, ImGui.CalcTextSize(e.Header).X)).ToList();
         var columns = 2 + extras.Count;
@@ -153,8 +154,8 @@ public sealed class CompactWindow : Window
         if (!table)
             return;
 
-        ImGui.TableSetupColumn("Player", ImGuiTableColumnFlags.WidthFixed, nameWidth);
-        ImGui.TableSetupColumn(byRdps ? "rDPS" : "DPS", ImGuiTableColumnFlags.WidthFixed, valueWidth);
+        ImGui.TableSetupColumn(Loc.T("Player"), ImGuiTableColumnFlags.WidthFixed, nameWidth);
+        ImGui.TableSetupColumn(byRdps ? Loc.T("rDPS") : Loc.T("DPS"), ImGuiTableColumnFlags.WidthFixed, valueWidth);
         for (var i = 0; i < extras.Count; i++)
             ImGui.TableSetupColumn(extras[i].Header, ImGuiTableColumnFlags.WidthFixed, widths[i]);
 
@@ -179,7 +180,7 @@ public sealed class CompactWindow : Window
                 }
 
                 if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("Click: switch DPS / rDPS\nRight click anywhere: menu");
+                    ImGui.SetTooltip(Loc.T("Click: switch DPS / rDPS\nRight click anywhere: menu"));
             }
         }
 
@@ -211,7 +212,7 @@ public sealed class CompactWindow : Window
             JobInfo.DrawIcon(c.Job, iconSize);
             ImGui.SameLine(0, Theme.Px(5));
             ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (iconSize - ImGui.GetTextLineHeight()) / 2);
-            ImGui.TextColored(color, c.Name);
+            ImGui.TextColored(color, Names.Show(c.Name));
 
             ImGui.TableNextColumn();
             if (endX > splitX)

@@ -18,7 +18,10 @@ namespace DpsInServerBar;
 
 public sealed class Plugin : IDalamudPlugin
 {
-    private const string CommandName = "/dpsbar";
+    private const string CommandName = "/raidcompanion";
+    private const string ShortCommand = "/rcomp";
+    // Old name, kept (hidden from the help) so existing macros keep working.
+    private const string LegacyCommand = "/dpsbar";
 
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
@@ -35,6 +38,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
+    [PluginService] internal static ITextureReadbackProvider TextureReadback { get; private set; } = null!;
     [PluginService] internal static IJobGauges JobGauges { get; private set; } = null!;
 
     private readonly WindowSystem windowSystem = new("DpsInServerBar");
@@ -55,6 +59,8 @@ public sealed class Plugin : IDalamudPlugin
         if (Configuration.Migrate())
             Configuration.Save();
         UI.Theme.Configure(Configuration);
+        UI.Names.Anonymize = Configuration.HideNames;
+        Loc.Set(Configuration.Language, PluginInterface.UiLanguage);
 
         var act = new ActClient(Log, () => playerName);
         var native = new NativeCombatTracker(GameInterop, ObjectTable, PartyList, Condition, ClientState, DataManager, PlayerState, Log);
@@ -63,6 +69,7 @@ public sealed class Plugin : IDalamudPlugin
         History = new PullHistory(PluginInterface.GetPluginConfigDirectory(), Log);
         Pulls = new PullTracker(this, DutyState, Condition, ChatGui);
         Boss = new BossTracker(ObjectTable, Condition, DataManager);
+        FightLog = new FightLog(ObjectTable, PartyList, Condition, DataManager);
         Ultimates = new UltimateTracker(Configuration, ObjectTable, Condition, ClientState, DataManager);
         Ultimates.PhaseEnded += OnPhaseEnded;
         ContentCategories = new ContentCategories(DataManager);
@@ -94,12 +101,16 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open the DPS window. Subcommands: config, toggle, reconnect, history, compact, opener [compact|full], preset <number|name|next>.",
+            HelpMessage = Loc.T("Open the main window. Subcommands: config, toggle, reconnect, history, compact, opener [compact|full], preset <number|name|next>."),
         });
+        CommandManager.AddHandler(ShortCommand, new CommandInfo(OnCommand) { HelpMessage = Loc.F("Short for {0}.", CommandName) });
+        CommandManager.AddHandler(LegacyCommand, new CommandInfo(OnCommand) { ShowInHelp = false });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
+        PluginInterface.LanguageChanged += OnLanguageChanged;
+        ClientState.TerritoryChanged += OnTerritoryChanged;
         Framework.Update += OnFrameworkUpdate;
 
         Sources.Apply(reconnectAct: true);
@@ -111,6 +122,7 @@ public sealed class Plugin : IDalamudPlugin
     public PullTracker Pulls { get; }
     public DtrController Bar => dtr;
     public BossTracker Boss { get; }
+    public FightLog FightLog { get; }
     public UltimateTracker Ultimates { get; }
     public UptimeTracker Uptime { get; }
 
@@ -125,13 +137,20 @@ public sealed class Plugin : IDalamudPlugin
     public ActClient Act => Sources.Act;
     public uint CurrentTerritory => ClientState.TerritoryType;
 
+    /// <summary>Changes each time you enter a zone: the pulls of one entry into a duty share it.</summary>
+    public Guid InstanceRun { get; private set; } = Guid.NewGuid();
+
     public void Dispose()
     {
         Framework.Update -= OnFrameworkUpdate;
         PluginInterface.UiBuilder.Draw -= windowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
+        PluginInterface.LanguageChanged -= OnLanguageChanged;
+        ClientState.TerritoryChanged -= OnTerritoryChanged;
         CommandManager.RemoveHandler(CommandName);
+        CommandManager.RemoveHandler(ShortCommand);
+        CommandManager.RemoveHandler(LegacyCommand);
 
         windowSystem.RemoveAllWindows();
         dtr.Dispose();
@@ -207,6 +226,9 @@ public sealed class Plugin : IDalamudPlugin
         Configuration.Save();
     }
 
+    /// <summary>Opens the main window on a pull in History (chat summary link).</summary>
+    public void ShowPull(Guid pullId) => mainWindow.ShowPull(pullId);
+
     /// <summary>Opens the main window from the compact meter (which stays open).</summary>
     public void ShowMainWindow(bool history = false)
     {
@@ -227,16 +249,22 @@ public sealed class Plugin : IDalamudPlugin
         OnConfigChanged();
     }
 
+    private void OnLanguageChanged(string language) => Loc.Set(Configuration.Language, language);
+
+    private void OnTerritoryChanged(uint territory) => InstanceRun = Guid.NewGuid();
+
     public void OnConfigChanged(bool reconnect = false)
     {
         Configuration.Save();
         UI.Theme.Configure(Configuration);
+        UI.Names.Anonymize = Configuration.HideNames;
+        Loc.Set(Configuration.Language, PluginInterface.UiLanguage);
         dtr.Invalidate();
         Sources.Native.Mistakes.IgnoreTankbusters = Configuration.MistakesIgnoreTankbusters;
 
         if (reconnect && !Uri.TryCreate(Configuration.WebSocketUrl, UriKind.Absolute, out _))
         {
-            ChatGui.PrintError($"[Raid Companion] Invalid address: {Configuration.WebSocketUrl}");
+            ChatGui.PrintError(Loc.F("[Raid Companion] Invalid address: {0}",Configuration.WebSocketUrl));
             return;
         }
 
@@ -257,6 +285,7 @@ public sealed class Plugin : IDalamudPlugin
         Positionals.Update();
         Dots.Update();
         Combos.Update();
+        FightLog.Update();
 
         // The bar only needs a few refreshes per second; sources publish roughly once per second.
         var now = DateTime.UtcNow;
@@ -285,13 +314,13 @@ public sealed class Plugin : IDalamudPlugin
         OnConfigChanged();
     }
 
-    // "/dpsbar preset 2", "/dpsbar preset Raid", "/dpsbar preset next".
+    // "/raidcompanion preset 2", "/raidcompanion preset Raid", "/raidcompanion preset next".
     private void OnPresetCommand(string arg)
     {
         var presets = Configuration.BarPresets;
         if (presets.Count == 0)
         {
-            ChatGui.PrintError("[Raid Companion] No preset saved yet: create one in the settings, Display section.");
+            ChatGui.PrintError(Loc.T("[Raid Companion] No preset saved yet: create one in the settings, Display section."));
             return;
         }
 
@@ -305,12 +334,12 @@ public sealed class Plugin : IDalamudPlugin
 
         if (index < 0 || index >= presets.Count)
         {
-            ChatGui.PrintError($"[Raid Companion] Unknown preset \"{arg}\". Use a number from 1 to {presets.Count} or a preset name.");
+            ChatGui.PrintError(Loc.F("[Raid Companion] Unknown preset \"{0}\". Use a number from 1 to {1} or a preset name.",arg,presets.Count));
             return;
         }
 
         ApplyBarPreset(index);
-        ChatGui.Print($"[Raid Companion] Preset {index + 1}: {presets[index].Name}");
+        ChatGui.Print(Loc.F("[Raid Companion] Preset {0}: {1}",index + 1,presets[index].Name));
     }
 
     private void OnCommand(string command, string args)

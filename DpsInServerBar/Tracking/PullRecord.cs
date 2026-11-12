@@ -68,6 +68,12 @@ public sealed class PullRecord
     /// <summary>Mitigations and defensive buffs used by the party.</summary>
     public List<MitigationUse> Mitigations { get; set; } = [];
 
+    /// <summary>Casts started by enemies during the pull (empty for pulls recorded before it existed).</summary>
+    public List<BossCast> BossCasts { get; set; } = [];
+
+    /// <summary>Debuffs put on party members during the pull, with when they were applied and ran out.</summary>
+    public List<DebuffSpan> Debuffs { get; set; } = [];
+
     /// <summary>Uptime of each ultimate phase reached in this pull.</summary>
     public List<PhaseUptime> PhaseUptimes { get; set; } = [];
 
@@ -79,8 +85,14 @@ public sealed class PullRecord
     /// <summary>Boss HP left (0-1) when the pull ended, null for older pulls or when no boss was seen.</summary>
     public double? BossHpLeft { get; set; }
 
+    /// <summary>In an ultimate, time spent in the phase reached when the pull ended; null elsewhere and for older pulls.</summary>
+    public double? PhaseSeconds { get; set; }
+
     /// <summary>Left out of the progression view (another group, a test pull...), by the player.</summary>
     public bool ExcludedFromProgression { get; set; }
+
+    /// <summary>The entry into the duty the pull was played in (pulls of one entry share it), null for older pulls.</summary>
+    public Guid? InstanceRun { get; set; }
 
     public string BossName { get; set; } = string.Empty;
 

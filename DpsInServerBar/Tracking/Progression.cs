@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DpsInServerBar.UI;
 using DpsInServerBar.Ultimates;
 
 namespace DpsInServerBar.Tracking;
@@ -76,15 +77,15 @@ public static class Progression
     public static string Label(PullRecord pull)
     {
         if (pull.Outcome == PullOutcome.Kill)
-            return "Kill";
+            return Loc.T("Kill");
 
         if (IsUltimate(pull.TerritoryId))
         {
             var phase = UltimateDefinitions.Label(pull.TerritoryId, Phase(pull));
-            return pull.BossHpLeft is { } hp ? $"{phase} · {hp:0.0%} left" : phase;
+            return pull.BossHpLeft is { } hp ? Loc.F("{0} · {1:0.0%} left",phase,hp) : phase;
         }
 
-        return pull.BossHpLeft is { } left ? $"{left:0.0%} left" : "?";
+        return pull.BossHpLeft is { } left ? Loc.F("{0:0.0%} left",left) : "?";
     }
 
     /// <summary>
@@ -149,7 +150,7 @@ public static class Progression
                                 .Concat(groups.Select(g => g.Build()).OrderByDescending(g => g.Pulls.Count))
                                 .ToList();
         if (solo.Count > 0)
-            result.Add(new PullGroup("solo", "Solo", string.Empty, solo, null, []));
+            result.Add(new PullGroup("solo", Loc.T("Solo"), string.Empty, solo, null, []));
 
         return result;
     }
@@ -168,12 +169,12 @@ public static class Progression
             var regulars = Seen.Where(s => s.Value * 4 >= Pulls.Count).OrderByDescending(s => s.Value).Select(s => s.Key).ToList();
             if (Saved is not null)
             {
-                return new PullGroup($"saved:{Saved.Id}", Saved.Name, string.Join(", ", Saved.Players), Pulls, Saved,
+                return new PullGroup($"saved:{Saved.Id}", Saved.Name, Names.Join(Saved.Players), Pulls, Saved,
                                      Saved.Players.ToList());
             }
 
-            var label = string.Join(", ", byPresence.Take(3)) + (byPresence.Count > 3 ? $" +{byPresence.Count - 3}" : string.Empty);
-            return new PullGroup(Pulls[0].Id.ToString(), label, string.Join(", ", byPresence), Pulls, null, regulars);
+            var label = Names.Join(byPresence.Take(3)) + (byPresence.Count > 3 ? $" +{byPresence.Count - 3}" : string.Empty);
+            return new PullGroup(Pulls[0].Id.ToString(), label, Names.Join(byPresence), Pulls, null, regulars);
         }
     }
 

@@ -82,9 +82,11 @@ public sealed class UltimateTracker
     private int phaseIndex;
     private DateTime? phaseStartUtc;
     private DateTime lastAliveUtc;
-    // Tracked bosses seen targetable during the phase: invisible copies of a boss (same name, never targetable)
-    // are common in ultimates and must neither count for the HP nor keep the phase alive.
-    private readonly Dictionary<ulong, uint> maxHpByObject = new();
+    // Per boss of the phase (index in its TrackedBosses), the object followed: the first one seen targetable, and its
+    // max HP. Invisible copies of a boss (never targetable) are common in ultimates, and fresh copies can show up later
+    // (full HP, e.g. for the enrage): they neither count for the HP nor keep the phase alive. Another copy is only
+    // followed once the first one is gone.
+    private readonly Dictionary<int, (ulong Object, uint MaxHp)> followed = new();
 
     public UltimateTracker(Configuration config, IObjectTable objectTable, ICondition condition, IClientState clientState,
                            IDataManager dataManager)
@@ -160,6 +162,11 @@ public sealed class UltimateTracker
             return;
         }
 
+        // Once the whole party is dead, the bosses despawn or reset: nothing that happens then is a new phase, and the
+        // phase keeps the HP it had when the party died.
+        if (PartyWiped())
+            return;
+
         if (phaseIndex >= fight.Phases.Count)
         {
             Current = new PhaseView(fight, null, phaseIndex + 1, false, TimeSpan.Zero, 0, 0, null, true);
@@ -175,12 +182,21 @@ public sealed class UltimateTracker
             lastAliveUtc = now;
         }
 
-        // Only the bosses of this phase that have been targetable count (see maxHpByObject).
-        var ids = nameIdsByPhase[phase.Key].SelectMany(set => set).ToHashSet();
-        foreach (var b in npcs.Where(n => ids.Contains(n.NameId) && n.IsTargetable && n.MaxHp > 0))
-            maxHpByObject[b.GameObjectId] = Math.Max(maxHpByObject.GetValueOrDefault(b.GameObjectId), b.MaxHp);
+        // One object per boss of this phase (see followed).
+        var groups = nameIdsByPhase[phase.Key];
+        var present = npcs.Select(n => n.GameObjectId).ToHashSet();
+        foreach (var b in npcs.Where(n => n.IsTargetable && n.MaxHp > 0))
+        {
+            var group = groups.FindIndex(set => set.Contains(b.NameId));
+            if (group < 0)
+                continue;
+            if (followed.TryGetValue(group, out var known) && known.Object != b.GameObjectId && present.Contains(known.Object))
+                continue;
+            followed[group] = (b.GameObjectId, Math.Max(known.Object == b.GameObjectId ? known.MaxHp : 0, b.MaxHp));
+        }
 
-        var bosses = npcs.Where(n => maxHpByObject.ContainsKey(n.GameObjectId)).ToList();
+        var followedObjects = followed.Values.Select(f => f.Object).ToHashSet();
+        var bosses = npcs.Where(n => followedObjects.Contains(n.GameObjectId)).ToList();
         var alive = bosses.Where(b => !b.IsDead && b.CurrentHp > 0).ToList();
 
         if (phaseStartUtc is { } phaseStart)
@@ -198,7 +214,7 @@ public sealed class UltimateTracker
                 if (!phase.IsTransition)
                 {
                     LastClears[phase.Key] = (nextStarted ? now : lastAliveUtc) - phaseStart;
-                    var maxHpAtEnd = maxHpByObject.Values.Sum(v => (double)v);
+                    var maxHpAtEnd = followed.Values.Sum(f => (double)f.MaxHp);
                     PhaseEnded?.Invoke(new PhaseResult(
                         fight, phase, phaseIndex + 1, LastClears[phase.Key], maxHpAtEnd, 0,
                         config.UltimateEnrageSeconds.TryGetValue(phase.Key, out var phaseEnrage) && phaseEnrage > 0 ? phaseEnrage : null,
@@ -219,8 +235,10 @@ public sealed class UltimateTracker
             }
         }
 
-        var maxHp = maxHpByObject.Values.Sum(v => (double)v);
-        var currentHp = alive.Sum(b => (double)b.CurrentHp);
+        var maxHp = followed.Values.Sum(f => (double)f.MaxHp);
+        // Bosses out of sight for a moment (jump, despawn): keep the HP last seen.
+        var currentHp = bosses.Count > 0 ? alive.Sum(b => (double)b.CurrentHp)
+                        : Current is { } seen && seen.Number == phaseIndex + 1 ? seen.CurrentHp : 0;
 
         // Remember the combined HP of the phase's bosses, for the Ultimates tab and the next pulls.
         if (phaseStartUtc is not null && maxHp > config.UltimatePhaseHpDetected.GetValueOrDefault(phase.Key))
@@ -260,9 +278,17 @@ public sealed class UltimateTracker
         return phase.StartWhenAllTargetable ? bosses.All(Up) : bosses.Any(Up);
     }
 
+    /// <summary>Every party member dead (you alone when not in a party).</summary>
+    public static bool PartyWiped()
+    {
+        if (Plugin.PartyList.Length > 0)
+            return Plugin.PartyList.All(m => m.CurrentHP == 0);
+        return Plugin.ObjectTable.LocalPlayer is { } me && (me.IsDead || me.CurrentHp == 0);
+    }
+
     private void ResetPhase()
     {
         phaseStartUtc = null;
-        maxHpByObject.Clear();
+        followed.Clear();
     }
 }

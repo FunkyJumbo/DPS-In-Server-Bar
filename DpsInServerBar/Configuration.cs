@@ -66,12 +66,15 @@ public enum BarElement
 {
     /// <summary>Removed (saved as numbers: kept so the other values do not move).</summary>
     FinalMarker,
+    /// <summary>Removed.</summary>
     JobIcon,
+    /// <summary>Removed.</summary>
     JobName,
     Rank,
     RoleGap,
     Value,
     Pace,
+    /// <summary>Removed.</summary>
     BossHp,
     /// <summary>Removed.</summary>
     KillTime,
@@ -83,6 +86,9 @@ public enum BarElement
 
     /// <summary>Time since the pull.</summary>
     Duration,
+
+    /// <summary>Uptime of your DoTs on the boss, for the jobs that have one.</summary>
+    DotUptime,
 }
 
 /// <summary>Values that can appear in the chat summary after each pull.</summary>
@@ -135,7 +141,7 @@ public sealed class SavedGroup
     public List<string> Players { get; set; } = [];
 }
 
-/// <summary>A named server bar setup (value, format and elements), switchable with /dpsbar preset N.</summary>
+/// <summary>A named server bar setup (value, format and elements), switchable with /raidcompanion preset N.</summary>
 [Serializable]
 public sealed class BarPreset
 {
@@ -180,7 +186,7 @@ public sealed class BarPreset
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 9;
+    public int Version { get; set; } = 10;
 
     /// <summary>Order and visibility of the elements of the server bar text.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -197,7 +203,7 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Text placed between the elements of the server bar (a space by default, e.g. " | ").</summary>
     public string BarSeparator { get; set; } = " ";
 
-    /// <summary>Saved server bar setups, numbered from 1 for /dpsbar preset N.</summary>
+    /// <summary>Saved server bar setups, numbered from 1 for /raidcompanion preset N.</summary>
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public List<BarPreset> BarPresets { get; set; } = [];
 
@@ -231,6 +237,12 @@ public sealed class Configuration : IPluginConfiguration
 
     /// <summary>Live tab: only the party's DPS meter (value, share, deaths).</summary>
     public bool LiveCompact { get; set; } = false;
+
+    /// <summary>Made-up player names in the windows, for screenshots.</summary>
+    public bool HideNames { get; set; }
+
+    /// <summary>Language of the plugin: auto (Dalamud's), en, fr or de.</summary>
+    public string Language { get; set; } = "auto";
 
     /// <summary>Opener practice: countdown before the pull when pressing Start, in seconds.</summary>
     public int OpenerCountdown { get; set; } = 5;
@@ -326,12 +338,21 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>In ultimates, also a summary at the end of each phase.</summary>
     public bool ChatSummaryPhases { get; set; } = true;
 
+    /// <summary>Each party member's death printed in chat as it happens, with its cause.</summary>
+    public bool ChatDeaths { get; set; }
+
+    /// <summary>With <see cref="ChatDeaths"/>: the overkill (damage beyond the HP that was left) after the killing hit.</summary>
+    public bool ChatDeathsOverkill { get; set; }
+
     /// <summary>Values shown in the chat summary.</summary>
     public SummaryElement ChatSummaryElements { get; set; } = SummaryElement.All;
 
     /// <summary>After DPS, rDPS, GCD and pDPS: "NEW BEST" or the gap to your best kill of the fight.</summary>
     public bool ChatSummaryCompareBest { get; set; } = true;
     public bool RecordOnlyInDuties { get; set; } = true;
+
+    /// <summary>Kinds of content whose pulls are saved in the history (the others still get their chat summary).</summary>
+    public ContentCategory RecordedCategories { get; set; } = ContentCategory.All;
 
     /// <summary>Failed mechanics: ignore a vulnerability put on a tank by a tankbuster.</summary>
     public bool MistakesIgnoreTankbusters { get; set; } = true;
@@ -477,6 +498,16 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
+        if (Version < 10)
+        {
+            // Job icon, job name and boss HP were removed from the bar, presets included.
+            BarLayout.RemoveAll(e => RemovedElements.Contains(e.Element));
+            foreach (var preset in BarPresets)
+                preset.Layout.RemoveAll(e => RemovedElements.Contains(e.Element));
+            Version = 10;
+            changed = true;
+        }
+
         // Elements added in later versions show up, hidden, at the end.
         foreach (var element in Enum.GetValues<BarElement>().Except(RemovedElements))
         {
@@ -491,7 +522,8 @@ public sealed class Configuration : IPluginConfiguration
     }
 
     /// <summary>Bar elements that no longer exist.</summary>
-    public static readonly BarElement[] RemovedElements = [BarElement.FinalMarker, BarElement.KillTime];
+    public static readonly BarElement[] RemovedElements =
+        [BarElement.FinalMarker, BarElement.KillTime, BarElement.JobIcon, BarElement.JobName, BarElement.BossHp];
 
     private void SetShown(BarElement element, bool shown)
     {
@@ -501,13 +533,10 @@ public sealed class Configuration : IPluginConfiguration
 
     private static List<BarElementSetting> DefaultLayout() =>
     [
-        new() { Element = BarElement.JobIcon },
-        new() { Element = BarElement.JobName },
         new() { Element = BarElement.Rank },
         new() { Element = BarElement.RoleGap, Enabled = false },
         new() { Element = BarElement.Value },
         new() { Element = BarElement.Pace, Enabled = false },
-        new() { Element = BarElement.BossHp, Enabled = false },
         new() { Element = BarElement.EnrageTimer, Enabled = false },
         new() { Element = BarElement.Phase, Enabled = false },
         new() { Element = BarElement.PhaseDps, Enabled = false },

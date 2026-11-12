@@ -52,9 +52,9 @@ public sealed class ActClient : ICombatSource, IDisposable
 
     public string StatusText => State switch
     {
-        ConnectionState.Connected => "connected",
-        ConnectionState.Connecting => "connecting...",
-        _ => LastError is { } err ? $"disconnected ({err})" : "disconnected",
+        ConnectionState.Connected => Loc.T("connected"),
+        ConnectionState.Connecting => Loc.T("connecting..."),
+        _ => LastError is { } err ? Loc.F("disconnected ({0})", err) : Loc.T("disconnected"),
     };
 
     /// <summary>(Re)starts the connection loop against the given endpoint.</summary>

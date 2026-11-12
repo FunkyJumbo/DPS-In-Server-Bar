@@ -74,7 +74,7 @@ public sealed class FightCatalog
             var expansion = row.TerritoryType.ValueNullable?.ExVersion.RowId ?? 0;
             var expansionName = expansions.TryGetRow(expansion, out var ex) && ex.Name.ExtractText() is { Length: > 0 } exName
                                     ? exName
-                                    : $"Expansion {expansion}";
+                                    : Loc.F("Expansion {0}",expansion);
             result.Add(new FightEntry(kind, territory, Capitalize(shown), row.RowId, expansion, expansionName));
         }
 
