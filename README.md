@@ -303,6 +303,26 @@ when in combat, where the game refuses it.
 
 <br>
 
+## Commands
+
+| Command | Action |
+|---|---|
+| `/raidcompanion` | Open / close the main window |
+| `/raidcompanion config` | Settings |
+| `/raidcompanion history` | Main window on the History tab |
+| `/raidcompanion compact` | Open / close the compact meter |
+| `/raidcompanion toggle` | Cycle the server bar value: DPS → pDPS → rDPS |
+| `/raidcompanion preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
+| `/raidcompanion opener` | Open / close the opener practice (in the view used last) |
+| `/raidcompanion opener compact` | Open / close the opener practice in its compact view |
+| `/raidcompanion opener full` | Open / close the opener practice in its full window |
+| `/raidcompanion reconnect` | Reconnect to ACT |
+
+`/rcomp` is a shorter alias (e.g. `/rcomp preset 2`, handy in a macro). The old `/dpsbar` still works, so existing
+macros keep working.
+
+<br>
+
 ## Data and privacy
 
 **What is collected.** While you fight, the plugin reads the combat from the game on your computer (the built-in
@@ -364,26 +384,6 @@ be overridden by hand).
 
 Supported so far: **The Epic of Alexander — P1 (Living Liquid), Limit Cut (transition) and P2 (Brute Justice & Cruise
 Chaser)**. More phases and ultimates will be added one at a time.
-
-<br>
-
-## Commands
-
-| Command | Action |
-|---|---|
-| `/raidcompanion` | Open / close the main window |
-| `/raidcompanion config` | Settings |
-| `/raidcompanion history` | Main window on the History tab |
-| `/raidcompanion compact` | Open / close the compact meter |
-| `/raidcompanion toggle` | Cycle the server bar value: DPS → pDPS → rDPS |
-| `/raidcompanion preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
-| `/raidcompanion opener` | Open / close the opener practice (in the view used last) |
-| `/raidcompanion opener compact` | Open / close the opener practice in its compact view |
-| `/raidcompanion opener full` | Open / close the opener practice in its full window |
-| `/raidcompanion reconnect` | Reconnect to ACT |
-
-`/rcomp` is a shorter alias (e.g. `/rcomp preset 2`, handy in a macro). The old `/dpsbar` still works, so existing
-macros keep working.
 
 <br>
 
