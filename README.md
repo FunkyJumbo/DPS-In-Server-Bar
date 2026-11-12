@@ -222,7 +222,9 @@ real names: every player gets a made-up name, always the same one.
 
 <p align="center">
   <img src="docs/images/opener.png" width="820" alt="The opener practice window with the Black Mage standard 5+7 opener: options, the opener track with GCDs and oGCDs, the next action, the ready check and The Balance's notes"><br>
-  <sub>The Black Mage standard opener, ready to start, with The Balance's notes.</sub>
+  <sub>The Black Mage standard opener, ready to start, with The Balance's notes.</sub><br><br>
+  <img src="docs/images/opener-compact.png" width="820" alt="The opener practice in compact mode: only the opener track, with Start, Full view, the background opacity and Close"><br>
+  <sub><b>Compact mode</b>: only the opener track, to keep it on screen during a fight.</sub>
 </p>
 
 Imported from [The Balance](https://www.thebalanceffxiv.com/): practice any opener of any job. Start the timer (or an
