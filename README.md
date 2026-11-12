@@ -218,6 +218,49 @@ Right click the Live, History or Progression tab and choose **Screenshot**: the 
 captured in slices put back together). Pair it with **Hide player names** (Settings > Display) to share it without
 real names: every player gets a made-up name, always the same one.
 
+## Chat summary
+
+The plugin can also tell you what happened right in the chat, without opening any window. Each kind of line is turned
+on or off in Settings > Chat summary, and **Preview in chat** shows what they look like.
+
+<p align="center">
+  <img src="docs/images/chat.png" width="760" alt="Chat summaries in game: a pull recap with DPS, rDPS, GCD, pDPS, deaths and what killed you, then two ultimate phase summaries"><br>
+  <sub>A pull summary, then the summaries of two ultimate phases (from <b>Preview in chat</b>).</sub>
+</p>
+
+**After each pull** — one line with the values you pick (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths,
+what killed you, failed mechanics):
+
+```
+[Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) | Deaths 1 | Killed by Auto-attack (Brute Bomber, 45,210) | Mechanics: Vulnerability Up x2 (party 3) [Details]
+```
+
+**Each party death, as it happens** — who died, when, and from what, optionally with the **overkill** (the damage
+beyond the HP the player had). The lines stop once the party wipes, rather than one line per player killed by the wipe:
+
+```
+[Death] 7:35 Name (DNC): Memento Mori (Necron, 3,948,501) overkill 1,204,377
+```
+
+**At the end of each ultimate phase** — the phase time, the DPS on its bosses against the DPS needed for its enrage, the
+margin to the enrage (or the HP left on a wipe), your GCD uptime in the phase and what killed you. In a supported
+ultimate these lines replace the pull summary.
+
+<details>
+<summary><b>More about the chat summary</b></summary>
+
+- **[Details]** opens the main window on this pull in History (only for pulls kept in the history).
+- **Comparisons** — DPS, rDPS, GCD uptime and pDPS can each be compared with your best kill of the fight: `NEW BEST`
+  with the gain, or the gap to your best. Only kills are compared: a wipe or a prog pull says nothing about your DPS.
+- **pDPS** shows `(check OK)` or the DPS that was needed when the fight has a [DPS check](#dps-checks).
+- **Killed by** is the last hit you took before dying, auto-attacks included, with the enemy and the damage. Only a hit
+  that could take the HP you had counts; without one it guesses: `falling off the arena`, a debuff that ran out
+  (`Doom (debuff)`) or `instant death (arena edge?)`.
+- **Mechanics** lists the penalty debuffs you took (Vulnerability Up, Damage Down…), then the party's total.
+- The pull summary can be turned off in dungeons only.
+
+</details>
+
 ## Opener practice
 
 <p align="center">
@@ -275,44 +318,6 @@ members, with their names and jobs. Nothing else, and only during combat.
   encounter list and the public rDPS rankings of your job for the current fight. It sends your credentials, the
   encounter and the job, never your character's name or your logs. Rankings are cached for 24 hours.
 
-
-## Chat summary
-
-The plugin can also tell you what happened right in the chat, without opening any window. Each kind of line is turned
-on or off in Settings > Chat summary, and **Preview in chat** shows what they look like.
-
-**After each pull** — one line with the values you pick (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths,
-what killed you, failed mechanics):
-
-```
-[Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) | Deaths 1 | Killed by Auto-attack (Brute Bomber, 45,210) | Mechanics: Vulnerability Up x2 (party 3) [Details]
-```
-
-**Each party death, as it happens** — who died, when, and from what, optionally with the **overkill** (the damage
-beyond the HP the player had). The lines stop once the party wipes, rather than one line per player killed by the wipe:
-
-```
-[Death] 7:35 Name (DNC): Memento Mori (Necron, 3,948,501) overkill 1,204,377
-```
-
-**At the end of each ultimate phase** — the phase time, the DPS on its bosses against the DPS needed for its enrage, the
-margin to the enrage (or the HP left on a wipe), your GCD uptime in the phase and what killed you. In a supported
-ultimate these lines replace the pull summary.
-
-<details>
-<summary><b>More about the chat summary</b></summary>
-
-- **[Details]** opens the main window on this pull in History (only for pulls kept in the history).
-- **Comparisons** — DPS, rDPS, GCD uptime and pDPS can each be compared with your best kill of the fight: `NEW BEST`
-  with the gain, or the gap to your best. Only kills are compared: a wipe or a prog pull says nothing about your DPS.
-- **pDPS** shows `(check OK)` or the DPS that was needed when the fight has a [DPS check](#dps-checks).
-- **Killed by** is the last hit you took before dying, auto-attacks included, with the enemy and the damage. Only a hit
-  that could take the HP you had counts; without one it guesses: `falling off the arena`, a debuff that ran out
-  (`Doom (debuff)`) or `instant death (arena edge?)`.
-- **Mechanics** lists the penalty debuffs you took (Vulnerability Up, Damage Down…), then the party's total.
-- The pull summary can be turned off in dungeons only.
-
-</details>
 
 ## DPS checks and ultimates
 
