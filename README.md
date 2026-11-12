@@ -243,62 +243,118 @@ members, with their names and jobs. Nothing else, and only during combat.
   encounter list and the public rDPS rankings of your job for the current fight. It sends your credentials, the
   encounter and the job, never your character's name or your logs. Rankings are cached for 24 hours.
 
-## More features
 
-### After each pull
+## Chat summary
 
-An optional chat summary, with the values of your choice (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths,
-the ability that killed you, and the mechanics you failed with the party's count):
+The plugin can also tell you what happened right in the chat, without opening any window. Each kind of line is turned
+on or off in Settings > Chat summary, and **Preview in chat** shows what they look like.
+
+**After each pull** — one line with the values you pick (job, DPS, rDPS, FFLogs percentile, GCD uptime, pDPS, deaths,
+what killed you, failed mechanics):
 
 ```
-[Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) NEW BEST (+0.8%) [Details]
+[Recap] Brute Bomber (4:32) Kill | DRK | DPS 21,234 #2/8 NEW BEST (+2.1%) | rDPS 20,511 #3/8 (best -1.2%) | FFLogs ~87 | GCD 98.7% (best -0.4 pts) | pDPS 182,345 (check OK) | Deaths 1 | Killed by Auto-attack (Brute Bomber, 45,210) | Mechanics: Vulnerability Up x2 (party 3) [Details]
 ```
 
-Click **[Details]** to open the main window on this pull in History (not on the ultimate phase summaries).
-DPS, rDPS, GCD and pDPS can each be compared with your best kill of the fight (`NEW BEST (+2.1%)` or the gap).
-If you died during the pull (any content, wipe or kill), `Killed by Hydrothermal Missile (Living Liquid, 98,432)` tells the
-last hit you took before dying, auto-attacks included (also in the ultimate phase summaries; read by the built-in tracker).
-Only a hit that could take the HP you had counts; without one it guesses: `falling off the arena`, a debuff that ran out (`Doom (debuff)`) or
-`instant death (arena edge?)`.
-Comparisons are only made between **kills** — a wipe or a prog pull says nothing about your DPS.
-The summary can be turned off in dungeons.
+**Each party death, as it happens** — who died, when, and from what, optionally with the **overkill** (the damage
+beyond the HP the player had). The lines stop once the party wipes, rather than one line per player killed by the wipe:
+
+```
+[Death] 7:35 Name (DNC): Memento Mori (Necron, 3,948,501) overkill 1,204,377
+```
+
+**At the end of each ultimate phase** — the phase time, the DPS on its bosses against the DPS needed for its enrage, the
+margin to the enrage (or the HP left on a wipe), your GCD uptime in the phase and what killed you. In a supported
+ultimate these lines replace the pull summary.
+
+<details>
+<summary><b>More about the chat summary</b></summary>
+
+- **[Details]** opens the main window on this pull in History (only for pulls kept in the history).
+- **Comparisons** — DPS, rDPS, GCD uptime and pDPS can each be compared with your best kill of the fight: `NEW BEST`
+  with the gain, or the gap to your best. Only kills are compared: a wipe or a prog pull says nothing about your DPS.
+- **pDPS** shows `(check OK)` or the DPS that was needed when the fight has a [DPS check](#dps-checks).
+- **Killed by** is the last hit you took before dying, auto-attacks included, with the enemy and the damage. Only a hit
+  that could take the HP you had counts; without one it guesses: `falling off the arena`, a debuff that ran out
+  (`Doom (debuff)`) or `instant death (arena edge?)`.
+- **Mechanics** lists the penalty debuffs you took (Vulnerability Up, Damage Down…), then the party's total.
+- The pull summary can be turned off in dungeons only.
+
+</details>
+
+## DPS checks and ultimates
 
 ### DPS checks
 
-The **DPS check** tab lists every **ultimate, savage raid and extreme trial** from the game data, most recent first,
-one row each (a search box finds a fight quickly). For each fight you can enter the **boss HP** (one click reads it from the game) and the **enrage time**:
-the minimum party DPS is then `HP / enrage`. The enrage time also drives the enrage timer in the bar.
-A manual minimum can be used instead. Any other zone or a single
-encounter can be added under **Other / custom**.
+Is the party's damage enough to clear? The **DPS check** settings tab lists every **ultimate, savage raid and extreme
+trial** from the game data, most recent first (a search box finds a fight quickly). For each fight, enter the **boss HP**
+(one click reads it from the game) and the **enrage time**: the minimum party DPS is `HP / enrage`. You can also enter
+a minimum by hand, or add any other zone or encounter under **Other / custom**.
 
-The Stormblood to Dawntrail **extremes and savage raids come filled in**: boss HP and enrage time read from FFLogs (the
-HP from recent logs, the enrage from the wipes that ended together at the enrage after release), shown greyed with
-"built-in". They apply until you enter your own values. Some enrages are unknown (too few wipes to the enrage), and a
-fight with several bosses only counts one of them.
+The Stormblood to Dawntrail **extremes and savage raids come filled in**, shown greyed as "built-in" until you enter
+your own values: the boss HP from recent FFLogs logs, the enrage from the wipes that ended together at the enrage after
+release. Some enrages are unknown (too few wipes to the enrage), and a fight with several bosses only counts one of them.
+
+The check then shows up everywhere: the party DPS card and its gap in Live, the pDPS color in the server bar, the
+**Enrage timer** element, and `(check OK)` in the chat summary. Still a work in progress: some values may be missing
+or wrong for now.
 
 ### Ultimates
 
-In an ultimate the fight never stops between phases and several bosses are often up at once.
-Each supported phase is tracked on its own: its timer starts when its boss becomes targetable, only its own
-boss counts for the DPS check (adds are ignored), and the Enrage timer element
-follows the current phase. GCD uptime is also measured per phase. The **Ultimate phase boss DPS** element shows the DPS on the phase's bosses only (not the whole fight's pDPS), against the DPS needed for its enrage, and a chat summary is printed at the end of each phase. Enter each phase's enrage time once, or take it from your last wipe in one click.
-The combined HP of each phase's bosses (all of them must die) is read in game the first time the phase is reached and
-shown under the ultimate in the DPS check tab with the resulting required DPS; it can be overridden by hand.
+In an ultimate the fight never stops between phases and several bosses are often up at once, so each supported phase
+is tracked on its own:
 
-Supported so far: **The Epic of Alexander — P1 (Living Liquid), Limit Cut (transition) and P2 (Brute Justice & Cruise Chaser)**.
-A boss phase ends when its bosses die (then the transition starts) or as soon as the next boss phase starts (for P2: when
-both bosses are targetable). In a supported ultimate, the phase summaries replace the usual pull summary. More phases and ultimates will be added one at a time.
+- its timer starts when its boss becomes targetable, and it ends when its bosses die (the transition then starts) or
+  as soon as the next boss phase starts;
+- only its own bosses count for the DPS check (adds are ignored), with the **Ultimate phase boss DPS** server bar element
+  against the DPS needed for the phase's enrage;
+- the Enrage timer, GCD uptime, History (duration, boss HP left) and Progression (wipes per phase) follow the phases;
+- a chat summary is printed at the end of each phase.
 
-### rDPS
+Enter each phase's enrage time once, or take it from your last wipe in one click. The combined HP of each phase's
+bosses is read in game the first time the phase is reached and shown in the DPS check tab with the required DPS (it can
+be overridden by hand).
 
-An approximation of [FFLogs' rDPS](https://www.fflogs.com/help/rdps): damage gained from a raid buff
-is taken from the player who dealt it and credited to the player who gave the buff.
-See [How rDPS is computed](#how-rdps-is-computed).
+Supported so far: **The Epic of Alexander — P1 (Living Liquid), Limit Cut (transition) and P2 (Brute Justice & Cruise
+Chaser)**. More phases and ultimates will be added one at a time.
 
-### FFLogs percentile (optional)
+## Commands
 
-With your own FFLogs API credentials, the plugin downloads the rDPS rankings of your job for the current fight
-and places your rDPS among them. See [FFLogs setup](#fflogs-setup).
+| Command | Action |
+|---|---|
+| `/raidcompanion` | Open / close the main window |
+| `/raidcompanion config` | Settings |
+| `/raidcompanion history` | Main window on the History tab |
+| `/raidcompanion compact` | Open / close the compact meter |
+| `/raidcompanion toggle` | Cycle the server bar value: DPS → pDPS → rDPS |
+| `/raidcompanion preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
+| `/raidcompanion opener` | Open / close the opener practice (in the view used last) |
+| `/raidcompanion opener compact` | Open / close the opener practice in its compact view |
+| `/raidcompanion opener full` | Open / close the opener practice in its full window |
+| `/raidcompanion reconnect` | Reconnect to ACT |
+
+`/rcomp` is a shorter alias (e.g. `/rcomp preset 2`, handy in a macro). The old `/dpsbar` still works, so existing
+macros keep working.
+
+## Settings
+
+`/raidcompanion config`, or the cog in the main window.
+
+<details>
+<summary><b>What's in each tab</b></summary>
+
+| Tab | Contents |
+|---|---|
+| **DPS in server bar** | Presets (renamable, switchable with `/raidcompanion preset N`), metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), auto-hide, colors |
+| **Chat summary** | Pull summary on/off, in dungeons, at the end of each ultimate phase, each party death as it happens (optionally with the overkill), values shown, comparison with your best kill, **preview in chat** |
+| **Display** | **Language** (English, French or German; Auto follows Dalamud's language), compact meter (columns, header, background opacity), DPS graphs in the main window, Limit Break in party DPS, **hide player names** (made-up names in every window, for screenshots) |
+| **Pulls history** | Record only in duties, **kinds of content recorded** (dungeons, trials, extremes, raids, savage, criterion, ultimates, other), minimum pull length, history size, graph window, tankbuster vulnerabilities ignored |
+| **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
+| **DPS check** (WIP) | Boss HP, enrage time and minimum party DPS per fight; ultimate phases with each phase's HP, enrage and required DPS; other zones / encounters |
+| **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
+| **FFLogs** | Percentile estimate, API credentials with a connection test, manual encounter id |
+
+</details>
 
 ## Data sources
 
@@ -309,43 +365,18 @@ and places your rDPS among them. See [FFLogs setup](#fflogs-setup).
 | **ACT only** | Numbers come from ACT via OverlayPlugin's WebSocket server (WSServer started, default `ws://127.0.0.1:10501/ws`) |
 
 The built-in tracker merges pets into their owner and counts the Limit Break separately. It is slightly less
-exhaustive than ACT (a DoT whose owner cannot be determined is skipped). rDPS always comes from the built-in
-tracker, which always runs next to ACT; ACT's numbers are then adjusted with it.
+exhaustive than ACT (a DoT whose owner cannot be determined is skipped). rDPS, deaths, debuffs and everything beyond
+damage always come from the built-in tracker, which keeps running next to ACT.
 
-## Commands
+## rDPS
 
-| Command | Action |
-|---|---|
-| `/raidcompanion` | Open / close the main window |
-| `/raidcompanion config` | Settings |
-| `/raidcompanion history` | Main window on the History tab |
-| `/raidcompanion toggle` | Cycle DPS → pDPS → rDPS |
-| `/raidcompanion compact` | Open / close the compact meter |
-| `/raidcompanion opener` | Open / close the opener practice (in the view used last) |
-| `/raidcompanion opener compact` | Open / close the opener practice in its compact view |
-| `/raidcompanion opener full` | Open / close the opener practice in its full window |
-| `/raidcompanion reconnect` | Reconnect to ACT |
-| `/raidcompanion preset <n\|name\|next>` | Switch the server bar to a saved preset: by number, by name, or the next one |
+An approximation of [FFLogs' rDPS](https://www.fflogs.com/help/rdps): the damage gained from a raid buff is taken from
+the player who dealt it and credited to the player who gave the buff. The plugin follows FFLogs' published method, as
+documented in [*FFLogs Buff Allocation Math*](https://docs.google.com/document/d/1pWVsDaroDHpvh1IuB42bWLBE2TMru2CrWnjTDjeAvJY/view)
+by joncho.
 
-`/rcomp` is a shorter alias of `/raidcompanion` (e.g. `/rcomp preset 2`). The old `/dpsbar` still works, so existing macros keep working.
-
-## Settings
-
-| Tab | Contents |
-|---|---|
-| **DPS in server bar** | Presets (renamable, switchable with `/raidcompanion preset N`), metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), auto-hide, colors |
-| **Chat summary** | On/off, in dungeons, at the end of each ultimate phase, **each party death as it happens** (`[Death] 7:35 Name (DNC): Memento Mori (Necron, 3,948,501)`, stops once the party wipes, optionally with the **overkill**), values shown, comparison with your best kill, **preview in chat** |
-| **Display** | **Language** (English, French or German; Auto follows Dalamud's language), compact meter (columns, header, background opacity), DPS graphs in the main window, Limit Break in party DPS, **hide player names** (made-up names in every window, for screenshots) |
-| **Pulls history** | Record only in duties, **kinds of content recorded** (dungeons, trials, extremes, raids, savage, criterion, ultimates, other), minimum pull length, history size, graph window |
-| **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
-| **DPS check** (WIP) | Still a work in progress: the values may be incomplete or wrong for now. Ultimates, savage raids and extreme trials (most recent first): boss HP, enrage time, minimum party DPS; ultimate phase tracking with each phase's HP, enrage and required DPS; other zones / encounters |
-| **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
-| **FFLogs** | Percentile estimate, API credentials with a connection test, manual encounter id |
-
-## How rDPS is computed
-
-The plugin follows FFLogs' published method, as documented in
-[*FFLogs Buff Allocation Math*](https://docs.google.com/document/d/1pWVsDaroDHpvh1IuB42bWLBE2TMru2CrWnjTDjeAvJY/view) by joncho:
+<details>
+<summary><b>How it is computed</b></summary>
 
 - **% damage buffs** — the gain `N − N/M` (M = all external multipliers) is split between buffs in proportion to `ln(multiplier)`.
 - **Crit / direct hit rate buffs** — a crit (or DH) is split by the probability that it came from the buffs, `(buffed − own rate) / buffed`;
@@ -357,31 +388,40 @@ The plugin follows FFLogs' published method, as documented in
 Raid buff values for the current expansion are in [`Rdps/RaidBuffs.cs`](DpsInServerBar/Rdps/RaidBuffs.cs)
 (status ids come from the game data, percentages must be kept up to date by hand).
 
-**Accuracy.** The game does not tell the client other players' crit and direct hit rates, which FFLogs knows.
-The plugin estimates them from each player's hits (yours come from your real stats at level 100).
-In tests against FFLogs' own meter, most players were within ±0.3%; a player receiving a large crit buff
-(e.g. a Dancer's partner) can be off by about 1% on a single pull, less after a few pulls with the same group.
+</details>
 
-## FFLogs setup
+**Accuracy.** The game does not tell the client other players' crit and direct hit rates, which FFLogs knows. The
+plugin estimates them from each player's hits (yours come from your real stats at level 100). In tests against FFLogs'
+own meter, most players were within ±0.3%; a player receiving a large crit buff (e.g. a Dancer's partner) can be off by
+about 1% on a single pull, less after a few pulls with the same group.
+
+## FFLogs percentile (optional)
+
+With your own FFLogs API credentials, the plugin downloads the rDPS rankings of your job for the current fight and
+places your rDPS among them: in the server bar, the hover summary and the chat summary.
 
 1. On fflogs.com, open **[API Clients](https://www.fflogs.com/api/clients)** and create a client
    (any name, redirect URL `http://localhost`).
-2. In the plugin settings, **FFLogs** tab, paste the **Client ID** and **Client Secret**.
+2. In the plugin settings, **FFLogs** tab, paste the **Client ID** and **Client Secret**, then test the connection.
    (The old "V1 Client Key" does not work: the plugin uses API v2.)
 3. Enable the **FFLogs percentile** element in DPS in server bar → Server bar elements.
 
 The fight is matched to FFLogs by the boss' English name; if that fails, enter the FFLogs encounter id for the zone.
-Rankings are cached for 24 hours. The percentile compares your rDPS with each character's best parse for your job
-in the current partition — close to FFLogs' *rank %*. During a fight it is only a trend, since rDPS moves with burst windows.
+Rankings are cached for 24 hours. The percentile compares your rDPS with each character's best parse for your job in
+the current partition — close to FFLogs' *rank %*. During a fight it is only a trend, since rDPS moves with burst windows.
 
 ## Known limitations
 
-- rDPS is an estimate (see [Accuracy](#how-rdps-is-computed)); raid buff values need updating when a patch changes them.
+- rDPS is an estimate (see [Accuracy](#rdps)); raid buff values need updating when a patch changes them.
 - Only the guaranteed crit/DH effects listed in `RaidBuffs.cs` are recognised.
-- Enrage times are not in the game data: the built-in ones come from FFLogs, the others must be entered by hand (DPS check tab).
-- GCD uptime: an enemy that stays targetable while invulnerable still counts as available time. Only your own uptime is measured (the game does not expose other players' GCD).
-- Ultimate mode only covers the phases listed in [Ultimates](#ultimates); later phases show as "not supported yet".
-- For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for the DPS check.
+- Enrage times are not in the game data: the built-in ones come from FFLogs, the others must be entered by hand.
+- GCD uptime: an enemy that stays targetable while invulnerable still counts as available time. Only your own uptime
+  is measured (the game does not expose other players' GCD).
+- The DPS lost to Damage Down is an estimate: the game does not always send the debuff's strength, the usual one for
+  the content is then used.
+- Ultimates: only the phases listed in [Ultimates](#ultimates) are tracked; later phases show as "not supported yet".
+- For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for
+  the DPS check.
 - The FFLogs percentile depends on matching the fight by name and on FFLogs' API being reachable.
 
 ## Credits
