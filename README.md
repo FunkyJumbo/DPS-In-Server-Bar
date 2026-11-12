@@ -220,6 +220,11 @@ real names: every player gets a made-up name, always the same one.
 
 ## Opener practice
 
+<p align="center">
+  <img src="docs/images/opener.png" width="820" alt="The opener practice window with the Black Mage standard 5+7 opener: options, the opener track with GCDs and oGCDs, the next action, the ready check and The Balance's notes"><br>
+  <sub>The Black Mage standard opener, ready to start, with The Balance's notes.</sub>
+</p>
+
 Imported from [The Balance](https://www.thebalanceffxiv.com/): practice any opener of any job. Start the timer (or an
 in-game `/countdown`, or just your first action), then play: the window follows the opener as you press your keys and
 tells whether each action was the right one. A **compact** mode and an **auto close** option let it fade out by itself
