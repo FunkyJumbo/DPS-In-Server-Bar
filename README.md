@@ -51,7 +51,8 @@ Game data (actions, bosses, debuffs) stays in your game client's language.
 
 > [!TIP]
 > **That's all you need.** Type `/raidcompanion` in game and go pull something: the plugin is made to be picked up
-> without reading a manual. The rest of this page explains each feature in more detail, for when you want to dig in.
+> without reading a manual. The rest of this page explains each feature in more detail, for when you want to dig in,
+> or to check the [known limitations](#known-limitations).
 
 <br>
 <br>
