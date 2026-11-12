@@ -121,6 +121,11 @@ and can be **reordered**, with the separator of your choice between them (space,
 - Colors: with a DPS check for the fight, only the pDPS value turns green/red, with its gap to the required DPS
   (`182,345 pDPS (+3.2%)`); everything turns grey once the fight is over.
 
+<p align="center">
+  <img src="docs/images/settings-bar.png" width="480" alt="The DPS in server bar settings: presets, metric and number format, the bar elements to tick and reorder, separator, behavior and colors"><br>
+  <sub>Settings > DPS in server bar: presets, value, elements and their order, behavior and colors.</sub>
+</p>
+
 </details>
 
 <details>
