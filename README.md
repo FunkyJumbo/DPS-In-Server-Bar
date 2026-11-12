@@ -42,6 +42,9 @@ moment it happens, without alt-tabbing. An **opener practice** is included too.
 **Languages:** English, French and German (Settings > Display > Language; *Auto* follows Dalamud's language).
 Game data (actions, bosses, debuffs) stays in your game client's language.
 
+<br>
+
+> [!TIP]
 > **That's all you need.** Type `/raidcompanion` in game and go pull something: the plugin is made to be picked up
 > without reading a manual. The rest of this page explains each feature in more detail, for when you want to dig in.
 
