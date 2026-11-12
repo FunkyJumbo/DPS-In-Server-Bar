@@ -131,6 +131,13 @@ metric), sized to its content. Drag it by its background; click the metric heade
 for the menu (background opacity, main window, history, settings, close). Its columns (%, crit, direct hit, deaths),
 header and background opacity are set in Settings > Display.
 
+<p align="center">
+  <img src="docs/images/compact-full.png" height="150" alt="The compact meter with its header and every column: DPS, %, crit, direct hit and deaths">
+  &nbsp;&nbsp;
+  <img src="docs/images/compact-minimal.png" height="150" alt="The compact meter with no header and only the rDPS column"><br>
+  <sub>Every column with the header, or just the bare minimum.</sub>
+</p>
+
 </details>
 
 ### History
