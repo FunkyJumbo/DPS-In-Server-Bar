@@ -42,6 +42,9 @@ moment it happens, without alt-tabbing. An **opener practice** is included too.
 **Languages:** English, French and German (Settings > Display > Language; *Auto* follows Dalamud's language).
 Game data (actions, bosses, debuffs) stays in your game client's language.
 
+> **That's all you need.** Type `/raidcompanion` in game and go pull something: the plugin is made to be picked up
+> without reading a manual. The rest of this page explains each feature in more detail, for when you want to dig in.
+
 ## Main window
 
 `/raidcompanion` opens the main window, with three tabs: **Live**, **History** and **Progression**.
@@ -58,8 +61,8 @@ During the fight, two minimalist displays keep your UI clean:
   a fully integrated UI.
 
 <p align="center">
-  <img src="docs/images/bar.png" alt="Raid Companion entry showing 46,209 rDPS in the server info bar"><br>
-  <sub>Your rDPS, right next to the clock.</sub>
+  <img src="docs/images/bar.png" alt="The server info bar showing 12,468 rDPS, GCD 82.6% and the fight time, above the compact meter with the party's DPS"><br>
+  <sub>The server bar (rDPS, GCD uptime, fight time) and the compact meter, during a fight.</sub>
 </p>
 
 <details>
@@ -127,7 +130,7 @@ header and background opacity are set in Settings > Display.
 
 <p align="center">
   <img src="docs/images/history.webp" width="560" alt="The History tab: the pull list of an instance, then the selected pull in detail"><br>
-  <sub>A pull opened in History: personal section, party, deaths, mitigation, failed mechanics and timeline.</sub>
+  <sub>A pull opened in History: personal section, party, deaths, mitigation, failed mechanics, timeline and casts &amp; debuffs.</sub>
 </p>
 
 History stores your fights in a personal database on your computer. Check them whenever you like: each pull holds
@@ -164,7 +167,7 @@ can compare your damage stats between two pulls. In the settings you choose the 
 ### Progression
 
 <p align="center">
-  <img src="docs/images/progression.png" width="720" alt="The Progression tab for The Ageless Necropolis: best pull, what wiped the party and the progression graph"><br>
+  <img src="docs/images/progression.png" width="720" alt="The Progression tab for Another Mount Rokkon (Shishio): best pull, what wiped the party and the progression graph"><br>
   <sub>Following a prog: best pull, what wiped the party most, and how far each pull got.</sub>
 </p>
 
