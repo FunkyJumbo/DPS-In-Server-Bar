@@ -30,6 +30,8 @@ moment it happens, without alt-tabbing. An **opener practice** is included too.
   <sub>The Live tab after a pull (player names hidden for the screenshot).</sub>
 </p>
 
+<br>
+
 ## Installation
 
 1. In game, open `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.
@@ -218,6 +220,8 @@ Right click the Live, History or Progression tab and choose **Screenshot**: the 
 captured in slices put back together). Pair it with **Hide player names** (Settings > Display) to share it without
 real names: every player gets a made-up name, always the same one.
 
+<br>
+
 ## Chat summary
 
 The plugin can also tell you what happened right in the chat, without opening any window. Each kind of line is turned
@@ -261,6 +265,8 @@ ultimate these lines replace the pull summary.
 
 </details>
 
+<br>
+
 ## Opener practice
 
 <p align="center">
@@ -295,6 +301,8 @@ when in combat, where the game refuses it.
 
 </details>
 
+<br>
+
 ## Data and privacy
 
 **What is collected.** While you fight, the plugin reads the combat from the game on your computer (the built-in
@@ -318,6 +326,8 @@ members, with their names and jobs. Nothing else, and only during combat.
   encounter list and the public rDPS rankings of your job for the current fight. It sends your credentials, the
   encounter and the job, never your character's name or your logs. Rankings are cached for 24 hours.
 
+
+<br>
 
 ## DPS checks and ultimates
 
@@ -355,6 +365,8 @@ be overridden by hand).
 Supported so far: **The Epic of Alexander — P1 (Living Liquid), Limit Cut (transition) and P2 (Brute Justice & Cruise
 Chaser)**. More phases and ultimates will be added one at a time.
 
+<br>
+
 ## Commands
 
 | Command | Action |
@@ -372,6 +384,8 @@ Chaser)**. More phases and ultimates will be added one at a time.
 
 `/rcomp` is a shorter alias (e.g. `/rcomp preset 2`, handy in a macro). The old `/dpsbar` still works, so existing
 macros keep working.
+
+<br>
 
 ## Settings
 
@@ -393,6 +407,8 @@ macros keep working.
 
 </details>
 
+<br>
+
 ## Data sources
 
 | Mode | How it works |
@@ -404,6 +420,8 @@ macros keep working.
 The built-in tracker merges pets into their owner and counts the Limit Break separately. It is slightly less
 exhaustive than ACT (a DoT whose owner cannot be determined is skipped). rDPS, deaths, debuffs and everything beyond
 damage always come from the built-in tracker, which keeps running next to ACT.
+
+<br>
 
 ## rDPS
 
@@ -432,6 +450,8 @@ plugin estimates them from each player's hits (yours come from your real stats a
 own meter, most players were within ±0.3%; a player receiving a large crit buff (e.g. a Dancer's partner) can be off by
 about 1% on a single pull, less after a few pulls with the same group.
 
+<br>
+
 ## FFLogs percentile (optional)
 
 With your own FFLogs API credentials, the plugin downloads the rDPS rankings of your job for the current fight and
@@ -447,6 +467,8 @@ The fight is matched to FFLogs by the boss' English name; if that fails, enter t
 Rankings are cached for 24 hours. The percentile compares your rDPS with each character's best parse for your job in
 the current partition — close to FFLogs' *rank %*. During a fight it is only a trend, since rDPS moves with burst windows.
 
+<br>
+
 ## Known limitations
 
 - rDPS is an estimate (see [Accuracy](#rdps)); raid buff values need updating when a patch changes them.
@@ -461,6 +483,8 @@ the current partition — close to FFLogs' *rank %*. During a fight it is only a
   the DPS check.
 - The FFLogs percentile depends on matching the fight by name and on FFLogs' API being reachable.
 
+<br>
+
 ## Credits
 
 - [Dalamud](https://github.com/goatcorp/Dalamud) and [FFXIVClientStructs](https://github.com/aers/FFXIVClientStructs).
@@ -470,6 +494,8 @@ the current partition — close to FFLogs' *rank %*. During a fight it is only a
 - [LootView](https://github.com/GitHixy/LootView), whose midnight-blue and gold interface inspired ours.
 
 This project is not affiliated with FFLogs, Archon, The Balance or Square Enix.
+
+<br>
 
 ## License
 
