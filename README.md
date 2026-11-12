@@ -54,6 +54,11 @@ Game data (actions, bosses, debuffs) stays in your game client's language.
 > without reading a manual. The rest of this page explains each feature in more detail, for when you want to dig in,
 > or to check the [known limitations](#known-limitations).
 
+<p align="center">
+  <i>Raid Companion is still new and will keep growing, one update at a time. We hope you find it useful, and good luck
+  with your clears!</i>
+</p>
+
 <br>
 <br>
 
@@ -493,13 +498,6 @@ the current partition — close to FFLogs' *rank %*. During a fight it is only a
 - For a fight with several bosses or HP pools, the boss HP shown is the biggest enemy's; add the pools up by hand for
   the DPS check.
 - The FFLogs percentile depends on matching the fight by name and on FFLogs' API being reachable.
-
-<br>
-
-<p align="center">
-  <i>Raid Companion is still new and will keep growing, one update at a time. We hope you find it useful, and good luck
-  with your clears!</i>
-</p>
 
 <br>
 
