@@ -323,9 +323,38 @@ macros keep working.
 
 <br>
 
+## Settings
+
+`/raidcompanion config`, or the cog in the main window.
+
+<details>
+<summary><b>What's in each tab</b></summary>
+
+| Tab | Contents |
+|---|---|
+| **DPS in server bar** | Presets (renamable, switchable with `/raidcompanion preset N`), metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), auto-hide, colors |
+| **Chat summary** | Pull summary on/off, in dungeons, at the end of each ultimate phase, each party death as it happens (optionally with the overkill), values shown, comparison with your best kill, **preview in chat** |
+| **Display** | **Language** (English, French or German; Auto follows Dalamud's language), compact meter (columns, header, background opacity), DPS graphs in the main window, Limit Break in party DPS, **hide player names** (made-up names in every window, for screenshots) |
+| **Pulls history** | Record only in duties, **kinds of content recorded** (dungeons, trials, extremes, raids, savage, criterion, ultimates, other), minimum pull length, history size, graph window, tankbuster vulnerabilities ignored |
+| **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
+| **DPS check** (WIP) | Boss HP, enrage time and minimum party DPS per fight; ultimate phases with each phase's HP, enrage and required DPS; other zones / encounters |
+| **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
+| **FFLogs** | Percentile estimate, API credentials with a connection test, manual encounter id |
+
+</details>
+
+<br>
+
 ## Data and privacy
 
-**What is collected.** While you fight, the plugin reads the combat from the game on your computer (the built-in
+> [!IMPORTANT]
+> **Nothing about you is collected, and nothing leaves your computer.** No telemetry, no account, no analytics, no
+> upload: the author never receives any data, and neither does anyone else. Everything the plugin records stays on your
+> own PC, and you can delete it at any time.
+
+The details:
+
+**What the plugin reads.** While you fight, the plugin reads the combat from the game on your computer (the built-in
 tracker), or from ACT if you chose it: damage, healing, buffs, deaths, debuffs and mitigation of you and your party
 members, with their names and jobs. Nothing else, and only during combat.
 
@@ -384,28 +413,6 @@ be overridden by hand).
 
 Supported so far: **The Epic of Alexander — P1 (Living Liquid), Limit Cut (transition) and P2 (Brute Justice & Cruise
 Chaser)**. More phases and ultimates will be added one at a time.
-
-<br>
-
-## Settings
-
-`/raidcompanion config`, or the cog in the main window.
-
-<details>
-<summary><b>What's in each tab</b></summary>
-
-| Tab | Contents |
-|---|---|
-| **DPS in server bar** | Presets (renamable, switchable with `/raidcompanion preset N`), metric, number format (`12345` / `12,345` / `12.3k`), bar elements and their order, separator, **bar preview** (placeholder values for 10 s), auto-hide, colors |
-| **Chat summary** | Pull summary on/off, in dungeons, at the end of each ultimate phase, each party death as it happens (optionally with the overkill), values shown, comparison with your best kill, **preview in chat** |
-| **Display** | **Language** (English, French or German; Auto follows Dalamud's language), compact meter (columns, header, background opacity), DPS graphs in the main window, Limit Break in party DPS, **hide player names** (made-up names in every window, for screenshots) |
-| **Pulls history** | Record only in duties, **kinds of content recorded** (dungeons, trials, extremes, raids, savage, criterion, ultimates, other), minimum pull length, history size, graph window, tankbuster vulnerabilities ignored |
-| **Appearance** | Theme presets, saved custom themes (renamable), background opacity, custom colors, preview |
-| **DPS check** (WIP) | Boss HP, enrage time and minimum party DPS per fight; ultimate phases with each phase's HP, enrage and required DPS; other zones / encounters |
-| **Data source** | Built-in (recommended) / Auto / ACT, ACT address, connection status |
-| **FFLogs** | Percentile estimate, API credentials with a connection test, manual encounter id |
-
-</details>
 
 <br>
 
