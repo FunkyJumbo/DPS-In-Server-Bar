@@ -492,6 +492,13 @@ the current partition — close to FFLogs' *rank %*. During a fight it is only a
 
 <br>
 
+<p align="center">
+  <i>Raid Companion is still new and will keep growing, one update at a time. We hope you find it useful, and good luck
+  with your clears!</i>
+</p>
+
+<br>
+
 ## Credits
 
 - [Dalamud](https://github.com/goatcorp/Dalamud) and [FFXIVClientStructs](https://github.com/aers/FFXIVClientStructs).
