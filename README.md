@@ -45,6 +45,8 @@ opening a window. An [**opener practice**](#opener-practice) is included too.
 **Languages:** English, French and German (Settings > Display > Language; *Auto* follows Dalamud's language).
 Game data (actions, bosses, debuffs) stays in your game client's language.
 
+**Commands:** `/raidcompanion` (or `/rcomp`) opens the main window; see [Commands](#commands) for the full list.
+
 <br>
 
 > [!TIP]
