@@ -21,7 +21,8 @@ into one clean, standalone plugin, so you get the info you need on the go, in th
 - **The fight** — Is our damage enough to clear? By how much?
 
 No more logging, uploading and waiting for the end of the session to check: these answers, and more, are ready the
-moment it happens, without alt-tabbing. An **opener practice** is included too.
+moment it happens, without alt-tabbing, and a [**chat summary**](#chat-summary) after each pull even saves you from
+opening a window. An [**opener practice**](#opener-practice) is included too.
 
 > We do not reinvent the wheel, we polish it!
 
