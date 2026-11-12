@@ -45,6 +45,9 @@ Game data (actions, bosses, debuffs) stays in your game client's language.
 > **That's all you need.** Type `/raidcompanion` in game and go pull something: the plugin is made to be picked up
 > without reading a manual. The rest of this page explains each feature in more detail, for when you want to dig in.
 
+<br>
+<br>
+
 ## Main window
 
 `/raidcompanion` opens the main window, with three tabs: **Live**, **History** and **Progression**.
@@ -52,7 +55,8 @@ Game data (actions, bosses, debuffs) stays in your game client's language.
 ### Live
 
 See Live as a very detailed DPS meter. You can keep it open during the fight, but it takes room on screen: it is
-just as handy to check it between pulls. Most of the information is here, and starting a new fight resets the page.
+just as handy to check it between pulls. Most of the information is here, and starting a new fight resets the page
+(it is the screenshot at the top of this page).
 
 During the fight, two minimalist displays keep your UI clean:
 
